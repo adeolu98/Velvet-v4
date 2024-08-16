@@ -153,6 +153,8 @@ library ErrorLibrary {
   error ProtocolEmergencyPaused();
   /// @notice Thrown when batchHandler balance diff is zero
   error InvalidBalanceDiff();
+  ///@notice Error thrown when the user tries to withdraw or transfer an amount greater than their balance.
+  error InsufficientBalance();
   // @notice Thrown when an unpause action is attempted too soon after the last unpause.
   error TimeSinceLastUnpauseNotElapsed();
   // @notice Thrown when an invalid cooldown period is set.

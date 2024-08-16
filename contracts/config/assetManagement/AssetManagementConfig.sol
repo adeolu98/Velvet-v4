@@ -27,8 +27,7 @@ contract AssetManagementConfig is
   PortfolioSettings,
   TokenWhitelistManagement,
   FeeManagement,
-  UserWhitelistManagement,
-  AccessRoles
+  UserWhitelistManagement
 {
   IAccessController internal accessController;
 
@@ -60,6 +59,8 @@ contract AssetManagementConfig is
 
     __TokenWhitelistManagement_init(
       initData._whitelistedTokens,
+      address(accessController),
+      initData._basePositionManager,
       initData._whitelistTokens,
       initData._protocolConfig
     );

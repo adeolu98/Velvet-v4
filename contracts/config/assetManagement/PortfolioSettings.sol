@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
 import {AssetManagerCheck} from "./AssetManagerCheck.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
+import {IProtocolConfig} from "../protocol/IProtocolConfig.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
 
 /**
