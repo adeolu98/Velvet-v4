@@ -91,8 +91,11 @@ describe.only("Tests for Deposit", () => {
   let addr1: SignerWithAddress;
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
+
+  let amountCalculationsAlgebra: AmountCalculationsAlgebra;
+
   const assetManagerHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("ASSET_MANAGER"),
+    ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
 
   let positionWrappers: any = [];
@@ -142,31 +145,31 @@ describe.only("Tests for Deposit", () => {
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory(
-        "DepositBatchExternalPositions",
+        "DepositBatchExternalPositions"
       );
       depositBatch = await DepositBatch.deploy();
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory(
-        "DepositManagerExternalPositions",
+        "DepositManagerExternalPositions"
       );
       depositManager = await DepositManager.deploy(depositBatch.address);
       await depositManager.deployed();
 
       const WithdrawBatch = await ethers.getContractFactory(
-        "WithdrawBatchExternalPositions",
+        "WithdrawBatchExternalPositions"
       );
       withdrawBatch = await WithdrawBatch.deploy();
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
-        "WithdrawManagerExternalPositions",
+        "WithdrawManagerExternalPositions"
       );
       withdrawManager = await WithdrawManager.deploy();
       await withdrawManager.deployed();
 
       const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
+        "PositionWrapper"
       );
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
@@ -179,7 +182,7 @@ describe.only("Tests for Deposit", () => {
           priceOracle.address,
           positionWrapperBaseAddress.address,
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
@@ -191,13 +194,13 @@ describe.only("Tests for Deposit", () => {
       await rebalancingDefult.deployed();
 
       const AssetManagementConfig = await ethers.getContractFactory(
-        "AssetManagementConfig",
+        "AssetManagementConfig"
       );
       const assetManagementConfigBase = await AssetManagementConfig.deploy();
       await assetManagementConfigBase.deployed();
 
       const TokenExclusionManager = await ethers.getContractFactory(
-        "TokenExclusionManager",
+        "TokenExclusionManager"
       );
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
@@ -206,7 +209,7 @@ describe.only("Tests for Deposit", () => {
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
-        "UniswapV2Handler",
+        "UniswapV2Handler"
       );
       swapHandler = await PancakeSwapHandler.deploy();
       await swapHandler.deployed();
@@ -231,17 +234,23 @@ describe.only("Tests for Deposit", () => {
       let whitelist = [owner.address];
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena",
+        "PositionManagerThena"
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
+
+      const AmountCalculationsAlgebra = await ethers.getContractFactory(
+        "AmountCalculationsAlgebra"
+      );
+      amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
+      await amountCalculationsAlgebra.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule");
       const feeModule = await FeeModule.deploy();
       await feeModule.deployed();
 
       const TokenRemovalVault = await ethers.getContractFactory(
-        "TokenRemovalVault",
+        "TokenRemovalVault"
       );
       const tokenRemovalVault = await TokenRemovalVault.deploy();
       await tokenRemovalVault.deployed();
@@ -250,13 +259,13 @@ describe.only("Tests for Deposit", () => {
       await fakePortfolio.deployed();
 
       const VelvetSafeModule = await ethers.getContractFactory(
-        "VelvetSafeModule",
+        "VelvetSafeModule"
       );
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
       const PortfolioFactory = await ethers.getContractFactory(
-        "PortfolioFactory",
+        "PortfolioFactory"
       );
 
       const portfolioFactoryInstance = await upgrades.deployProxy(
@@ -281,16 +290,16 @@ describe.only("Tests for Deposit", () => {
             _protocolConfig: protocolConfig.address,
           },
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       portfolioFactory = PortfolioFactory.attach(
-        portfolioFactoryInstance.address,
+        portfolioFactoryInstance.address
       );
 
       await withdrawManager.initialize(
         withdrawBatch.address,
-        portfolioFactory.address,
+        portfolioFactory.address
       );
 
       console.log("portfolioFactory address:", portfolioFactory.address);
@@ -338,10 +347,10 @@ describe.only("Tests for Deposit", () => {
 
       portfolio = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress,
+        portfolioAddress
       );
       const PortfolioCalculations = await ethers.getContractFactory(
-        "PortfolioCalculations",
+        "PortfolioCalculations"
       );
       feeModule0 = FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
@@ -349,27 +358,27 @@ describe.only("Tests for Deposit", () => {
 
       portfolio1 = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress1,
+        portfolioAddress1
       );
 
       rebalancing = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo.rebalancing,
+        portfolioInfo.rebalancing
       );
 
       rebalancing1 = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo1.rebalancing,
+        portfolioInfo1.rebalancing
       );
 
       tokenExclusionManager = await ethers.getContractAt(
         TokenExclusionManager__factory.abi,
-        portfolioInfo.tokenExclusionManager,
+        portfolioInfo.tokenExclusionManager
       );
 
       tokenExclusionManager1 = await ethers.getContractAt(
         TokenExclusionManager__factory.abi,
-        portfolioInfo1.tokenExclusionManager,
+        portfolioInfo1.tokenExclusionManager
       );
 
       const config = await portfolio.assetManagementConfig();
@@ -400,13 +409,13 @@ describe.only("Tests for Deposit", () => {
           "Test",
           "t",
           MIN_TICK,
-          MAX_TICK,
+          MAX_TICK
         );
 
         position1 = await positionManager.deployedPositionWrappers(0);
 
         const PositionWrapper = await ethers.getContractFactory(
-          "PositionWrapper",
+          "PositionWrapper"
         );
         positionWrapper = PositionWrapper.attach(position1);
       });
@@ -422,13 +431,13 @@ describe.only("Tests for Deposit", () => {
           "Test",
           "t",
           MIN_TICK,
-          MAX_TICK,
+          MAX_TICK
         );
 
         position2 = await positionManager.deployedPositionWrappers(1);
 
         const PositionWrapper = await ethers.getContractFactory(
-          "PositionWrapper",
+          "PositionWrapper"
         );
         positionWrapper2 = PositionWrapper.attach(position2);
       });
@@ -473,10 +482,12 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             swapTokens[i],
-            "20000000000000000",
+            "20000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
+
+        let balanceBeforeETH = await owner.getBalance();
 
         const data = await depositBatch.multiTokenSwapETHAndTransfer(
           {
@@ -499,27 +510,21 @@ describe.only("Tests for Deposit", () => {
           },
           {
             value: "1000000000000000000",
-          },
+          }
         );
+
+        let balanceAfterETH = await owner.getBalance();
 
         const userShare =
           Number(BigNumber.from(await portfolio.balanceOf(owner.address))) /
           Number(BigNumber.from(await portfolio.totalSupply()));
-        await calculateOutputAmounts(
-          owner,
-          portfolio.address,
-          await portfolio.balanceOf(owner.address),
-          position1,
-          await positionWrapper.tokenId(),
-          await positionWrapper.token0(),
-          await positionWrapper.token1(),
-          userShare,
-        );
+
+        await calculateOutputAmounts(position1, "10000");
 
         console.log("SupplyAfter", await portfolio.totalSupply());
       });
 
-      /* it("user should invest (investment token equals one portfolio token)", async () => {
+      it("user should invest (investment token equals one portfolio token)", async () => {
         let tokens = await portfolio.getTokens();
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
@@ -535,7 +540,7 @@ describe.only("Tests for Deposit", () => {
         let postResponse = [];
 
         let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
-          owner.address,
+          owner.address
         );
 
         for (let i = 0; i < swapTokens.length; i++) {
@@ -550,7 +555,7 @@ describe.only("Tests for Deposit", () => {
               depositBatch.address,
               tokenToSwap,
               swapTokens[i],
-              Number(amountIn),
+              Number(amountIn)
             );
             postResponse.push(response.data.tx.data);
           }
@@ -561,7 +566,7 @@ describe.only("Tests for Deposit", () => {
         await ERC20.attach(tokenToSwap).approve(depositManager.address, 0);
         await ERC20.attach(tokenToSwap).approve(
           depositManager.address,
-          amountToSwap.toString(),
+          amountToSwap.toString()
         );
 
         await depositManager.deposit(
@@ -582,22 +587,13 @@ describe.only("Tests for Deposit", () => {
             _amount0Min: 1,
             _amount1Min: 1,
             _isExternalPosition: isExternalPosition,
-          },
+          }
         );
 
         const userShare =
           Number(BigNumber.from(await portfolio.balanceOf(owner.address))) /
           Number(BigNumber.from(await portfolio.totalSupply()));
-        await calculateOutputAmounts(
-          owner,
-          portfolio.address,
-          await portfolio.balanceOf(owner.address),
-          position1,
-          await positionWrapper.tokenId(),
-          await positionWrapper.token0(),
-          await positionWrapper.token1(),
-          userShare,
-        );
+        await calculateOutputAmounts(position1, "10000");
 
         console.log("SupplyAfter", await portfolio.totalSupply());
       });
@@ -607,7 +603,7 @@ describe.only("Tests for Deposit", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
@@ -619,7 +615,7 @@ describe.only("Tests for Deposit", () => {
         });
 
         let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
-          owner.address,
+          owner.address
         );
 
         console.log("SupplyBefore", await portfolio.totalSupply());
@@ -638,7 +634,7 @@ describe.only("Tests for Deposit", () => {
               depositBatch.address,
               tokenToSwap,
               swapTokens[i],
-              Number(amountIn),
+              Number(amountIn)
             );
             postResponse.push(response.data.tx.data);
           }
@@ -648,7 +644,7 @@ describe.only("Tests for Deposit", () => {
 
         await ERC20.attach(tokenToSwap).approve(
           depositManager.address,
-          amountToSwap.toString(),
+          amountToSwap.toString()
         );
 
         await depositManager.deposit(
@@ -669,7 +665,7 @@ describe.only("Tests for Deposit", () => {
             _amount0Min: 1,
             _amount1Min: 1,
             _isExternalPosition: isExternalPosition,
-          },
+          }
         );
 
         console.log("SupplyAfter", await portfolio.totalSupply());
@@ -677,17 +673,8 @@ describe.only("Tests for Deposit", () => {
         const userShare =
           Number(BigNumber.from(await portfolio.balanceOf(owner.address))) /
           Number(BigNumber.from(await portfolio.totalSupply()));
-        await calculateOutputAmounts(
-          owner,
-          portfolio.address,
-          await portfolio.balanceOf(owner.address),
-          position1,
-          await positionWrapper.tokenId(),
-          await positionWrapper.token0(),
-          await positionWrapper.token1(),
-          userShare,
-        );
-      });*/
+        await calculateOutputAmounts(position1, "10000");
+      });
 
       it("should withdraw in single token by user in native token", async () => {
         await ethers.provider.send("evm_increaseTime", [62]);
@@ -699,8 +686,8 @@ describe.only("Tests for Deposit", () => {
         let responses = [];
 
         const amountPortfolioToken = BigNumber.from(
-          await portfolio.balanceOf(user.address),
-        );
+          await portfolio.balanceOf(user.address)
+        ).div(2);
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const balanceBefore = await provider.getBalance(user.address);
@@ -709,7 +696,7 @@ describe.only("Tests for Deposit", () => {
         let withdrawalAmounts =
           await portfolioCalculations.getWithdrawalAmounts(
             amountPortfolioToken,
-            portfolio.address,
+            portfolio.address
           );
 
         let swapAmounts = [];
@@ -719,46 +706,34 @@ describe.only("Tests for Deposit", () => {
           if (!isTokenExternalPosition[i]) {
             swapAmounts.push(withdrawalAmounts[i]);
           } else {
-            // push two amounts for uniswap v3 positions
-            const userShare =
-              Number(BigNumber.from(amountPortfolioToken)) /
-              Number(BigNumber.from(await portfolio.totalSupply()));
-
             const PositionWrapper = await ethers.getContractFactory(
-              "PositionWrapper",
+              "PositionWrapper"
             );
-            const positionWrapperAddress = await tokens[
-              positionWrapperIndex[wrapperIndex]
-            ];
-            const currentPosition = PositionWrapper.attach(
-              positionWrapperAddress,
+            const positionWrapper = PositionWrapper.attach(
+              positionWrappers[wrapperIndex]
             );
-            console.log("currentPosition", currentPosition.address);
-            console.log(await currentPosition.tokenId());
-            // todo take position from token i
-
-            let results = await calculateOutputAmounts(
-              owner,
-              tokens[i],
+            let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              currentPosition,
-              await currentPosition.tokenId(),
-              await currentPosition.token0(),
-              await currentPosition.token1(),
-              userShare,
+              await positionWrapper.totalSupply()
             );
 
-            swapAmounts.push(results.token0Amount);
-            swapAmounts.push(results.token1Amount);
+            let withdrawAmounts = await calculateOutputAmounts(
+              tokens[i],
+              percentage.toString()
+            );
+            swapAmounts.push(
+              (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+            );
+            swapAmounts.push(
+              (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+            );
             wrapperIndex++;
           }
         }
 
-        console.log("swapAmounts", swapAmounts);
-
         await portfolio.approve(
           withdrawManager.address,
-          BigNumber.from(amountPortfolioToken),
+          BigNumber.from(amountPortfolioToken)
         );
 
         for (let i = 0; i < swapTokens.length; i++) {
@@ -770,11 +745,13 @@ describe.only("Tests for Deposit", () => {
               user.address,
               swapTokens[i],
               tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0),
+              (swapAmounts[i] * 0.9999999).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
         }
+
+        let balanceBeforeETH = await owner.getBalance();
 
         await withdrawManager.withdraw(
           swapTokens,
@@ -786,14 +763,408 @@ describe.only("Tests for Deposit", () => {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
-          },
+          }
         );
+
+        let balanceAfterETH = await owner.getBalance();
 
         const supplyAfter = await portfolio.totalSupply();
 
         const balanceAfter = await provider.getBalance(user.address);
 
         expect(Number(balanceAfter)).to.be.greaterThan(Number(balanceBefore));
+        expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
+      });
+
+      it("should withdraw in single token by user in native token", async () => {
+        await ethers.provider.send("evm_increaseTime", [62]);
+
+        const supplyBefore = await portfolio.totalSupply();
+        const user = owner;
+        const tokenToSwapInto = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+        let responses = [];
+
+        const amountPortfolioToken = BigNumber.from(
+          await portfolio.balanceOf(user.address)
+        );
+
+        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        const balanceBefore = await provider.getBalance(user.address);
+        const tokens = await portfolio.getTokens();
+
+        let withdrawalAmounts =
+          await portfolioCalculations.getWithdrawalAmounts(
+            amountPortfolioToken,
+            portfolio.address
+          );
+
+        let swapAmounts = [];
+        let wrapperIndex = 0;
+        for (let i = 0; i < tokens.length; i++) {
+          // only push one amount
+          if (!isTokenExternalPosition[i]) {
+            swapAmounts.push(withdrawalAmounts[i]);
+          } else {
+            const PositionWrapper = await ethers.getContractFactory(
+              "PositionWrapper"
+            );
+            const positionWrapper = PositionWrapper.attach(
+              positionWrappers[wrapperIndex]
+            );
+            let percentage = await amountCalculationsAlgebra.getPercentage(
+              withdrawalAmounts[i],
+              await positionWrapper.totalSupply()
+            );
+
+            let withdrawAmounts = await calculateOutputAmounts(
+              tokens[i],
+              percentage.toString()
+            );
+            swapAmounts.push(
+              (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+            );
+            swapAmounts.push(
+              (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+            );
+            wrapperIndex++;
+          }
+        }
+
+        await portfolio.approve(
+          withdrawManager.address,
+          BigNumber.from(amountPortfolioToken)
+        );
+
+        for (let i = 0; i < swapTokens.length; i++) {
+          if (swapTokens[i] == tokenToSwapInto) {
+            responses.push("0x");
+          } else {
+            let response = await createEnsoCallDataRoute(
+              withdrawBatch.address,
+              user.address,
+              swapTokens[i],
+              tokenToSwapInto,
+              (swapAmounts[i] * 0.9999999).toFixed(0)
+            );
+            responses.push(response.data.tx.data);
+          }
+        }
+
+        let balanceBeforeETH = await owner.getBalance();
+
+        await withdrawManager.withdraw(
+          swapTokens,
+          portfolio.address,
+          tokenToSwapInto,
+          amountPortfolioToken,
+          responses,
+          {
+            _positionWrappers: positionWrappers,
+            _amountsMin0: [0, 0],
+            _amountsMin1: [0, 0],
+          }
+        );
+
+        let balanceAfterETH = await owner.getBalance();
+
+        const supplyAfter = await portfolio.totalSupply();
+
+        const balanceAfter = await provider.getBalance(user.address);
+
+        expect(Number(balanceAfter)).to.be.greaterThan(Number(balanceBefore));
+        expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
+      });
+
+      it("user should invest", async () => {
+        let tokens = await portfolio.getTokens();
+
+        const permit2 = await ethers.getContractAt(
+          "IAllowanceTransfer",
+          PERMIT2_ADDRESS
+        );
+
+        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
+        const tokenToSwap = iaddress.usdcAddress;
+
+        await swapHandler.swapETHToTokens("500", tokenToSwap, owner.address, {
+          value: "3000000000000000000",
+        });
+
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
+
+        console.log("SupplyBefore", await portfolio.totalSupply());
+
+        let postResponse = [];
+
+        for (let i = 0; i < swapTokens.length; i++) {
+          let amountIn = BigNumber.from(amountToSwap).div(swapTokens.length);
+          if (tokenToSwap == swapTokens[i]) {
+            const abiCoder = ethers.utils.defaultAbiCoder;
+            const encodedata = abiCoder.encode(["uint"], [amountIn]);
+            postResponse.push(encodedata);
+          } else {
+            let response = await createEnsoCallDataRoute(
+              depositBatch.address,
+              depositBatch.address,
+              tokenToSwap,
+              swapTokens[i],
+              Number(amountIn)
+            );
+            postResponse.push(response.data.tx.data);
+          }
+        }
+
+        //----------Approval-------------
+
+        await ERC20.attach(tokenToSwap).approve(
+          depositManager.address,
+          amountToSwap.toString()
+        );
+
+        let balanceBefore = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
+
+        await depositManager.deposit(
+          {
+            _minMintAmount: 0,
+            _depositAmount: amountToSwap.toString(),
+            _target: portfolio.address,
+            _depositToken: tokenToSwap,
+            _callData: postResponse,
+          },
+          {
+            _positionWrappers: positionWrappers,
+            _swapTokens: swapTokens,
+            _positionWrapperIndex: positionWrapperIndex,
+            _portfolioTokenIndex: portfolioTokenIndex,
+            _index0: index0,
+            _index1: index1,
+            _amount0Min: 1,
+            _amount1Min: 1,
+            _isExternalPosition: isExternalPosition,
+          }
+        );
+
+        let balanceAfter = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
+        console.log(
+          "Balance Difference",
+          Number(BigNumber.from(balanceBefore)) -
+            Number(BigNumber.from(balanceAfter))
+        );
+
+        console.log("SupplyAfter", await portfolio.totalSupply());
+
+        const userShare =
+          Number(BigNumber.from(await portfolio.balanceOf(owner.address))) /
+          Number(BigNumber.from(await portfolio.totalSupply()));
+        await calculateOutputAmounts(position1, "10000");
+      });
+
+      it("user should invest", async () => {
+        let tokens = await portfolio.getTokens();
+
+        const permit2 = await ethers.getContractAt(
+          "IAllowanceTransfer",
+          PERMIT2_ADDRESS
+        );
+
+        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
+        const tokenToSwap = iaddress.usdcAddress;
+
+        await swapHandler.swapETHToTokens("500", tokenToSwap, owner.address, {
+          value: "3000000000000000000",
+        });
+
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
+
+        console.log("SupplyBefore", await portfolio.totalSupply());
+
+        let postResponse = [];
+
+        for (let i = 0; i < swapTokens.length; i++) {
+          let amountIn = BigNumber.from(amountToSwap).div(swapTokens.length);
+          if (tokenToSwap == swapTokens[i]) {
+            const abiCoder = ethers.utils.defaultAbiCoder;
+            const encodedata = abiCoder.encode(["uint"], [amountIn]);
+            postResponse.push(encodedata);
+          } else {
+            let response = await createEnsoCallDataRoute(
+              depositBatch.address,
+              depositBatch.address,
+              tokenToSwap,
+              swapTokens[i],
+              Number(amountIn)
+            );
+            postResponse.push(response.data.tx.data);
+          }
+        }
+
+        //----------Approval-------------
+
+        await ERC20.attach(tokenToSwap).approve(
+          depositManager.address,
+          amountToSwap.toString()
+        );
+
+        let balanceBefore = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
+
+        await depositManager.deposit(
+          {
+            _minMintAmount: 0,
+            _depositAmount: amountToSwap.toString(),
+            _target: portfolio.address,
+            _depositToken: tokenToSwap,
+            _callData: postResponse,
+          },
+          {
+            _positionWrappers: positionWrappers,
+            _swapTokens: swapTokens,
+            _positionWrapperIndex: positionWrapperIndex,
+            _portfolioTokenIndex: portfolioTokenIndex,
+            _index0: index0,
+            _index1: index1,
+            _amount0Min: 1,
+            _amount1Min: 1,
+            _isExternalPosition: isExternalPosition,
+          }
+        );
+
+        let balanceAfter = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
+        console.log(
+          "Balance Difference",
+          Number(BigNumber.from(balanceBefore)) -
+            Number(BigNumber.from(balanceAfter))
+        );
+
+        console.log("SupplyAfter", await portfolio.totalSupply());
+
+        const userShare =
+          Number(BigNumber.from(await portfolio.balanceOf(owner.address))) /
+          Number(BigNumber.from(await portfolio.totalSupply()));
+        await calculateOutputAmounts(position1, "10000");
+      });
+
+      it("should withdraw in single token by user in native token", async () => {
+        await ethers.provider.send("evm_increaseTime", [62]);
+
+        const supplyBefore = await portfolio.totalSupply();
+        const user = owner;
+        const tokenToSwapInto = iaddress.usdcAddress;
+
+        let responses = [];
+
+        const amountPortfolioToken = BigNumber.from(
+          await portfolio.balanceOf(user.address)
+        );
+
+        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        const balanceBefore = await provider.getBalance(user.address);
+        const tokens = await portfolio.getTokens();
+
+        let withdrawalAmounts =
+          await portfolioCalculations.getWithdrawalAmounts(
+            amountPortfolioToken,
+            portfolio.address
+          );
+
+        let swapAmounts = [];
+        let wrapperIndex = 0;
+        for (let i = 0; i < tokens.length; i++) {
+          // only push one amount
+          if (!isTokenExternalPosition[i]) {
+            swapAmounts.push(withdrawalAmounts[i]);
+          } else {
+            const PositionWrapper = await ethers.getContractFactory(
+              "PositionWrapper"
+            );
+            const positionWrapper = PositionWrapper.attach(
+              positionWrappers[wrapperIndex]
+            );
+            let percentage = await amountCalculationsAlgebra.getPercentage(
+              withdrawalAmounts[i],
+              await positionWrapper.totalSupply()
+            );
+
+            let withdrawAmounts = await calculateOutputAmounts(
+              tokens[i],
+              percentage.toString()
+            );
+            swapAmounts.push(
+              (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+            );
+            swapAmounts.push(
+              (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+            );
+            wrapperIndex++;
+          }
+        }
+
+        await portfolio.approve(
+          withdrawManager.address,
+          BigNumber.from(amountPortfolioToken)
+        );
+
+        for (let i = 0; i < swapTokens.length; i++) {
+          if (swapTokens[i] == tokenToSwapInto) {
+            responses.push("0x");
+          } else {
+            let response = await createEnsoCallDataRoute(
+              withdrawBatch.address,
+              user.address,
+              swapTokens[i],
+              tokenToSwapInto,
+              (swapAmounts[i] * 0.9999999).toFixed(0)
+            );
+            responses.push(response.data.tx.data);
+          }
+        }
+
+        let balanceBeforeETH = await owner.getBalance();
+
+        let balanceBeforeI = await ERC20.attach(tokenToSwapInto).balanceOf(
+          owner.address
+        );
+
+        await withdrawManager.withdraw(
+          swapTokens,
+          portfolio.address,
+          tokenToSwapInto,
+          amountPortfolioToken,
+          responses,
+          {
+            _positionWrappers: positionWrappers,
+            _amountsMin0: [0, 0],
+            _amountsMin1: [0, 0],
+          }
+        );
+
+        let balanceAfterETH = await owner.getBalance();
+
+        let balanceAfterI = await ERC20.attach(tokenToSwapInto).balanceOf(
+          owner.address
+        );
+        console.log(
+          "Balance Difference",
+          Number(BigNumber.from(balanceAfterI)) -
+            Number(BigNumber.from(balanceBeforeI))
+        );
+
+        const supplyAfter = await portfolio.totalSupply();
+
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
       });
     });

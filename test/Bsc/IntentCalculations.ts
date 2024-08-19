@@ -16,7 +16,7 @@ const qs = require("qs");
 
 export async function createEnsoCallData(
   data: any,
-  ensoHandler: string,
+  ensoHandler: string
 ): Promise<any> {
   const params = {
     chainId: 56,
@@ -39,7 +39,7 @@ export async function createEnsoCallDataRoute(
   receiver: string,
   _tokenIn: any,
   _tokenOut: any,
-  _amountIn: any,
+  _amountIn: any
 ): Promise<any> {
   const params = {
     chainId: 56,
@@ -68,7 +68,7 @@ export async function createEnsoCallDataRoute(
 export async function calculateSwapAmounts(
   portfolioAddress: string,
   portfolioAddressLibraryAddressLibraryAddress: string,
-  depositAmount: any,
+  depositAmount: any
 ): Promise<{ inputAmounts: any[] }> {
   const Portfolio = await ethers.getContractFactory("Portfolio");
   const portfolioSwapInstance = Portfolio.attach(portfolioAddress);
@@ -77,7 +77,7 @@ export async function calculateSwapAmounts(
   let inputAmounts = [];
   for (let i = 0; i < length; i++) {
     inputAmounts.push(
-      ethers.BigNumber.from(depositAmount).div(length).toString(),
+      ethers.BigNumber.from(depositAmount).div(length).toString()
     );
   }
   return { inputAmounts };
@@ -89,7 +89,7 @@ export async function createEnsoDataDeposit(
   _depositToken: string,
   _portfolioTokens: string[],
   _userAddress: any,
-  _inputAmounts: any[],
+  _inputAmounts: any[]
 ): Promise<{
   ensoApiResponse: any;
 }> {
@@ -123,7 +123,7 @@ export async function getDepositCalldata(
   depositAmount: string,
   userAddress: string,
   inputAmounts: any[],
-  nativeDeposit: boolean,
+  nativeDeposit: boolean
 ): Promise<any> {
   const Portfolio = await ethers.getContractFactory("Portfolio");
   const portfolio = Portfolio.attach(portfolioAddress);
@@ -138,7 +138,7 @@ export async function getDepositCalldata(
     depositToken, // deposit token Enso (0xeeee... for native)
     _portfolioTokens,
     userAddress,
-    inputAmounts,
+    inputAmounts
   );
 
   return ensoApiResponse.data;
@@ -151,19 +151,19 @@ export async function swapTokensToLPTokens(
   token0: string,
   token1: string,
   swapAmount0: string,
-  swapAmount1: string,
+  swapAmount1: string
 ): Promise<any> {
   const PancakeSwapHandler = await ethers.getContractFactory(
-    "UniswapV2Handler",
+    "UniswapV2Handler"
   );
   const swapHandler = PancakeSwapHandler.attach(swapHandlerAddress);
 
   const ERC20Upgradeable = await ethers.getContractFactory("ERC20Upgradeable");
   const balanceT0Before = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
+    user.address
   );
   const balanceT1Before = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
+    user.address
   );
 
   await swapHandler.swapETHToTokens("500", token0, user.address, {
@@ -175,10 +175,10 @@ export async function swapTokensToLPTokens(
   });
 
   const balanceT0After = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
+    user.address
   );
   const balanceT1After = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
+    user.address
   );
 
   let swapResult0 = balanceT0After.sub(balanceT0Before);
@@ -211,7 +211,7 @@ export async function increaseLiquidity(
   token1: string,
   position: string,
   swapAmount0: string,
-  swapAmount1: string,
+  swapAmount1: string
 ): Promise<any> {
   let { swapResult0, swapResult1 } = await swapTokensToLPTokens(
     user,
@@ -220,19 +220,19 @@ export async function increaseLiquidity(
     token0,
     token1,
     swapAmount0,
-    swapAmount1,
+    swapAmount1
   );
 
   const ERC20Upgradeable = await ethers.getContractFactory("ERC20Upgradeable");
   const balanceT0Before = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
+    user.address
   );
   const balanceT1Before = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
+    user.address
   );
 
   const PositionManager = await ethers.getContractFactory(
-    "PositionManagerThena",
+    "PositionManagerThena"
   );
   const positionManager = PositionManager.attach(positionManagerAddress);
 
@@ -241,10 +241,10 @@ export async function increaseLiquidity(
     .increaseLiquidity(user.address, position, swapResult0, swapResult1, 0, 0);
 
   const balanceT0After = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
+    user.address
   );
   const balanceT1After = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
+    user.address
   );
 
   console.log("deposited amount T0: ", balanceT0Before.sub(balanceT0After));
@@ -254,10 +254,10 @@ export async function increaseLiquidity(
 export async function decreaseLiquidity(
   user: SignerWithAddress,
   positionManagerAddress: string,
-  positionWrapperAddress: string,
+  positionWrapperAddress: string
 ): Promise<any> {
   const PositionManager = await ethers.getContractFactory(
-    "PositionManagerThena",
+    "PositionManagerThena"
   );
   const positionManager = PositionManager.attach(positionManagerAddress);
 
@@ -269,10 +269,10 @@ export async function decreaseLiquidity(
 
   const ERC20Upgradeable = await ethers.getContractFactory("ERC20Upgradeable");
   let balanceT0Before = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
+    user.address
   );
   let balanceT1Before = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
+    user.address
   );
 
   let balance = BigNumber.from(await positionWrapper.balanceOf(user.address));
@@ -283,10 +283,10 @@ export async function decreaseLiquidity(
     .decreaseLiquidity(positionWrapper.address, balance, 0, 0);
 
   let balanceT0After = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
+    user.address
   );
   let balanceT1After = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
+    user.address
   );
 
   console.log("balanceT0Returned", balanceT0After.sub(balanceT0Before));
@@ -294,34 +294,23 @@ export async function decreaseLiquidity(
 }
 
 export async function calculateOutputAmounts(
-  _user: SignerWithAddress,
-  _portfolio: string,
-  _withdrawalAmount: any,
   _positionWrapperAddress: any,
-  _tokenId: any,
-  _token0: string,
-  _token1: string,
-  _userShare: any,
+  _percentage: any
 ): Promise<any> {
-  const UniswapV3HelperBNB = await ethers.getContractFactory(
-    "UniswapV3HelperBNB",
+  const AmountCalculationsAlgebra = await ethers.getContractFactory(
+    "AmountCalculationsAlgebra"
   );
-  const uniswapV3HelperBNB = await UniswapV3HelperBNB.deploy();
-  await uniswapV3HelperBNB.deployed();
+  const amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
+  await amountCalculationsAlgebra.deployed();
 
-  let result = await uniswapV3HelperBNB.getPoolAddressAndLiquidity(
-    _portfolio,
-    _tokenId,
-    _withdrawalAmount,
-    _token0,
-    _token1,
-  );
+  let result =
+    await amountCalculationsAlgebra.callStatic.getLiquidityAmountsForPartialWithdrawal(
+      _positionWrapperAddress,
+      _percentage
+    );
 
-  let token0Amount = result.tokenBalance0;
-  let token1Amount = result.tokenBalance1;
-
-  console.log("token0Amount", token0Amount);
-  console.log("token1Amount", token1Amount);
+  let token0Amount = result.amount0Out;
+  let token1Amount = result.amount1Out;
 
   return { token0Amount, token1Amount };
 }
