@@ -1,17 +1,11 @@
 import "@nomicfoundation/hardhat-chai-matchers";
 import { ethers, userConfig } from "hardhat";
-import { BigNumber, Contract, Signer } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
-import { chainIdToAddresses } from "../../scripts/networkVariables";
+import { BigNumber, Contract } from "ethers";
 
 import { IERC20Upgradeable__factory } from "../../typechain";
 
 const axios = require("axios");
 const qs = require("qs");
-
-const chainId: any = process.env.CHAIN_ID;
-const addresses = chainIdToAddresses[chainId];
 
 export async function createEnsoCallData(
   data: any,
@@ -46,7 +40,7 @@ export async function createEnsoCallDataRoute(
     receiver: receiver,
     spender: ensoHandler,
     amountIn: _amountIn,
-    slippage: 700,
+    slippage: 200,
     tokenIn: _tokenIn,
     tokenOut: _tokenOut,
     routingStrategy: "delegate",
@@ -58,7 +52,7 @@ export async function createEnsoCallDataRoute(
     //"Content-Type": "application/json",
     Authorization: process.env.ENSO_KEY,
   };
-
+  
   return await axios.get(postUrl + `${qs.stringify(params)}`, {
     headers,
   });
@@ -141,135 +135,4 @@ export async function getDepositCalldata(
   );
 
   return ensoApiResponse.data;
-}
-
-export async function swapTokensToLPTokens(
-  user: SignerWithAddress,
-  positionManagerAddress: string,
-  swapHandlerAddress: string,
-  token0: string,
-  token1: string,
-  swapAmount0: string,
-  swapAmount1: string,
-): Promise<any> {
-  const PancakeSwapHandler = await ethers.getContractFactory(
-    "UniswapV2Handler",
-  );
-  const swapHandler = PancakeSwapHandler.attach(swapHandlerAddress);
-
-  const ERC20Upgradeable = await ethers.getContractFactory("ERC20Upgradeable");
-  const balanceT0Before = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
-  );
-  const balanceT1Before = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
-  );
-
-  await swapHandler.swapETHToTokens("500", token0, user.address, {
-    value: swapAmount0,
-  });
-
-  await swapHandler.swapETHToTokens("500", token1, user.address, {
-    value: swapAmount1,
-  });
-
-  const balanceT0After = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
-  );
-  const balanceT1After = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
-  );
-
-  let swapResult0 = balanceT0After.sub(balanceT0Before);
-  let swapResult1 = balanceT1After.sub(balanceT1Before);
-
-  await ERC20Upgradeable.attach(token0)
-    .connect(user)
-    .approve(positionManagerAddress, 0);
-
-  await ERC20Upgradeable.attach(token0)
-    .connect(user)
-    .approve(positionManagerAddress, swapResult0);
-
-  await ERC20Upgradeable.attach(token1)
-    .connect(user)
-    .approve(positionManagerAddress, 0);
-
-  await ERC20Upgradeable.attach(token1)
-    .connect(user)
-    .approve(positionManagerAddress, swapResult1);
-
-  return { swapResult0, swapResult1 };
-}
-
-export async function increaseLiquidity(
-  user: SignerWithAddress,
-  positionManagerAddress: string,
-  swapHandlerAddress: string,
-  token0: string,
-  token1: string,
-  position: string,
-  swapAmount0: string,
-  swapAmount1: string,
-): Promise<any> {
-  let { swapResult0, swapResult1 } = await swapTokensToLPTokens(
-    user,
-    positionManagerAddress,
-    swapHandlerAddress,
-    token0,
-    token1,
-    swapAmount0,
-    swapAmount1,
-  );
-
-  const PositionManager = await ethers.getContractFactory(
-    "PositionManagerUniswap",
-  );
-  const positionManager = PositionManager.attach(positionManagerAddress);
-
-  await positionManager
-    .connect(user)
-    .increaseLiquidity(user.address, position, swapResult0, swapResult1, 0, 0);
-}
-
-export async function decreaseLiquidity(
-  user: SignerWithAddress,
-  positionManagerAddress: string,
-  positionWrapperAddress: string,
-): Promise<any> {
-  const PositionManager = await ethers.getContractFactory(
-    "PositionManagerUniswap",
-  );
-  const positionManager = PositionManager.attach(positionManagerAddress);
-
-  const PositionWrapper = await ethers.getContractFactory("PositionWrapper");
-  const positionWrapper = PositionWrapper.attach(positionWrapperAddress);
-
-  let token0 = await positionWrapper.token0();
-  let token1 = await positionWrapper.token1();
-
-  const ERC20Upgradeable = await ethers.getContractFactory("ERC20Upgradeable");
-  let balanceT0Before = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
-  );
-  let balanceT1Before = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
-  );
-
-  let balance = BigNumber.from(await positionWrapper.balanceOf(user.address));
-
-  console.log("balance", balance);
-  await positionManager
-    .connect(user)
-    .decreaseLiquidity(positionWrapper.address, balance, 0, 0);
-
-  let balanceT0After = await ERC20Upgradeable.attach(token0).balanceOf(
-    user.address,
-  );
-  let balanceT1After = await ERC20Upgradeable.attach(token1).balanceOf(
-    user.address,
-  );
-
-  console.log("balanceT0Returned", balanceT0After.sub(balanceT0Before));
-  console.log("balanceT1Returned", balanceT1After.sub(balanceT1Before));
 }

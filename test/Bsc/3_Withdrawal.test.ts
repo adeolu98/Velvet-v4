@@ -98,20 +98,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       iaddress = await tokenAddresses();
 
-      const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
-      );
-      const positionWrapperBaseAddress = await PositionWrapper.deploy();
-      await positionWrapperBaseAddress.deployed();
-
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
+
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" },
       );
 
@@ -180,12 +171,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       let whitelist = [owner.address];
 
-      const PositionManagerThena = await ethers.getContractFactory(
-        "PositionManagerThena",
-      );
-      const positionManagerBaseAddress = await PositionManagerThena.deploy();
-      await positionManagerBaseAddress.deployed();
-
       const FeeModule = await ethers.getContractFactory("FeeModule", {});
       const feeModule = await FeeModule.deploy();
       await feeModule.deployed();
@@ -219,8 +204,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
-            _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,

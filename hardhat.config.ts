@@ -62,7 +62,7 @@ const chainIds = {
 
 const config: HardhatUserConfig = {
   gasReporter: {
-    enabled: false,
+    enabled: true,
     currency: "ETH",
     showTimeSpent: true,
   },
@@ -198,7 +198,7 @@ const config: HardhatUserConfig = {
       "PriceOracleL2",
       "FeeModule",
       "DepositBatch",
-      "WithdrawBatch",
+      "WithdrawBatch"
     ],
     spacing: 2,
   },

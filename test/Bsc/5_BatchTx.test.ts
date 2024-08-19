@@ -134,20 +134,11 @@ describe.only("Tests for Deposit", () => {
       withdrawManager = await WithdrawManager.deploy();
       await withdrawManager.deployed();
 
-      const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
-      );
-      const positionWrapperBaseAddress = await PositionWrapper.deploy();
-      await positionWrapperBaseAddress.deployed();
-
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
+
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" },
       );
 
@@ -199,12 +190,6 @@ describe.only("Tests for Deposit", () => {
 
       let whitelist = [owner.address];
 
-      const PositionManagerThena = await ethers.getContractFactory(
-        "PositionManagerThena",
-      );
-      const positionManagerBaseAddress = await PositionManagerThena.deploy();
-      await positionManagerBaseAddress.deployed();
-
       const FeeModule = await ethers.getContractFactory("FeeModule");
       const feeModule = await FeeModule.deploy();
       await feeModule.deployed();
@@ -240,8 +225,6 @@ describe.only("Tests for Deposit", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
-            _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -500,6 +483,7 @@ describe.only("Tests for Deposit", () => {
 
       it("should revert if receiver in calldata is not token holder", async () => {
         await ethers.provider.send("evm_increaseTime", [62]);
+        const supplyBefore = await portfolio.totalSupply();
         const user = owner;
         const tokenToSwapInto = iaddress.btcAddress;
 
@@ -611,7 +595,7 @@ describe.only("Tests for Deposit", () => {
         const amountPortfolioToken = BigNumber.from(
           await portfolio.balanceOf(user.address),
         ).div(2);
-        const tokenToSwapInto = iaddress.btcAddress;
+        const tokenToSwapInto = addresses.WBTC;
 
         await expect(
           withdrawManager.withdraw(
