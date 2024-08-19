@@ -34,6 +34,20 @@ contract AmountCalculationsAlgebra {
 
     ) = uniswapV3PositionManager.positions(_positionWrapper.tokenId());
 
+    (amount0, amount1) = _getUnderlyingAmounts(
+      _positionWrapper,
+      tickLower,
+      tickUpper,
+      existingLiquidity
+    );
+  }
+
+  function _getUnderlyingAmounts(
+    IPositionWrapper _positionWrapper,
+    int24 _tickLower,
+    int24 _tickUpper,
+    uint128 _existingLiquidity
+  ) internal returns (uint256 amount0, uint256 amount1) {
     IFactory factory = IFactory(uniswapV3PositionManager.factory());
     IPool pool = IPool(
       factory.poolByPair(_positionWrapper.token0(), _positionWrapper.token1())
@@ -41,14 +55,14 @@ contract AmountCalculationsAlgebra {
 
     int24 tick = pool.globalState().tick;
     uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
-    uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-    uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+    uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(_tickLower);
+    uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(_tickUpper);
 
     (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
       sqrtRatioX96,
       sqrtRatioAX96,
       sqrtRatioBX96,
-      existingLiquidity
+      _existingLiquidity
     );
   }
 
@@ -71,5 +85,26 @@ contract AmountCalculationsAlgebra {
     uint256 _total
   ) external pure returns (uint256 percentage) {
     percentage = (_partially * TOTAL_WEIGHT) / _total;
+  }
+
+  function getRatio(
+    IPositionWrapper _positionWrapper,
+    int24 _tickLower,
+    int24 _tickUpper
+  ) external returns (uint256 ratio) {
+    uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(_tickLower);
+    uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(_tickUpper);
+    uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
+      sqrtRatioAX96,
+      sqrtRatioBX96,
+      1 ether
+    );
+    (uint256 amount0, uint256 amount1) = _getUnderlyingAmounts(
+      _positionWrapper,
+      _tickLower,
+      _tickUpper,
+      liquidity
+    );
+    ratio = (amount0 * 1 ether) / amount1;
   }
 }
