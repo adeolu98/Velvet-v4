@@ -30,6 +30,8 @@ contract PortfolioFactory is
   address internal feeModuleImplementationAddress;
   address internal baseVelvetGnosisSafeModuleAddress;
   address internal baseTokenRemovalVaultAddress;
+  address internal basePositionManager;
+  address internal basePositionWrapper;
 
   address public protocolConfig;
   bool internal portfolioCreationPause;
@@ -104,6 +106,8 @@ contract PortfolioFactory is
       initData._baseAssetManagementConfigAddress == address(0) ||
       initData._feeModuleImplementationAddress == address(0) ||
       initData._baseVelvetGnosisSafeModuleAddress == address(0) ||
+      initData._basePositionManager == address(0) ||
+      initData._basePositionWrapper == address(0) ||
       initData._gnosisSingleton == address(0) ||
       initData._gnosisFallbackLibrary == address(0) ||
       initData._gnosisMultisendLibrary == address(0) ||
@@ -126,6 +130,8 @@ contract PortfolioFactory is
     setTokenRemovalVaultImplementationAddress(
       initData._baseTokenRemovalVaultImplementation
     );
+    setPositionManagerImplementationAddress(initData._basePositionManager);
+    setPositionWrapperImplementationAddress(initData._basePositionWrapper);
     baseVelvetGnosisSafeModuleAddress = initData
       ._baseVelvetGnosisSafeModuleAddress;
     protocolConfig = initData._protocolConfig;
@@ -214,6 +220,8 @@ contract PortfolioFactory is
           _accessController: address(accessController),
           _feeModule: address(_feeModule),
           _assetManagerTreasury: initData._assetManagerTreasury,
+          _basePositionManager: basePositionManager,
+          _basePositionWrapper: basePositionWrapper,
           _whitelistedTokens: initData._whitelistedTokens,
           _publicPortfolio: initData._public,
           _transferable: initData._transferable,
@@ -493,6 +501,26 @@ contract PortfolioFactory is
     address _baseTokenRemovalVault
   ) internal {
     baseTokenRemovalVaultAddress = _baseTokenRemovalVault;
+  }
+
+  /**
+   * @notice This function is used to set the position manager implementation address
+   * @param _basePositionManager Address of the position manager to set as base
+   */
+  function setPositionManagerImplementationAddress(
+    address _basePositionManager
+  ) internal {
+    basePositionManager = _basePositionManager;
+  }
+
+  /**
+   * @notice This function is used to set the position wrapper implementation address
+   * @param _basePositionWrapper Address of the position wrapper to set as base
+   */
+  function setPositionWrapperImplementationAddress(
+    address _basePositionWrapper
+  ) internal {
+    basePositionWrapper = _basePositionWrapper;
   }
 
   /**

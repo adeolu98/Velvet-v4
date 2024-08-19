@@ -228,4 +228,6 @@ interface IProtocolConfig {
    * @dev Reverts if the provided address is invalid (address(0)).
    */
   function disableRewardTarget(address _rewardTargetAddress) external;
+
+  function positionWrapperBaseImplementation() external view returns (address);
 }

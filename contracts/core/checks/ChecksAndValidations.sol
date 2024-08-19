@@ -92,7 +92,7 @@ abstract contract ChecksAndValidations is Dependencies {
   function _beforeInitCheck(address token) internal {
     if (
       (assetManagementConfig().tokenWhitelistingEnabled() &&
-        !assetManagementConfig().whitelistedTokens(token))
+        !assetManagementConfig().isTokenWhitelisted(token))
     ) {
       revert ErrorLibrary.TokenNotWhitelisted();
     }
