@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {INonfungiblePositionManager} from "./INonfungiblePositionManager.sol";
-import {TokenCalculations} from "../../core/calculations/TokenCalculations.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {IPositionWrapper} from "./IPositionWrapper.sol";
-import {WrapperFunctionParameters} from "../WrapperFunctionParameters.sol";
-import {MathUtils} from "../../core/calculations/MathUtils.sol";
-import {IAssetManagementConfig} from "../../config/assetManagement/IAssetManagementConfig.sol";
-import {IAccessController} from "../../access/IAccessController.sol";
-import {AccessRoles} from "../../access/AccessRoles.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
+import { TokenCalculations } from "../../core/calculations/TokenCalculations.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
+import { IPositionWrapper } from "./IPositionWrapper.sol";
+import { WrapperFunctionParameters } from "../WrapperFunctionParameters.sol";
+import { MathUtils } from "../../core/calculations/MathUtils.sol";
+import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManagementConfig.sol";
+import { IAccessController } from "../../access/IAccessController.sol";
+import { AccessRoles } from "../../access/AccessRoles.sol";
 
 import "hardhat/console.sol";
 
@@ -97,63 +97,66 @@ abstract contract PositionManagerAbstract is
    * @dev This function facilitates the addition of liquidity to an existing Uniswap V3 position. It handles the transfer
    *      of tokens from the caller, approves the Uniswap V3 Non-Fungible Position Manager to use these tokens, increases
    *      liquidity, mints wrapper tokens proportionate to the added liquidity, and handles any excess tokens ("dust").
-   * @param _positionWrapper The wrapper contract that interfaces with the Uniswap V3 position.
-   * @param _amount0Desired The amount of token0 the caller wishes to add to the pool.
-   * @param _amount1Desired The amount of token1 the caller wishes to add to the pool.
-   * @param _amount0Min The minimum amount of token0 that must be added to the pool to protect against slippage.
-   * @param _amount1Min The minimum amount of token1 that must be added to the pool to protect against slippage.
+   * @param _params The parameters required to deposit liquidity and mint wrapper tokens.
    */
   function increaseLiquidity(
-    address _dustReceiver,
-    address _positionWrapper,
-    uint256 _amount0Desired,
-    uint256 _amount1Desired,
-    uint256 _amount0Min,
-    uint256 _amount1Min
+    WrapperFunctionParameters.WrapperDepositParams memory _params
   ) external nonReentrant {
-    uint256 tokenId = IPositionWrapper(_positionWrapper).tokenId();
+    uint256 tokenId = IPositionWrapper(_params._positionWrapper).tokenId();
 
-    address token0 = IPositionWrapper(_positionWrapper).token0();
-    address token1 = IPositionWrapper(_positionWrapper).token1();
+    address token0 = IPositionWrapper(_params._positionWrapper).token0();
+    address token1 = IPositionWrapper(_params._positionWrapper).token1();
 
     // Reinvest any collected fees back into the pool before adding new liquidity.
-    _collectFeesAndReinvest(tokenId, token0, token1);
+    _collectFeesAndReinvest(
+      tokenId,
+      token0,
+      token1,
+      _params._tokenIn,
+      _params._tokenOut,
+      _params._amountIn
+    );
 
     // Track token balances before the operation to calculate dust later.
     uint256 balance0Before = IERC20Upgradeable(token0).balanceOf(address(this));
     uint256 balance1Before = IERC20Upgradeable(token1).balanceOf(address(this));
 
     // Transfer the desired liquidity tokens from the caller to this contract.
-    _transferTokensFromSender(token0, token1, _amount0Desired, _amount1Desired);
+    _transferTokensFromSender(
+      token0,
+      token1,
+      _params._amount0Desired,
+      _params._amount1Desired
+    );
 
     uint256 balance0After = IERC20Upgradeable(token0).balanceOf(address(this));
     uint256 balance1After = IERC20Upgradeable(token1).balanceOf(address(this));
 
-    _amount0Desired = balance0After - balance0Before;
-    _amount1Desired = balance1After - balance1Before;
+    _params._amount0Desired = balance0After - balance0Before;
+    _params._amount1Desired = balance1After - balance1Before;
 
     // Approve the Uniswap manager to use the tokens for liquidity.
     _approveNonFungiblePositionManager(
       token0,
       token1,
-      _amount0Desired,
-      _amount1Desired
+      _params._amount0Desired,
+      _params._amount1Desired
     );
 
     // Increase liquidity at the position.
     (uint128 liquidity, , ) = uniswapV3PositionManager.increaseLiquidity(
       INonfungiblePositionManager.IncreaseLiquidityParams({
         tokenId: tokenId,
-        amount0Desired: _amount0Desired,
-        amount1Desired: _amount1Desired,
-        amount0Min: _amount0Min,
-        amount1Min: _amount1Min,
+        amount0Desired: _params._amount0Desired,
+        amount1Desired: _params._amount1Desired,
+        amount0Min: _params._amount0Min,
+        amount1Min: _params._amount1Min,
         deadline: block.timestamp
       })
     );
 
     // Mint wrapper tokens corresponding to the liquidity added.
-    _mintTokens(IPositionWrapper(_positionWrapper), tokenId, liquidity);
+    _mintTokens(IPositionWrapper(_params._positionWrapper), tokenId, liquidity);
 
     // Calculate token balances after the operation to determine any remaining dust.
     balance0After = IERC20Upgradeable(token0).balanceOf(address(this));
@@ -161,7 +164,7 @@ abstract contract PositionManagerAbstract is
 
     // Return any dust to the caller.
     _returnDust(
-      _dustReceiver,
+      _params._dustReceiver,
       token0,
       token1,
       balance0After - balance0Before,
@@ -186,7 +189,11 @@ abstract contract PositionManagerAbstract is
     address _positionWrapper,
     uint256 _withdrawalAmount,
     uint256 _amount0Min,
-    uint256 _amount1Min
+    uint256 _amount1Min,
+    // swap params
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
   ) external nonReentrant {
     uint256 tokenId = IPositionWrapper(_positionWrapper).tokenId();
 
@@ -210,7 +217,10 @@ abstract contract PositionManagerAbstract is
       _collectFeesAndReinvest(
         tokenId,
         IPositionWrapper(_positionWrapper).token0(),
-        IPositionWrapper(_positionWrapper).token1()
+        IPositionWrapper(_positionWrapper).token1(),
+        tokenIn,
+        tokenOut,
+        amountIn
       );
 
     // Calculate the proportionate amount of liquidity to decrease based on the total supply and withdrawal amount.
@@ -418,7 +428,11 @@ abstract contract PositionManagerAbstract is
   function _collectFeesAndReinvest(
     uint256 _tokenId,
     address _token0,
-    address _token1
+    address _token1,
+    // swap params
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
   ) internal {
     // Collect all available fees for the position to this contract
     uniswapV3PositionManager.collect(
@@ -430,12 +444,12 @@ abstract contract PositionManagerAbstract is
       })
     );
 
-    // Check balances of collected fees
-    uint256 feeCollectedT0 = IERC20Upgradeable(_token0).balanceOf(
-      address(this)
-    );
-    uint256 feeCollectedT1 = IERC20Upgradeable(_token1).balanceOf(
-      address(this)
+    (uint256 feeCollectedT0, uint256 feeCollectedT1) = _swapTokensForAmount(
+      _token0,
+      _token1,
+      tokenIn,
+      tokenOut,
+      amountIn
     );
 
     // Reinvest fees if they exceed the minimum threshold for reinvestment
@@ -465,4 +479,12 @@ abstract contract PositionManagerAbstract is
   function _getExistingLiquidity(
     uint256 _tokenId
   ) internal view virtual returns (uint128 existingLiquidity);
+
+  function _swapTokensForAmount(
+    address token0,
+    address token1,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+  ) internal virtual returns (uint256, uint256);
 }

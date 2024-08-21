@@ -235,11 +235,17 @@ library FunctionParameters {
     uint256 _amount0Min;
     uint256 _amount1Min;
     bool[] _isExternalPosition;
+    address _tokenIn;
+    address _tokenOut;
+    uint256 _amountIn;
   }
 
   struct ExternalPositionWithdrawParams {
     address[] _positionWrappers;
     uint256[] _amountsMin0;
     uint256[] _amountsMin1;
+    address _tokenIn;
+    address _tokenOut;
+    uint256 _amountIn;
   }
 }

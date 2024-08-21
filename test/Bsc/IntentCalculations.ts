@@ -236,9 +236,17 @@ export async function increaseLiquidity(
   );
   const positionManager = PositionManager.attach(positionManagerAddress);
 
-  await positionManager
-    .connect(user)
-    .increaseLiquidity(user.address, position, swapResult0, swapResult1, 0, 0);
+  await positionManager.connect(user).increaseLiquidity({
+    _dustReceiver: user.address,
+    _positionWrapper: position,
+    _amount0Desired: swapResult0,
+    _amount1Desired: swapResult1,
+    _amount0Min: 0,
+    _amount1Min: 0,
+    _tokenIn: token0,
+    _tokenOut: token1,
+    _amountIn: 0,
+  });
 
   const balanceT0After = await ERC20Upgradeable.attach(token0).balanceOf(
     user.address
@@ -280,7 +288,15 @@ export async function decreaseLiquidity(
   console.log("balance", balance);
   await positionManager
     .connect(user)
-    .decreaseLiquidity(positionWrapper.address, balance, 0, 0);
+    .decreaseLiquidity(
+      positionWrapper.address,
+      balance,
+      0,
+      0,
+      token0,
+      token1,
+      0
+    );
 
   let balanceT0After = await ERC20Upgradeable.attach(token0).balanceOf(
     user.address

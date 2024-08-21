@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable} from "../abstract/PositionManagerAbstract.sol";
-import {INonfungiblePositionManager} from "./INonfungiblePositionManager.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {IFactory} from "./IFactory.sol";
-import {IPool} from "../interfaces/IPool.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
+import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable } from "../abstract/PositionManagerAbstract.sol";
+import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { IFactory } from "./IFactory.sol";
+import { IPool } from "../interfaces/IPool.sol";
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
+import { ISwapRouter } from "./ISwapRouter.sol";
 
 /**
  * @title PositionManagerAbstract
@@ -15,9 +16,11 @@ import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
  */
 abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   IProtocolConfig internal protocolConfig;
+  ISwapRouter router;
 
   function PositionManagerAbstractAlgebra_init(
     address _nonFungiblePositionManagerAddress,
+    address _swapRouter,
     address _protocolConfig,
     address _assetManagerConfig,
     address _accessController
@@ -29,6 +32,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     );
 
     protocolConfig = IProtocolConfig(_protocolConfig);
+    router = ISwapRouter(_swapRouter);
   }
 
   /**
@@ -109,6 +113,9 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
    */
   function updateRange(
     IPositionWrapper _positionWrapper,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
     int24 _tickLower,
     int24 _tickUpper
   ) external onlyAssetManager {
@@ -128,6 +135,8 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       1,
       address(this)
     );
+
+    _swapTokensForAmount(token0, token1, tokenIn, tokenOut, amountIn);
 
     // Mint a new position with the adjusted range and fee, using the tokens just collected.
     (uint256 newTokenId, ) = _mintNewUniswapPosition(
@@ -313,5 +322,66 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
 
     token0 = pool.token0();
     token1 = pool.token1();
+  }
+
+  function _swapTokensForAmount(
+    address token0,
+    address token1,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+  ) internal override returns (uint256 balance0, uint256 balance1) {
+    // Swap tokens to the token0 or token1 pool ratio
+    if (amountIn > 0) {
+      (balance0, balance1) = _swapTokenToToken(
+        token0,
+        token1,
+        tokenIn,
+        tokenOut,
+        amountIn
+      );
+    } else {
+      // @todo verify no fees are collected or fees are smaller than dust amount
+      // fees can be taken from the position info
+    }
+  }
+
+  function _swapTokenToToken(
+    address token0,
+    address token1,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+  ) internal onlyAssetManager returns (uint256 balance0, uint256 balance1) {
+    IERC20Upgradeable(tokenIn).approve(address(router), amountIn);
+
+    if (
+      tokenIn == tokenOut ||
+      !(tokenOut == token0 || tokenOut == token1) ||
+      !(tokenIn == token0 || tokenIn == token1)
+    ) {
+      revert ErrorLibrary.InvalidTokenAddress();
+    }
+
+    ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+      .ExactInputSingleParams({
+        tokenIn: tokenIn,
+        tokenOut: tokenOut,
+        recipient: msg.sender,
+        deadline: block.timestamp,
+        amountIn: amountIn,
+        amountOutMinimum: 0,
+        sqrtPriceLimitX96: 0
+      });
+
+    balance0 = IERC20Upgradeable(token0).balanceOf(address(this));
+    balance1 = IERC20Upgradeable(token1).balanceOf(address(this));
+    // @todo verifiy range is / should (allow some difference for slippage)
+
+    uint256 ratioAfterSwap = (balance0 * 1e18) / balance1;
+
+    // @todo get ratio of pool and compare with ratioAfterSwap
+
+    router.exactInputSingle(params);
   }
 }

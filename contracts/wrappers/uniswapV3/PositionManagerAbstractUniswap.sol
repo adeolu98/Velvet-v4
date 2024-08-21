@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, INonfungiblePositionManager, ErrorLibrary, IERC20Upgradeable} from "../abstract/PositionManagerAbstract.sol";
+import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, INonfungiblePositionManager, ErrorLibrary, IERC20Upgradeable } from "../abstract/PositionManagerAbstract.sol";
 
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import {IFactory} from "./IFactory.sol";
-import {IPool} from "../interfaces/IPool.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
+import { IFactory } from "./IFactory.sol";
+import { IPool } from "../interfaces/IPool.sol";
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 
 /**
  * @title PositionManagerAbstract
@@ -310,6 +310,19 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
   ) internal view override returns (uint128 existingLiquidity) {
     (, , , , , , , existingLiquidity, , , , ) = uniswapV3PositionManager
       .positions(_tokenId);
+  }
+
+  function _swapTokensForAmount(
+    address token0,
+    address token1,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
+  ) internal override returns (uint256 balance0, uint256 balance1) {
+    // Swap tokens to the token0 or token1 pool ratio
+    if (amountIn > 0) {
+      // @todo add uniswap v3 swap logic
+    }
   }
 
   function _getTokensInPoolOrder(

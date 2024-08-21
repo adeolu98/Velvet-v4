@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.17;
 
-import {WrapperFunctionParameters} from "../WrapperFunctionParameters.sol";
-import {IPositionWrapper} from "./IPositionWrapper.sol";
+import { WrapperFunctionParameters } from "../WrapperFunctionParameters.sol";
+import { IPositionWrapper } from "./IPositionWrapper.sol";
 
 /**
  * @title IPositionManager
@@ -51,18 +51,17 @@ interface IPositionManager {
   ) external;
 
   function increaseLiquidity(
-    address _dustReceiver,
-    address _positionWrapper,
-    uint256 _amount0Desired,
-    uint256 _amount1Desired,
-    uint256 _amount0Min,
-    uint256 _amount1Min
+    WrapperFunctionParameters.WrapperDepositParams memory _params
   ) external;
 
   function decreaseLiquidity(
     address _positionWrapper,
     uint256 _withdrawalAmount,
     uint256 _amount0Min,
-    uint256 _amount1Min
+    uint256 _amount1Min,
+    // swap params
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn
   ) external;
 }

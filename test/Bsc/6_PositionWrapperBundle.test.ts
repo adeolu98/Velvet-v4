@@ -98,6 +98,8 @@ describe.only("Tests for Deposit", () => {
     ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
 
+  const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
   let positionWrappers: any = [];
   let swapTokens: any = [];
   let positionWrapperIndex: any = [];
@@ -507,6 +509,9 @@ describe.only("Tests for Deposit", () => {
             _amount0Min: 1,
             _amount1Min: 1,
             _isExternalPosition: isExternalPosition,
+            _tokenIn: ZERO_ADDRESS,
+            _tokenOut: ZERO_ADDRESS,
+            _amountIn: "0",
           },
           {
             value: "1000000000000000000",
@@ -587,6 +592,9 @@ describe.only("Tests for Deposit", () => {
             _amount0Min: 1,
             _amount1Min: 1,
             _isExternalPosition: isExternalPosition,
+            _tokenIn: ZERO_ADDRESS,
+            _tokenOut: ZERO_ADDRESS,
+            _amountIn: "0",
           }
         );
 
@@ -665,6 +673,9 @@ describe.only("Tests for Deposit", () => {
             _amount0Min: 1,
             _amount1Min: 1,
             _isExternalPosition: isExternalPosition,
+            _tokenIn: ZERO_ADDRESS,
+            _tokenOut: ZERO_ADDRESS,
+            _amountIn: "0",
           }
         );
 
@@ -763,6 +774,9 @@ describe.only("Tests for Deposit", () => {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
+            _tokenIn: ZERO_ADDRESS,
+            _tokenOut: ZERO_ADDRESS,
+            _amountIn: "0",
           }
         );
 
@@ -863,6 +877,9 @@ describe.only("Tests for Deposit", () => {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
+            _tokenIn: ZERO_ADDRESS,
+            _tokenOut: ZERO_ADDRESS,
+            _amountIn: "0",
           }
         );
 
@@ -947,6 +964,9 @@ describe.only("Tests for Deposit", () => {
             _amount0Min: 1,
             _amount1Min: 1,
             _isExternalPosition: isExternalPosition,
+            _tokenIn: ZERO_ADDRESS,
+            _tokenOut: ZERO_ADDRESS,
+            _amountIn: "0",
           }
         );
 
@@ -1038,6 +1058,9 @@ describe.only("Tests for Deposit", () => {
             _amount0Min: 1,
             _amount1Min: 1,
             _isExternalPosition: isExternalPosition,
+            _tokenIn: ZERO_ADDRESS,
+            _tokenOut: ZERO_ADDRESS,
+            _amountIn: "0",
           }
         );
 
@@ -1149,6 +1172,9 @@ describe.only("Tests for Deposit", () => {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
+            _tokenIn: ZERO_ADDRESS,
+            _tokenOut: ZERO_ADDRESS,
+            _amountIn: "0",
           }
         );
 

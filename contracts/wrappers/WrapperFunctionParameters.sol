@@ -59,4 +59,17 @@ library WrapperFunctionParameters {
     int24 _tickLower;
     int24 _tickUpper;
   }
+
+  struct WrapperDepositParams {
+    address _dustReceiver;
+    address _positionWrapper;
+    uint256 _amount0Desired;
+    uint256 _amount1Desired;
+    uint256 _amount0Min;
+    uint256 _amount1Min;
+    // swap params
+    address _tokenIn;
+    address _tokenOut;
+    uint256 _amountIn;
+  }
 }
