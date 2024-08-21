@@ -313,6 +313,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
   }
 
   function _swapTokensForAmount(
+    uint256 _tokenId,
     address token0,
     address token1,
     address tokenIn,
@@ -322,6 +323,30 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     // Swap tokens to the token0 or token1 pool ratio
     if (amountIn > 0) {
       // @todo add uniswap v3 swap logic
+    } else {
+      // @todo verify no fees are collected or fees are smaller than dust amount
+      // fees can be taken from the position info
+      (
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        uint128 tokensOwed0,
+        uint128 tokensOwed1
+      ) = uniswapV3PositionManager.positions(_tokenId);
+
+      if (
+        tokensOwed0 > MIN_REINVESTMENT_AMOUNT ||
+        tokensOwed1 > MIN_REINVESTMENT_AMOUNT
+      ) {
+        revert ErrorLibrary.InvalidSwapAmount();
+      }
     }
   }
 

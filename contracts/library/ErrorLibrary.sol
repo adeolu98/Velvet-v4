@@ -179,4 +179,6 @@ library ErrorLibrary {
   error InvalidTargetAddress();
   // @notice Thrown when the ETH balance sent is zero
   error InvalidBalance();
+  // @notice Thrown when the swap amount is invalid
+  error InvalidSwapAmount();
 }

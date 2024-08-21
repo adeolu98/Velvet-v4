@@ -445,6 +445,7 @@ abstract contract PositionManagerAbstract is
     );
 
     (uint256 feeCollectedT0, uint256 feeCollectedT1) = _swapTokensForAmount(
+      _tokenId,
       _token0,
       _token1,
       tokenIn,
@@ -481,6 +482,7 @@ abstract contract PositionManagerAbstract is
   ) internal view virtual returns (uint128 existingLiquidity);
 
   function _swapTokensForAmount(
+    uint256 _tokenId,
     address token0,
     address token1,
     address tokenIn,

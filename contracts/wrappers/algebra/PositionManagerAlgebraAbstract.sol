@@ -136,7 +136,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       address(this)
     );
 
-    _swapTokensForAmount(token0, token1, tokenIn, tokenOut, amountIn);
+    _swapTokensForAmount(tokenId, token0, token1, tokenIn, tokenOut, amountIn);
 
     // Mint a new position with the adjusted range and fee, using the tokens just collected.
     (uint256 newTokenId, ) = _mintNewUniswapPosition(
@@ -325,6 +325,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   }
 
   function _swapTokensForAmount(
+    uint256 _tokenId,
     address token0,
     address token1,
     address tokenIn,
@@ -343,6 +344,27 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     } else {
       // @todo verify no fees are collected or fees are smaller than dust amount
       // fees can be taken from the position info
+      (
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        uint128 tokensOwed0,
+        uint128 tokensOwed1
+      ) = INonfungiblePositionManager(address(uniswapV3PositionManager))
+          .positions(_tokenId);
+
+      if (
+        tokensOwed0 > MIN_REINVESTMENT_AMOUNT ||
+        tokensOwed1 > MIN_REINVESTMENT_AMOUNT
+      ) {
+        revert ErrorLibrary.InvalidSwapAmount();
+      }
     }
   }
 
@@ -352,7 +374,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     address tokenIn,
     address tokenOut,
     uint256 amountIn
-  ) internal onlyAssetManager returns (uint256 balance0, uint256 balance1) {
+  ) internal returns (uint256 balance0, uint256 balance1) {
     IERC20Upgradeable(tokenIn).approve(address(router), amountIn);
 
     if (
