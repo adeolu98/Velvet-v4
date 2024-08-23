@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
+import { IPositionWrapper } from "./abstract/IPositionWrapper.sol";
+
 /**
  * @title WrapperFunctionParameters
  * @dev Library containing structures for function parameters used in the wrapper contract.
@@ -62,7 +64,7 @@ library WrapperFunctionParameters {
 
   struct WrapperDepositParams {
     address _dustReceiver;
-    address _positionWrapper;
+    IPositionWrapper _positionWrapper;
     uint256 _amount0Desired;
     uint256 _amount1Desired;
     uint256 _amount0Min;
@@ -71,5 +73,17 @@ library WrapperFunctionParameters {
     address _tokenIn;
     address _tokenOut;
     uint256 _amountIn;
+  }
+
+  struct SwapParams {
+    IPositionWrapper _positionWrapper;
+    uint256 _tokenId;
+    uint256 _amountIn;
+    address _token0;
+    address _token1;
+    address _tokenIn;
+    address _tokenOut;
+    int24 _tickLower;
+    int24 _tickUpper;
   }
 }

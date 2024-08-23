@@ -9,6 +9,10 @@ import { IPool } from "../interfaces/IPool.sol";
 import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 import { ISwapRouter } from "./ISwapRouter.sol";
 
+import { LiquidityAmountsCalculations } from "../abstract/LiquidityAmountsCalculations.sol";
+
+import "hardhat/console.sol";
+
 /**
  * @title PositionManagerAbstract
  * @dev Abstract contract for managing Uniswap V3 positions and representing them as ERC20 tokens.
@@ -119,6 +123,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     int24 _tickLower,
     int24 _tickUpper
   ) external onlyAssetManager {
+    // @todo don't allow zero amountIn - if zero verifyRange for current ticks and new ticks
     uint256 tokenId = _positionWrapper.tokenId();
 
     address token0 = _positionWrapper.token0();
@@ -136,7 +141,19 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       address(this)
     );
 
-    _swapTokensForAmount(tokenId, token0, token1, tokenIn, tokenOut, amountIn);
+    _swapTokensForAmount(
+      WrapperFunctionParameters.SwapParams({
+        _positionWrapper: _positionWrapper,
+        _tokenId: tokenId,
+        _amountIn: amountIn,
+        _token0: token0,
+        _token1: token1,
+        _tokenIn: tokenIn,
+        _tokenOut: tokenOut,
+        _tickLower: _tickLower,
+        _tickUpper: _tickUpper
+      })
+    );
 
     // Mint a new position with the adjusted range and fee, using the tokens just collected.
     (uint256 newTokenId, ) = _mintNewUniswapPosition(
@@ -325,25 +342,12 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   }
 
   function _swapTokensForAmount(
-    uint256 _tokenId,
-    address token0,
-    address token1,
-    address tokenIn,
-    address tokenOut,
-    uint256 amountIn
+    WrapperFunctionParameters.SwapParams memory _params
   ) internal override returns (uint256 balance0, uint256 balance1) {
     // Swap tokens to the token0 or token1 pool ratio
-    if (amountIn > 0) {
-      (balance0, balance1) = _swapTokenToToken(
-        token0,
-        token1,
-        tokenIn,
-        tokenOut,
-        amountIn
-      );
+    if (_params._amountIn > 0) {
+      (balance0, balance1) = _swapTokenToToken(_params);
     } else {
-      // @todo verify no fees are collected or fees are smaller than dust amount
-      // fees can be taken from the position info
       (
         ,
         ,
@@ -357,7 +361,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
         uint128 tokensOwed0,
         uint128 tokensOwed1
       ) = INonfungiblePositionManager(address(uniswapV3PositionManager))
-          .positions(_tokenId);
+          .positions(_params._tokenId);
 
       if (
         tokensOwed0 > MIN_REINVESTMENT_AMOUNT ||
@@ -369,13 +373,15 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   }
 
   function _swapTokenToToken(
-    address token0,
-    address token1,
-    address tokenIn,
-    address tokenOut,
-    uint256 amountIn
+    WrapperFunctionParameters.SwapParams memory _params
   ) internal returns (uint256 balance0, uint256 balance1) {
-    IERC20Upgradeable(tokenIn).approve(address(router), amountIn);
+    address tokenIn = _params._tokenIn;
+    address tokenOut = _params._tokenOut;
+
+    address token0 = _params._token0;
+    address token1 = _params._token1;
+
+    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
 
     if (
       tokenIn == tokenOut ||
@@ -389,21 +395,57 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       .ExactInputSingleParams({
         tokenIn: tokenIn,
         tokenOut: tokenOut,
-        recipient: msg.sender,
+        recipient: address(this),
         deadline: block.timestamp,
-        amountIn: amountIn,
-        amountOutMinimum: 0,
-        sqrtPriceLimitX96: 0
+        amountIn: _params._amountIn,
+        amountOutMinimum: 0, // @todo add slippage control
+        limitSqrtPrice: 0 // @todo check what this is and if we need to define a value!!!
       });
 
+    uint256 amountOut = router.exactInputSingle(params);
+    console.log("amountOut", amountOut);
+
+    // @todo put common part into abstract contract
     balance0 = IERC20Upgradeable(token0).balanceOf(address(this));
     balance1 = IERC20Upgradeable(token1).balanceOf(address(this));
-    // @todo verifiy range is / should (allow some difference for slippage)
+
+    console.log("balance0 after swap", balance0);
+    console.log("balance1 after swap", balance1);
 
     uint256 ratioAfterSwap = (balance0 * 1e18) / balance1;
 
-    // @todo get ratio of pool and compare with ratioAfterSwap
+    uint256 poolRatio = LiquidityAmountsCalculations.getRatioForTicks(
+      _params._positionWrapper,
+      INonfungiblePositionManager(address(uniswapV3PositionManager)).factory(),
+      _params._tickLower,
+      _params._tickUpper
+    );
 
-    router.exactInputSingle(params);
+    console.log("poolRatio", poolRatio);
+    console.log("ratioAfterSwap", ratioAfterSwap);
+
+    _verifyRatio(poolRatio, ratioAfterSwap);
+  }
+
+  function _verifyRatio(
+    uint256 _poolRatio,
+    uint256 _ratioAfterSwap
+  ) internal pure {
+    // allow 1% derivation
+
+    uint256 upperBound = (_poolRatio * 10_001) / 10_000;
+    uint256 lowerBound = (_poolRatio * 9_900) / 10_000;
+
+    if (_ratioAfterSwap > upperBound || _ratioAfterSwap < lowerBound) {
+      revert ErrorLibrary.InvalidSwapAmount();
+    }
+  }
+
+  function _getTicksFromPosition(
+    uint256 _tokenId
+  ) internal view override returns (int24 tickLower, int24 tickUpper) {
+    (, , , , tickLower, tickUpper, , , , , ) = INonfungiblePositionManager(
+      address(uniswapV3PositionManager)
+    ).positions(_tokenId);
   }
 }

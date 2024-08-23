@@ -313,19 +313,12 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
   }
 
   function _swapTokensForAmount(
-    uint256 _tokenId,
-    address token0,
-    address token1,
-    address tokenIn,
-    address tokenOut,
-    uint256 amountIn
+    WrapperFunctionParameters.SwapParams memory _params
   ) internal override returns (uint256 balance0, uint256 balance1) {
     // Swap tokens to the token0 or token1 pool ratio
-    if (amountIn > 0) {
+    if (_params._amountIn > 0) {
       // @todo add uniswap v3 swap logic
     } else {
-      // @todo verify no fees are collected or fees are smaller than dust amount
-      // fees can be taken from the position info
       (
         ,
         ,
@@ -339,7 +332,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
         ,
         uint128 tokensOwed0,
         uint128 tokensOwed1
-      ) = uniswapV3PositionManager.positions(_tokenId);
+      ) = uniswapV3PositionManager.positions(_params._tokenId);
 
       if (
         tokensOwed0 > MIN_REINVESTMENT_AMOUNT ||
@@ -360,5 +353,12 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
 
     token0 = pool.token0();
     token1 = pool.token1();
+  }
+
+  function _getTicksFromPosition(
+    uint256 _tokenId
+  ) internal view override returns (int24 tickLower, int24 tickUpper) {
+    (, , , , , tickLower, tickUpper, , , , , ) = uniswapV3PositionManager
+      .positions(_tokenId);
   }
 }

@@ -13,7 +13,7 @@ interface ISwapRouter {
     uint256 deadline;
     uint256 amountIn;
     uint256 amountOutMinimum;
-    uint160 sqrtPriceLimitX96;
+    uint160 limitSqrtPrice;
   }
 
   function exactInputSingle(

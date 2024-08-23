@@ -88,23 +88,111 @@ contract AmountCalculationsAlgebra {
   }
 
   function getRatio(
-    IPositionWrapper _positionWrapper,
-    int24 _tickLower,
-    int24 _tickUpper
+    IPositionWrapper _positionWrapper
   ) external returns (uint256 ratio) {
-    uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(_tickLower);
-    uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(_tickUpper);
+    (
+      ,
+      ,
+      ,
+      ,
+      int24 tickLower,
+      int24 tickUpper,
+      ,
+      ,
+      ,
+      ,
+
+    ) = uniswapV3PositionManager.positions(_positionWrapper.tokenId());
+
+    uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+    uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
     uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
       sqrtRatioAX96,
       sqrtRatioBX96,
       1 ether
     );
+
+    (uint256 amount0, uint256 amount1) = _getUnderlyingAmounts(
+      _positionWrapper,
+      tickLower,
+      tickUpper,
+      liquidity
+    );
+    ratio = (amount0 * 1 ether) / amount1;
+  }
+
+  function getRatioForTicks(
+    IPositionWrapper _positionWrapper,
+    int24 _tickLower,
+    int24 _tickUpper
+  ) external returns (uint256 ratio) {
     (uint256 amount0, uint256 amount1) = _getUnderlyingAmounts(
       _positionWrapper,
       _tickLower,
       _tickUpper,
-      liquidity
+      1 ether
     );
     ratio = (amount0 * 1 ether) / amount1;
+  }
+
+  function getRatioAmountsForTicks(
+    IPositionWrapper _positionWrapper,
+    int24 _tickLower,
+    int24 _tickUpper
+  ) external returns (uint256 amount0, uint256 amount1) {
+    (amount0, amount1) = _getUnderlyingAmounts(
+      _positionWrapper,
+      _tickLower,
+      _tickUpper,
+      1 ether
+    );
+  }
+
+  function getRatioOfPool(
+    IPositionWrapper _positionWrapper
+  ) external returns (uint256 ratio) {
+    (
+      ,
+      ,
+      ,
+      ,
+      int24 tickLower,
+      int24 tickUpper,
+      ,
+      ,
+      ,
+      ,
+
+    ) = uniswapV3PositionManager.positions(_positionWrapper.tokenId());
+
+    (uint256 amount0, uint256 amount1) = _getUnderlyingAmounts(
+      _positionWrapper,
+      tickLower,
+      tickUpper,
+      1 ether
+    );
+    ratio = (amount0 * 1 ether) / amount1;
+  }
+
+  function getFeesCollected(
+    uint256 _tokenId
+  )
+    external
+    view
+    returns (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128)
+  {
+    (
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      feeGrowthInside0LastX128,
+      feeGrowthInside1LastX128,
+      ,
+
+    ) = uniswapV3PositionManager.positions(_tokenId);
   }
 }

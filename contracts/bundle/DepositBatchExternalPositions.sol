@@ -306,7 +306,7 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
       positionManager.increaseLiquidity(
         WrapperFunctionParameters.WrapperDepositParams({
           _dustReceiver: _user,
-          _positionWrapper: address(positionWrapper),
+          _positionWrapper: positionWrapper,
           _amount0Desired: _swapResults[_params._index0[i]],
           _amount1Desired: _swapResults[_params._index1[i]],
           _amount0Min: _params._amount0Min,

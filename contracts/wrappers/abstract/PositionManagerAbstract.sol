@@ -102,13 +102,14 @@ abstract contract PositionManagerAbstract is
   function increaseLiquidity(
     WrapperFunctionParameters.WrapperDepositParams memory _params
   ) external nonReentrant {
-    uint256 tokenId = IPositionWrapper(_params._positionWrapper).tokenId();
+    uint256 tokenId = _params._positionWrapper.tokenId();
 
-    address token0 = IPositionWrapper(_params._positionWrapper).token0();
-    address token1 = IPositionWrapper(_params._positionWrapper).token1();
+    address token0 = _params._positionWrapper.token0();
+    address token1 = _params._positionWrapper.token1();
 
     // Reinvest any collected fees back into the pool before adding new liquidity.
     _collectFeesAndReinvest(
+      _params._positionWrapper,
       tokenId,
       token0,
       token1,
@@ -156,7 +157,7 @@ abstract contract PositionManagerAbstract is
     );
 
     // Mint wrapper tokens corresponding to the liquidity added.
-    _mintTokens(IPositionWrapper(_params._positionWrapper), tokenId, liquidity);
+    _mintTokens(_params._positionWrapper, tokenId, liquidity);
 
     // Calculate token balances after the operation to determine any remaining dust.
     balance0After = IERC20Upgradeable(token0).balanceOf(address(this));
@@ -186,7 +187,7 @@ abstract contract PositionManagerAbstract is
    * @param _amount1Min The minimum amount of token1 that must be returned from the liquidity decrease to prevent front-running.
    */
   function decreaseLiquidity(
-    address _positionWrapper,
+    IPositionWrapper _positionWrapper,
     uint256 _withdrawalAmount,
     uint256 _amount0Min,
     uint256 _amount1Min,
@@ -195,29 +196,27 @@ abstract contract PositionManagerAbstract is
     address tokenOut,
     uint256 amountIn
   ) external nonReentrant {
-    uint256 tokenId = IPositionWrapper(_positionWrapper).tokenId();
+    uint256 tokenId = _positionWrapper.tokenId();
 
     // Ensure the withdrawal amount is greater than zero.
     if (_withdrawalAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
 
     // Ensure the caller has sufficient wrapper tokens to cover the withdrawal amount.
-    if (
-      _withdrawalAmount >
-      IPositionWrapper(_positionWrapper).balanceOf(msg.sender)
-    ) revert ErrorLibrary.InsufficientBalance();
+    if (_withdrawalAmount > _positionWrapper.balanceOf(msg.sender))
+      revert ErrorLibrary.InsufficientBalance();
 
-    uint256 totalSupplyBeforeBurn = IPositionWrapper(_positionWrapper)
-      .totalSupply();
+    uint256 totalSupplyBeforeBurn = _positionWrapper.totalSupply();
 
     // Burn the wrapper tokens equivalent to the withdrawn liquidity.
-    IPositionWrapper(_positionWrapper).burn(msg.sender, _withdrawalAmount);
+    _positionWrapper.burn(msg.sender, _withdrawalAmount);
 
     // If there are still wrapper tokens in circulation, collect fees and reinvest them.
-    if (IPositionWrapper(_positionWrapper).totalSupply() > 0)
+    if (totalSupplyBeforeBurn > 0)
       _collectFeesAndReinvest(
+        _positionWrapper,
         tokenId,
-        IPositionWrapper(_positionWrapper).token0(),
-        IPositionWrapper(_positionWrapper).token1(),
+        _positionWrapper.token0(),
+        _positionWrapper.token1(),
         tokenIn,
         tokenOut,
         amountIn
@@ -229,13 +228,11 @@ abstract contract PositionManagerAbstract is
         totalSupplyBeforeBurn
     );
 
-    uint256 balanceBefore0 = IERC20Upgradeable(
-      IPositionWrapper(_positionWrapper).token0()
-    ).balanceOf(msg.sender);
+    uint256 balanceBefore0 = IERC20Upgradeable(_positionWrapper.token0())
+      .balanceOf(msg.sender);
 
-    uint256 balanceBefore1 = IERC20Upgradeable(
-      IPositionWrapper(_positionWrapper).token1()
-    ).balanceOf(msg.sender);
+    uint256 balanceBefore1 = IERC20Upgradeable(_positionWrapper.token1())
+      .balanceOf(msg.sender);
 
     console.log("liquidity to decrease", liquidityToDecrease);
 
@@ -250,15 +247,13 @@ abstract contract PositionManagerAbstract is
 
     console.log(
       "balance diff0",
-      IERC20Upgradeable(IPositionWrapper(_positionWrapper).token0()).balanceOf(
-        msg.sender
-      ) - balanceBefore0
+      IERC20Upgradeable(_positionWrapper.token0()).balanceOf(msg.sender) -
+        balanceBefore0
     );
     console.log(
       "balance diff1",
-      IERC20Upgradeable(IPositionWrapper(_positionWrapper).token1()).balanceOf(
-        msg.sender
-      ) - balanceBefore1
+      IERC20Upgradeable(_positionWrapper.token1()).balanceOf(msg.sender) -
+        balanceBefore1
     );
 
     emit LiquidityDecreased(msg.sender, liquidityToDecrease);
@@ -426,6 +421,7 @@ abstract contract PositionManagerAbstract is
    * @param _token1 The address of the second token in the Uniswap V3 position.
    */
   function _collectFeesAndReinvest(
+    IPositionWrapper _positionWrapper,
     uint256 _tokenId,
     address _token0,
     address _token1,
@@ -444,13 +440,20 @@ abstract contract PositionManagerAbstract is
       })
     );
 
+    (int24 tickLower, int24 tickUpper) = _getTicksFromPosition(_tokenId);
+
     (uint256 feeCollectedT0, uint256 feeCollectedT1) = _swapTokensForAmount(
-      _tokenId,
-      _token0,
-      _token1,
-      tokenIn,
-      tokenOut,
-      amountIn
+      WrapperFunctionParameters.SwapParams({
+        _positionWrapper: _positionWrapper,
+        _tokenId: _tokenId,
+        _amountIn: amountIn,
+        _token0: _token0,
+        _token1: _token1,
+        _tokenIn: tokenIn,
+        _tokenOut: tokenOut,
+        _tickLower: tickLower,
+        _tickUpper: tickUpper
+      })
     );
 
     // Reinvest fees if they exceed the minimum threshold for reinvestment
@@ -482,11 +485,10 @@ abstract contract PositionManagerAbstract is
   ) internal view virtual returns (uint128 existingLiquidity);
 
   function _swapTokensForAmount(
-    uint256 _tokenId,
-    address token0,
-    address token1,
-    address tokenIn,
-    address tokenOut,
-    uint256 amountIn
+    WrapperFunctionParameters.SwapParams memory _params
   ) internal virtual returns (uint256, uint256);
+
+  function _getTicksFromPosition(
+    uint256 _tokenId
+  ) internal view virtual returns (int24, int24);
 }
