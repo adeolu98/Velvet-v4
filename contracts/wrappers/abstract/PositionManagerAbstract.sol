@@ -14,8 +14,6 @@ import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManag
 import { IAccessController } from "../../access/IAccessController.sol";
 import { AccessRoles } from "../../access/AccessRoles.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title PositionManagerAbstract
  * @dev Abstract contract for managing Uniswap V3 positions and representing them as ERC20 tokens.
@@ -228,14 +226,6 @@ abstract contract PositionManagerAbstract is
         totalSupplyBeforeBurn
     );
 
-    uint256 balanceBefore0 = IERC20Upgradeable(_positionWrapper.token0())
-      .balanceOf(msg.sender);
-
-    uint256 balanceBefore1 = IERC20Upgradeable(_positionWrapper.token1())
-      .balanceOf(msg.sender);
-
-    console.log("liquidity to decrease", liquidityToDecrease);
-
     // Execute the decrease liquidity operation and collect the freed assets.
     decreaseLiquidityAndCollect(
       liquidityToDecrease,
@@ -243,17 +233,6 @@ abstract contract PositionManagerAbstract is
       _amount0Min,
       _amount1Min,
       msg.sender
-    );
-
-    console.log(
-      "balance diff0",
-      IERC20Upgradeable(_positionWrapper.token0()).balanceOf(msg.sender) -
-        balanceBefore0
-    );
-    console.log(
-      "balance diff1",
-      IERC20Upgradeable(_positionWrapper.token1()).balanceOf(msg.sender) -
-        balanceBefore1
     );
 
     emit LiquidityDecreased(msg.sender, liquidityToDecrease);

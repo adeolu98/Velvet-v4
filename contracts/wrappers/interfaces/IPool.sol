@@ -19,4 +19,8 @@ interface IPool {
   function liquidity() external view returns (uint128);
 
   function globalState() external view returns (GlobalState memory);
+
+  function totalFeeGrowth0Token() external view returns (uint256);
+
+  function totalFeeGrowth1Token() external view returns (uint256);
 }

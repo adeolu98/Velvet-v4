@@ -11,8 +11,6 @@ import { ISwapRouter } from "./ISwapRouter.sol";
 
 import { LiquidityAmountsCalculations } from "../abstract/LiquidityAmountsCalculations.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title PositionManagerAbstract
  * @dev Abstract contract for managing Uniswap V3 positions and representing them as ERC20 tokens.
@@ -139,7 +137,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       address(this)
     );
 
-    _swapTokensForAmount(
+    _swapTokensForAmountUpdateRange(
       WrapperFunctionParameters.SwapParams({
         _positionWrapper: _positionWrapper,
         _tokenId: tokenId,
@@ -342,19 +340,31 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   function _swapTokensForAmount(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal override returns (uint256 balance0, uint256 balance1) {
-    console.log(IERC20Upgradeable(_params._token0).balanceOf(address(this)));
-    console.log(IERC20Upgradeable(_params._token1).balanceOf(address(this)));
     // Swap tokens to the token0 or token1 pool ratio
     if (_params._amountIn > 0) {
       (balance0, balance1) = _swapTokenToToken(_params);
     } else {
       // this is after collecting fees
       // or if balances are smaller dust
+
+      (
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        ,
+        uint128 tokensOwed0,
+        uint128 tokensOwed1
+      ) = INonfungiblePositionManager(address(uniswapV3PositionManager))
+          .positions(_params._tokenId);
+      // invest/withdraw
       if (
-        !(IERC20Upgradeable(_params._token0).balanceOf(address(this)) <
-          MIN_REINVESTMENT_AMOUNT &&
-          IERC20Upgradeable(_params._token1).balanceOf(address(this)) <
-          MIN_REINVESTMENT_AMOUNT)
+        tokensOwed0 > MIN_REINVESTMENT_AMOUNT ||
+        tokensOwed1 > MIN_REINVESTMENT_AMOUNT
       ) {
         _calculateRatioAndVerify(
           _params._positionWrapper,
@@ -364,6 +374,23 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
           _params._token1
         );
       }
+    }
+  }
+
+  function _swapTokensForAmountUpdateRange(
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal returns (uint256 balance0, uint256 balance1) {
+    // Swap tokens to the token0 or token1 pool ratio
+    if (_params._amountIn > 0) {
+      (balance0, balance1) = _swapTokenToToken(_params);
+    } else {
+      _calculateRatioAndVerify(
+        _params._positionWrapper,
+        _params._tickLower,
+        _params._tickUpper,
+        _params._token0,
+        _params._token1
+      );
     }
   }
 
@@ -397,8 +424,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
         limitSqrtPrice: 0 // @todo check what this is and if we need to define a value!!!
       });
 
-    uint256 amountOut = router.exactInputSingle(params);
-    console.log("amountOut", amountOut);
+    router.exactInputSingle(params);
 
     (balance0, balance1) = _calculateRatioAndVerify(
       _params._positionWrapper,
@@ -419,9 +445,6 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
     balance1 = IERC20Upgradeable(_token1).balanceOf(address(this));
 
-    console.log("balance0 after swap", balance0);
-    console.log("balance1 after swap", balance1);
-
     uint256 ratioAfterSwap;
     if (balance1 == 0) {
       ratioAfterSwap = 0;
@@ -435,9 +458,6 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       _tickLower,
       _tickUpper
     );
-
-    console.log("poolRatio", poolRatio);
-    console.log("ratioAfterSwap", ratioAfterSwap);
 
     _verifyRatio(poolRatio, ratioAfterSwap);
   }

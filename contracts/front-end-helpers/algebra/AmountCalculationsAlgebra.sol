@@ -6,10 +6,14 @@ import { INonfungiblePositionManager } from "../../wrappers/algebra/INonfungible
 
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 
+import "@cryptoalgebra/integral-core/contracts/libraries/Constants.sol";
+
 import { IFactory } from "../../wrappers/algebra/IFactory.sol";
 import { IPool } from "../../wrappers/interfaces/IPool.sol";
 
 import { IPositionWrapper } from "../../wrappers/abstract/IPositionWrapper.sol";
+
+import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
 
 contract AmountCalculationsAlgebra {
   INonfungiblePositionManager internal uniswapV3PositionManager =
@@ -176,23 +180,8 @@ contract AmountCalculationsAlgebra {
 
   function getFeesCollected(
     uint256 _tokenId
-  )
-    external
-    view
-    returns (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128)
-  {
-    (
-      ,
-      ,
-      ,
-      ,
-      ,
-      ,
-      ,
-      feeGrowthInside0LastX128,
-      feeGrowthInside1LastX128,
-      ,
-
-    ) = uniswapV3PositionManager.positions(_tokenId);
+  ) external view returns (uint128 tokensOwed0, uint128 tokensOwed1) {
+    (, , , , , , , , , tokensOwed0, tokensOwed1) = uniswapV3PositionManager
+      .positions(_tokenId);
   }
 }

@@ -143,4 +143,6 @@ interface INonfungiblePositionManager {
   function burn(uint256 tokenId) external payable;
 
   function factory() external view returns (address);
+
+  function poolDeployer() external returns (address);
 }
