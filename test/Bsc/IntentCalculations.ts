@@ -425,3 +425,5 @@ export async function calculateSwapAmountUpdateRange(
 
   return { swapAmount, tokenIn, tokenOut };
 }
+
+// for deposit/withdraw same as function before but with fee amounts

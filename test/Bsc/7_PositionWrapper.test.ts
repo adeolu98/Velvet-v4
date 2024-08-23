@@ -1006,6 +1006,30 @@ describe.only("Tests for Deposit", () => {
         );
       });
 
+      it("owner should not be able to update the price range with zero swap amount", async () => {
+        let totalSupplyBefore = await positionWrapper.totalSupply();
+
+        const token0 = await positionWrapper.token0();
+        const token1 = await positionWrapper.token1();
+
+        const newTickLower = -180;
+        const newTickUpper = 240;
+
+        await expect(
+          positionManager.updateRange(
+            position1,
+            token0,
+            token1,
+            0,
+            newTickLower,
+            newTickUpper
+          )
+        ).to.be.revertedWithCustomError(positionManager, "InvalidSwapAmount");
+
+        let totalSupplyAfter = await positionWrapper.totalSupply();
+        expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
+      });
+
       it("owner should update the price range", async () => {
         let totalSupplyBefore = await positionWrapper.totalSupply();
 
