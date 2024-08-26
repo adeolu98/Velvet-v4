@@ -14,24 +14,21 @@ import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManag
 import { IAccessController } from "../../access/IAccessController.sol";
 import { AccessRoles } from "../../access/AccessRoles.sol";
 
+import { LiquidityAmountsCalculations } from "./LiquidityAmountsCalculations.sol";
+
 /**
  * @title PositionManagerAbstract
+ * @notice Abstract contract for managing Uniswap V3 positions and representing them as ERC20 tokens.
+ * It allows managing liquidity in Uniswap V3 positions through a tokenized interface.
  * @dev Abstract contract for managing Uniswap V3 positions and representing them as ERC20 tokens.
- * This contract allows managing liquidity in Uniswap V3 positions through a tokenized interface.
  */
 abstract contract PositionManagerAbstract is
   TokenCalculations,
   ReentrancyGuardUpgradeable,
   AccessRoles
 {
-  /// @notice Minimum amount of fees in smallest token unit that must be collected before they can be reinvested.
-  uint256 internal constant MIN_REINVESTMENT_AMOUNT = 1000000;
-
   /// @dev Reference to the Uniswap V3 Non-Fungible Position Manager for managing liquidity positions.
   INonfungiblePositionManager internal uniswapV3PositionManager;
-
-  /// @notice List of addresses for all deployed position wrapper contracts.
-  address[] public deployedPositionWrappers;
 
   /// @dev Contract for managing asset configurations, used to enforce rules and parameters for asset operations.
   IAssetManagementConfig assetManagementConfig;
@@ -39,29 +36,32 @@ abstract contract PositionManagerAbstract is
   /// @dev Access control contract for managing permissions and roles within the ecosystem.
   IAccessController accessController;
 
+  /// @notice Minimum amount of fees in smallest token unit that must be collected before they can be reinvested.
+  uint256 internal constant MIN_REINVESTMENT_AMOUNT = 1000000;
+
+  /// @notice List of addresses for all deployed position wrapper contracts.
+  address[] public deployedPositionWrappers;
+
   /// @notice Mapping to check if a given address is an officially deployed wrapper position.
   /// @dev Helps in validating whether interactions are with legitimate wrappers.
   mapping(address => bool) public isWrappedPosition;
 
   event NewPositionCreated(
-    address positionWrapper,
-    address token0,
-    address token1
+    address indexed positionWrapper,
+    address indexed token0,
+    address indexed token1
   );
-
-  event PositionInitializedAndDeposited(address positionManager);
-
-  event LiquidityIncreased(address user, uint256 liquidity);
-  event LiquidityDecreased(address user, uint256 liquidity);
-
+  event PositionInitializedAndDeposited(address indexed positionManager);
+  event LiquidityIncreased(address indexed user, uint256 liquidity);
+  event LiquidityDecreased(address indexed user, uint256 liquidity);
   event PriceRangeUpdated(
-    address positionManager,
+    address indexed positionManager,
     int24 tickLower,
     int24 tickUpper
   );
 
   /**
-   * @dev Ensures that only an asset manager can call a function.
+   * @dev Restricts function access to asset managers only.
    */
   modifier onlyAssetManager() {
     if (!accessController.hasRole(ASSET_MANAGER, msg.sender))
@@ -70,13 +70,11 @@ abstract contract PositionManagerAbstract is
   }
 
   /**
-   * @notice Initializes the contract with essential configuration addresses and settings.
-   * @dev This function is called once to configure the contract with the necessary addresses for asset management,
-   *      access control, and the base implementation for position wrappers. It sets the address for the Uniswap V3
-   *      Nonfungible Position Manager to a constant defined at contract creation.
-   *      This function should be called as an initializer, ensuring it can only be called once to set up the contract state.
-   * @param _assetManagerConfig The address of the asset management configuration contract, which defines rules and parameters for managing assets.
-   * @param _accessController The address of the access controller contract, which manages permissions and roles within the contract ecosystem.
+   * @notice Initializes the contract with necessary configurations and addresses.
+   * @param _nonFungiblePositionManagerAddress Address of the Uniswap V3 Non-Fungible Position Manager.
+   * @param _assetManagerConfig Address of the asset management configuration contract.
+   * @param _accessController Address of the access control contract.
+   * @dev Sets up the contract with required addresses and configuration for asset management and access control.
    */
   function PositionManagerAbstract__init(
     address _nonFungiblePositionManagerAddress,
@@ -91,11 +89,9 @@ abstract contract PositionManagerAbstract is
   }
 
   /**
-   * @notice Increases the liquidity of an existing Uniswap V3 position and mints corresponding wrapper tokens.
-   * @dev This function facilitates the addition of liquidity to an existing Uniswap V3 position. It handles the transfer
-   *      of tokens from the caller, approves the Uniswap V3 Non-Fungible Position Manager to use these tokens, increases
-   *      liquidity, mints wrapper tokens proportionate to the added liquidity, and handles any excess tokens ("dust").
-   * @param _params The parameters required to deposit liquidity and mint wrapper tokens.
+   * @notice Increases liquidity in an existing Uniswap V3 position and mints corresponding wrapper tokens.
+   * @param _params Struct containing parameters necessary for adding liquidity and minting tokens.
+   * @dev Handles the transfer of tokens, adds liquidity to Uniswap V3, and mints wrapper tokens proportionate to the added liquidity.
    */
   function increaseLiquidity(
     WrapperFunctionParameters.WrapperDepositParams memory _params
@@ -175,14 +171,11 @@ abstract contract PositionManagerAbstract is
 
   /**
    * @notice Decreases liquidity for an existing Uniswap V3 position and burns the corresponding wrapper tokens.
-   * @dev This function allows a holder of wrapper tokens to reduce their position in the Uniswap pool. It decreases the
-   *      specified amount of liquidity from the Uniswap V3 position, burns the corresponding amount of wrapper tokens,
-   *      and returns the underlying tokens to the caller. It ensures that the caller cannot remove more liquidity than
-   *      they hold in wrapper tokens.
-   * @param _positionWrapper The address of the position wrapper contract, which represents the Uniswap V3 position.
-   * @param _withdrawalAmount The amount of wrapper tokens that represent the liquidity to be removed.
-   * @param _amount0Min The minimum amount of token0 that must be returned from the liquidity decrease to prevent front-running.
-   * @param _amount1Min The minimum amount of token1 that must be returned from the liquidity decrease to prevent front-running.
+   * @param _positionWrapper Address of the position wrapper contract.
+   * @param _withdrawalAmount Amount of wrapper tokens representing the liquidity to be removed.
+   * @param _amount0Min Minimum amount of token0 expected to prevent slippage.
+   * @param _amount1Min Minimum amount of token1 expected to prevent slippage.
+   * @dev Burns wrapper tokens and reduces liquidity in the Uniswap V3 position based on the provided parameters.
    */
   function decreaseLiquidity(
     IPositionWrapper _positionWrapper,
@@ -454,6 +447,93 @@ abstract contract PositionManagerAbstract is
     }
   }
 
+  function _swapTokensForAmount(
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal virtual returns (uint256, uint256);
+
+  /**
+   * @dev Calculates the new token ratios after a swap and verifies them against expected pool ratios.
+   * @param _positionWrapper Position wrapper containing the tokens.
+   * @param _tickLower Lower price tick.
+   * @param _tickUpper Upper price tick.
+   * @param _token0 First token address.
+   * @param _token1 Second token address.
+   * @return balance0 New balance of token0.
+   * @return balance1 New balance of token1.
+   */
+  function _calculateRatioAndVerify(
+    IPositionWrapper _positionWrapper,
+    int24 _tickLower,
+    int24 _tickUpper,
+    address _token0,
+    address _token1
+  ) internal returns (uint256 balance0, uint256 balance1) {
+    balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
+    balance1 = IERC20Upgradeable(_token1).balanceOf(address(this));
+
+    uint256 ratioAfterSwap;
+    if (balance1 == 0) {
+      ratioAfterSwap = 0;
+    } else {
+      ratioAfterSwap = (balance0 * 1e18) / balance1;
+    }
+
+    uint256 poolRatio = LiquidityAmountsCalculations.getRatioForTicks(
+      _positionWrapper,
+      _getFactoryAddress(),
+      _tickLower,
+      _tickUpper
+    );
+
+    _verifyRatio(poolRatio, ratioAfterSwap);
+  }
+
+  /**
+   * @dev Handles swapping tokens to achieve a desired pool ratio.
+   * @param _params Parameters including tokens and amounts for the swap.
+   * @return balance0 Updated balance of token0.
+   * @return balance1 Updated balance of token1.
+   */
+  function _swapTokensForAmountUpdateRange(
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal returns (uint256 balance0, uint256 balance1) {
+    // Swap tokens to the token0 or token1 pool ratio
+    if (_params._amountIn > 0) {
+      (balance0, balance1) = _swapTokenToToken(_params);
+    } else {
+      _calculateRatioAndVerify(
+        _params._positionWrapper,
+        _params._tickLower,
+        _params._tickUpper,
+        _params._token0,
+        _params._token1
+      );
+    }
+  }
+
+  function _verifyZeroSwapAmount(
+    WrapperFunctionParameters.SwapParams memory _params,
+    uint128 _tokensOwed0,
+    uint128 _tokensOwed1
+  ) internal {
+    if (
+      _tokensOwed0 > MIN_REINVESTMENT_AMOUNT ||
+      _tokensOwed1 > MIN_REINVESTMENT_AMOUNT
+    ) {
+      _calculateRatioAndVerify(
+        _params._positionWrapper,
+        _params._tickLower,
+        _params._tickUpper,
+        _params._token0,
+        _params._token1
+      );
+    }
+  }
+
+  function _swapTokenToToken(
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal virtual returns (uint256, uint256);
+
   /**
    * @notice Retrieves the current liquidity amount for a given position.
    * @param _tokenId The ID of the position.
@@ -463,11 +543,35 @@ abstract contract PositionManagerAbstract is
     uint256 _tokenId
   ) internal view virtual returns (uint128 existingLiquidity);
 
-  function _swapTokensForAmount(
-    WrapperFunctionParameters.SwapParams memory _params
-  ) internal virtual returns (uint256, uint256);
-
   function _getTicksFromPosition(
     uint256 _tokenId
   ) internal view virtual returns (int24, int24);
+
+  /**
+   * @dev Retrieves the factory address from the Non-Fungible Position Manager.
+   * @return Address of the factory.
+   */
+  function _getFactoryAddress() internal view returns (address) {
+    return
+      INonfungiblePositionManager(address(uniswapV3PositionManager)).factory();
+  }
+
+  /**
+   * @dev Verifies that the resulting token ratio is within the acceptable range.
+   * @param _poolRatio Expected ratio of the token pool.
+   * @param _ratioAfterSwap Actual ratio after the swap.
+   */
+  function _verifyRatio(
+    uint256 _poolRatio,
+    uint256 _ratioAfterSwap
+  ) internal pure {
+    // allow 1% derivation
+
+    uint256 upperBound = (_poolRatio * 10_001) / 10_000;
+    uint256 lowerBound = (_poolRatio * 9_900) / 10_000;
+
+    if (_ratioAfterSwap > upperBound || _ratioAfterSwap < lowerBound) {
+      revert ErrorLibrary.InvalidSwapAmount();
+    }
+  }
 }

@@ -112,24 +112,24 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const SwapHandlerV3 = await ethers.getContractFactory("SwapHandlerV3");
       swapHandlerV3 = await SwapHandlerV3.deploy(
         uniswapV3Router,
-        addresses.WETH,
+        addresses.WETH
       );
       await swapHandlerV3.deployed();
 
       const PortfolioCalculations = await ethers.getContractFactory(
-        "PortfolioCalculations",
+        "PortfolioCalculations"
       );
       portfolioCalculations = await PortfolioCalculations.deploy();
       await portfolioCalculations.deployed();
 
       const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
+        "PositionWrapper"
       );
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap",
+        "PositionManagerUniswap"
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -143,7 +143,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           priceOracle.address,
           positionWrapperBaseAddress.address,
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
@@ -151,13 +151,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
       const TokenExclusionManager = await ethers.getContractFactory(
-        "TokenExclusionManager",
+        "TokenExclusionManager"
       );
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
       const AssetManagementConfig = await ethers.getContractFactory(
-        "AssetManagementConfig",
+        "AssetManagementConfig"
       );
       const assetManagementConfigBase = await AssetManagementConfig.deploy();
       await assetManagementConfigBase.deployed();
@@ -166,7 +166,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
-        "UniswapV2Handler",
+        "UniswapV2Handler"
       );
       swapHandler = await PancakeSwapHandler.deploy();
       await swapHandler.deployed();
@@ -200,19 +200,19 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await rebalancingDefult.deployed();
 
       const TokenRemovalVault = await ethers.getContractFactory(
-        "TokenRemovalVault",
+        "TokenRemovalVault"
       );
       const tokenRemovalVault = await TokenRemovalVault.deploy();
       await tokenRemovalVault.deployed();
 
       const VelvetSafeModule = await ethers.getContractFactory(
-        "VelvetSafeModule",
+        "VelvetSafeModule"
       );
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
       const PortfolioFactory = await ethers.getContractFactory(
-        "PortfolioFactory",
+        "PortfolioFactory"
       );
 
       const portfolioFactoryInstance = await upgrades.deployProxy(
@@ -229,7 +229,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -237,11 +236,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _protocolConfig: protocolConfig.address,
           },
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       portfolioFactory = PortfolioFactory.attach(
-        portfolioFactoryInstance.address,
+        portfolioFactoryInstance.address
       );
 
       console.log("portfolioFactory address:", portfolioFactory.address);
@@ -267,7 +266,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       portfolio = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress,
+        portfolioAddress
       );
 
       const config = await portfolio.assetManagementConfig();
@@ -285,19 +284,19 @@ describe.only("Tests for Deposit + Withdrawal", () => {
     describe("Position Wrapper Tests", function () {
       it("non owner should not be able to enable the uniswapV3 position manager", async () => {
         await expect(
-          assetManagementConfig.connect(nonOwner).enableUniSwapV3Manager(),
+          assetManagementConfig.connect(nonOwner).enableUniSwapV3Manager()
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
       it("owner should not be able to enable the uniswapV3 position manager after it has already been enabled", async () => {
         await expect(
-          assetManagementConfig.enableUniSwapV3Manager(),
+          assetManagementConfig.enableUniSwapV3Manager()
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "UniSwapV3WrapperAlreadyEnabled",
+          "UniSwapV3WrapperAlreadyEnabled"
         );
       });
 
@@ -316,11 +315,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               "t",
               "100",
               MIN_TICK,
-              MAX_TICK,
-            ),
+              MAX_TICK
+            )
         ).to.be.revertedWithCustomError(
           positionManager,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
@@ -337,8 +336,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "t",
             "100",
             MIN_TICK,
-            MAX_TICK,
-          ),
+            MAX_TICK
+          )
         ).to.be.revertedWithCustomError(positionManager, "TokenNotWhitelisted");
       });
 
@@ -354,13 +353,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           "t",
           "100",
           MIN_TICK,
-          MAX_TICK,
+          MAX_TICK
         );
 
         position1 = await positionManager.deployedPositionWrappers(0);
 
         const PositionWrapper = await ethers.getContractFactory(
-          "PositionWrapper",
+          "PositionWrapper"
         );
         positionWrapper = PositionWrapper.attach(position1);
       });
@@ -372,7 +371,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             addresses.WBTC,
             addresses.USDCe,
             position1,
-          ]),
+          ])
         ).to.be.revertedWithCustomError(portfolio, "TokenNotWhitelisted");
       });
 
@@ -391,7 +390,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         for (let i = 0; i < tokens.length; i++) {
           await ERC20.attach(tokens[i]).approve(
             PERMIT2_ADDRESS,
-            MaxAllowanceTransferAmount,
+            MaxAllowanceTransferAmount
           );
         }
       });
@@ -417,7 +416,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -428,7 +427,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           if (i < tokens.length - 1) {
             await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
@@ -446,7 +445,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               token0,
               token1,
               "100000000000000000",
-              "100000000000000000",
+              "100000000000000000"
             );
 
             await positionManager.initializePositionAndDeposit(
@@ -457,7 +456,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
                 _amount1Desired: swapResult1,
                 _amount0Min: "0",
                 _amount1Min: "0",
-              },
+              }
             );
           }
 
@@ -474,7 +473,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         console.log(
           "user balance after first deposit, first mint",
-          await positionWrapper.balanceOf(owner.address),
+          await positionWrapper.balanceOf(owner.address)
         );
 
         console.log("total supply", await positionWrapper.totalSupply());
@@ -488,7 +487,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
@@ -498,7 +497,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         expect(Number(supplyAfter)).to.be.greaterThan(Number(supplyBefore));
         expect(Number(supplyAfter)).to.be.equals(
-          Number("100000000000000000000"),
+          Number("100000000000000000000")
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -516,7 +515,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -527,7 +526,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           if (i < tokens.length - 1) {
             await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
@@ -546,7 +545,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               token1,
               position1,
               "100000000000000000",
-              "100000000000000000",
+              "100000000000000000"
             );
           }
           let balance = await ERC20.attach(tokens[i]).balanceOf(owner.address);
@@ -562,7 +561,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         console.log(
           "user balance",
-          await positionWrapper.balanceOf(owner.address),
+          await positionWrapper.balanceOf(owner.address)
         );
 
         console.log("total supply", await positionWrapper.totalSupply());
@@ -576,14 +575,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -601,7 +600,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let mintAmount =
           (await calcuateExpectedMintAmount(
             leastPercentage,
-            await portfolio.totalSupply(),
+            await portfolio.totalSupply()
           )) * 0.98; // 2% entry fee
 
         // considering 1% slippage
@@ -609,7 +608,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           inputAmounts,
           mintAmount.toString(),
           permit,
-          signature, // slippage 1%
+          signature // slippage 1%
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -630,7 +629,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -641,7 +640,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           if (i < tokens.length - 1) {
             await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
@@ -660,7 +659,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               token1,
               position1,
               "100000000000000000",
-              "100000000000000000",
+              "100000000000000000"
             );
           }
           let balance = await ERC20.attach(tokens[i]).balanceOf(owner.address);
@@ -676,7 +675,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         console.log(
           "user balance",
-          await positionWrapper.balanceOf(owner.address),
+          await positionWrapper.balanceOf(owner.address)
         );
 
         console.log("total supply", await positionWrapper.totalSupply());
@@ -690,14 +689,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -715,7 +714,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let mintAmount =
           (await calcuateExpectedMintAmount(
             leastPercentage,
-            await portfolio.totalSupply(),
+            await portfolio.totalSupply()
           )) * 0.98; // 2% entry fee
 
         // considering 1% slippage
@@ -723,7 +722,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           inputAmounts,
           mintAmount.toString(),
           permit,
-          signature, // slippage 1%
+          signature // slippage 1%
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -744,7 +743,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -755,7 +754,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             nonOwner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           if (i < tokens.length - 1) {
             await swapHandler.swapETHToTokens(
@@ -764,7 +763,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               nonOwner.address,
               {
                 value: "150000000000000000",
-              },
+              }
             );
           } else {
             // UniswapV3 position
@@ -779,12 +778,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               token1,
               position1,
               "100000000000000000",
-              "100000000000000000",
+              "100000000000000000"
             );
           }
 
           let balance = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           let detail = {
             token: tokens[i],
@@ -798,7 +797,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         console.log(
           "user balance",
-          await positionWrapper.balanceOf(nonOwner.address),
+          await positionWrapper.balanceOf(nonOwner.address)
         );
 
         console.log("total supply", await positionWrapper.totalSupply());
@@ -812,14 +811,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await nonOwner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -837,7 +836,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let mintAmount =
           (await calcuateExpectedMintAmount(
             leastPercentage,
-            await portfolio.totalSupply(),
+            await portfolio.totalSupply()
           )) * 0.98; // 2% entry fee
 
         // considering 1% slippage
@@ -845,7 +844,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           inputAmounts,
           mintAmount.toString(),
           permit,
-          signature, // slippage 1%
+          signature // slippage 1%
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -854,20 +853,44 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       });
 
       it("nonOwner should not be able to update the price range", async () => {
-        expect(
-          positionManager
-            .connect(nonOwner)
-            .updateRange(position1, "100", -886272, 886272),
+        const token0 = await positionWrapper.token0();
+        const token1 = await positionWrapper.token1();
+
+        await expect(
+          positionManager.connect(nonOwner).updateRange(
+            position1,
+
+            token0,
+            token1,
+            0,
+            "100",
+            MIN_TICK,
+            MAX_TICK
+          )
         ).to.be.revertedWithCustomError(
           positionManager,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
-      it("owner should update the price range", async () => {
+      it("owner should not be able to update the price range with zero swap amount", async () => {
         let totalSupplyBefore = await positionWrapper.totalSupply();
 
-        positionManager.updateRange(position1, "100", -886272, 886272);
+        const token0 = await positionWrapper.token0();
+        const token1 = await positionWrapper.token1();
+
+        const newTickLower = -180;
+        const newTickUpper = 240;
+
+        positionManager.updateRange(
+          position1,
+          token0,
+          token1,
+          0,
+          "100",
+          newTickLower,
+          newTickUpper
+        );
 
         let totalSupplyAfter = await positionWrapper.totalSupply();
         expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
@@ -878,7 +901,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const supplyBefore = await portfolio.totalSupply();
         const amountPortfolioToken = await portfolio.balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
@@ -887,7 +910,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let tokenBalanceBefore: any = [];
         for (let i = 0; i < tokens.length; i++) {
           tokenBalanceBefore[i] = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
         }
 
@@ -899,10 +922,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         for (let i = 0; i < tokens.length; i++) {
           let tokenBalanceAfter = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           expect(Number(tokenBalanceAfter)).to.be.greaterThan(
-            Number(tokenBalanceBefore[i]),
+            Number(tokenBalanceBefore[i])
           );
         }
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
@@ -922,7 +945,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let tokenBalanceBefore: any = [];
         for (let i = 0; i < tokens.length; i++) {
           tokenBalanceBefore[i] = await ERC20.attach(tokens[i]).balanceOf(
-            owner.address,
+            owner.address
           );
         }
 
@@ -934,10 +957,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         for (let i = 0; i < tokens.length; i++) {
           let tokenBalanceAfter = await ERC20.attach(tokens[i]).balanceOf(
-            owner.address,
+            owner.address
           );
           expect(Number(tokenBalanceAfter)).to.be.greaterThan(
-            Number(tokenBalanceBefore[i]),
+            Number(tokenBalanceBefore[i])
           );
         }
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));

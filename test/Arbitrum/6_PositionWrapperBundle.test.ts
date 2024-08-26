@@ -160,6 +160,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
 
+      console.log(
+        "positionWrapperBaseAddress:",
+        positionWrapperBaseAddress.address
+      );
+
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
@@ -260,7 +265,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -576,7 +580,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           value: "100000000000000000",
         });
 
-        let amountToSwap = "300000000";
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
 
         console.log("SupplyBefore", await portfolio.totalSupply());
 

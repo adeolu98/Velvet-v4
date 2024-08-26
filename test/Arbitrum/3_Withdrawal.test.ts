@@ -83,7 +83,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         accounts;
 
       const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
+        "PositionWrapper"
       );
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
@@ -96,7 +96,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           priceOracle.address,
           positionWrapperBaseAddress.address,
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
@@ -107,13 +107,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await rebalancingDefult.deployed();
 
       const TokenExclusionManager = await ethers.getContractFactory(
-        "TokenExclusionManager",
+        "TokenExclusionManager"
       );
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
       const AssetManagementConfig = await ethers.getContractFactory(
-        "AssetManagementConfig",
+        "AssetManagementConfig"
       );
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
@@ -122,7 +122,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
-        "UniswapV2Handler",
+        "UniswapV2Handler"
       );
       swapHandler = await PancakeSwapHandler.deploy();
       await swapHandler.deployed();
@@ -141,7 +141,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       let whitelist = [owner.address];
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap",
+        "PositionManagerUniswap"
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -151,19 +151,19 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await feeModule.deployed();
 
       const TokenRemovalVault = await ethers.getContractFactory(
-        "TokenRemovalVault",
+        "TokenRemovalVault"
       );
       const tokenRemovalVault = await TokenRemovalVault.deploy();
       await tokenRemovalVault.deployed();
 
       const VelvetSafeModule = await ethers.getContractFactory(
-        "VelvetSafeModule",
+        "VelvetSafeModule"
       );
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
       const PortfolioFactory = await ethers.getContractFactory(
-        "PortfolioFactory",
+        "PortfolioFactory"
       );
 
       const portfolioFactoryInstance = await upgrades.deployProxy(
@@ -180,7 +180,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -188,11 +187,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _protocolConfig: protocolConfig.address,
           },
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       portfolioFactory = PortfolioFactory.attach(
-        portfolioFactoryInstance.address,
+        portfolioFactoryInstance.address
       );
 
       console.log("portfolioFactory address:", portfolioFactory.address);
@@ -240,10 +239,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       portfolio = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress,
+        portfolioAddress
       );
       const PortfolioCalculations = await ethers.getContractFactory(
-        "PortfolioCalculations",
+        "PortfolioCalculations"
       );
       feeModule0 = await FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
@@ -251,19 +250,19 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       portfolio1 = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress1,
+        portfolioAddress1
       );
       portfolioCalculations1 = await PortfolioCalculations.deploy();
       await portfolioCalculations1.deployed();
 
       rebalancing = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo.rebalancing,
+        portfolioInfo.rebalancing
       );
 
       rebalancing1 = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo1.rebalancing,
+        portfolioInfo1.rebalancing
       );
 
       console.log("portfolio deployed to:", portfolio.address);
@@ -286,7 +285,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         for (let i = 0; i < tokens.length; i++) {
           await ERC20.attach(tokens[i]).approve(
             PERMIT2_ADDRESS,
-            MaxAllowanceTransferAmount,
+            MaxAllowanceTransferAmount
           );
 
           await ERC20.attach(tokens[i])
@@ -310,7 +309,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const tokens = await portfolio.getTokens();
@@ -319,7 +318,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
             value: "100000000000000000",
@@ -344,12 +343,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
         await expect(
-          portfolio.multiTokenDeposit(amounts, "0", permit, signature),
+          portfolio.multiTokenDeposit(amounts, "0", permit, signature)
         ).to.be.revertedWithCustomError(portfolio, "ProtocolIsPaused");
       });
 
@@ -370,7 +369,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const tokens = await portfolio.getTokens();
@@ -379,7 +378,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
             value: "100000000000000000",
@@ -404,7 +403,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
@@ -431,7 +430,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const tokens = await portfolio.getTokens();
@@ -440,7 +439,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             nonOwner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens(
             "500",
@@ -448,10 +447,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             nonOwner.address,
             {
               value: "100000000000000000",
-            },
+            }
           );
           let balance = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           let detail = {
             token: tokens[i],
@@ -472,14 +471,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await nonOwner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -514,7 +513,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const tokens = await portfolio.getTokens();
@@ -523,7 +522,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
             value: "100000000000000000",
@@ -548,14 +547,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -576,7 +575,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       it("should not be able to set minIdxTokenAmount less then protocol minIdxTokenAmount", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
@@ -596,10 +595,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _transferable: false,
             _transferableToPublic: false,
             _whitelistTokens: false,
-          }),
+          })
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "InvalidMinAmountByAssetManager",
+          "InvalidMinAmountByAssetManager"
         );
       });
 
@@ -618,7 +617,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const tokens = await portfolio.getTokens();
@@ -627,7 +626,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             nonOwner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens(
             "500",
@@ -635,10 +634,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             nonOwner.address,
             {
               value: "100000000000000000",
-            },
+            }
           );
           let balance = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           let detail = {
             token: tokens[i],
@@ -659,14 +658,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await nonOwner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -689,7 +688,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("charge performance fee should fail if caller is not asset manager", async () => {
         await expect(
-          feeModule0.connect(nonOwner).chargePerformanceFee(),
+          feeModule0.connect(nonOwner).chargePerformanceFee()
         ).to.be.revertedWithCustomError(feeModule0, "CallerNotAssetManager");
       });
 
@@ -705,66 +704,66 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         amountPortfolioToken =
           BigNumber.from(amountPortfolioToken).sub("1000000000000000");
         await expect(
-          portfolio.multiTokenWithdrawal(amountPortfolioToken),
+          portfolio.multiTokenWithdrawal(amountPortfolioToken)
         ).to.be.revertedWithCustomError(
           portfolio,
-          "CallerNeedToMaintainMinTokenAmount",
+          "CallerNeedToMaintainMinTokenAmount"
         );
       });
 
       it("assetmanager should not be able to change the minPortfolioTokenHoldingAmount to value less then set by protocol", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
         await expect(
-          assetManagementConfig.updateMinPortfolioTokenHoldingAmount("100000"),
+          assetManagementConfig.updateMinPortfolioTokenHoldingAmount("100000")
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "InvalidMinPortfolioTokenHoldingAmount",
+          "InvalidMinPortfolioTokenHoldingAmount"
         );
       });
 
       it("assetmanager should not be able to set zero minPortfolioTokenHoldingAmount", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
         await expect(
-          assetManagementConfig.updateMinPortfolioTokenHoldingAmount("0"),
+          assetManagementConfig.updateMinPortfolioTokenHoldingAmount("0")
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "InvalidMinPortfolioTokenHoldingAmount",
+          "InvalidMinPortfolioTokenHoldingAmount"
         );
       });
 
       it("assetmanager should be able to set new minPortfolioTokenHoldingAmount", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
         await assetManagementConfig.updateMinPortfolioTokenHoldingAmount(
-          "10000000000000001",
+          "10000000000000001"
         );
       });
 
       it("non assetmanager should not be able to change the minPortfolioTokenHoldingAmount", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
         await expect(
           assetManagementConfig
             .connect(nonOwner)
-            .updateMinPortfolioTokenHoldingAmount("1000000"),
+            .updateMinPortfolioTokenHoldingAmount("1000000")
         ).to.be.reverted;
       });
 
@@ -775,10 +774,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         amountPortfolioToken =
           BigNumber.from(amountPortfolioToken).sub("100000");
         await expect(
-          portfolio.multiTokenWithdrawal(amountPortfolioToken),
+          portfolio.multiTokenWithdrawal(amountPortfolioToken)
         ).to.be.revertedWithCustomError(
           portfolio,
-          "CallerNeedToMaintainMinTokenAmount",
+          "CallerNeedToMaintainMinTokenAmount"
         );
       });
 
@@ -788,13 +787,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("charge performance fee should fail if protocol emergency paused", async () => {
         await expect(
-          feeModule0.chargePerformanceFee(),
+          feeModule0.chargePerformanceFee()
         ).to.be.revertedWithCustomError(feeModule0, "ProtocolEmergencyPaused");
       });
 
       it("charge protocol and management fee should fail if protocol emergency paused", async () => {
         await expect(
-          feeModule0.chargeProtocolAndManagementFees(),
+          feeModule0.chargeProtocolAndManagementFees()
         ).to.be.revertedWithCustomError(feeModule0, "ProtocolEmergencyPaused");
       });
 
@@ -804,7 +803,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const amountPortfolioToken = await portfolio.balanceOf(owner.address);
 
         await expect(
-          portfolio.multiTokenWithdrawal(BigNumber.from(amountPortfolioToken)),
+          portfolio.multiTokenWithdrawal(BigNumber.from(amountPortfolioToken))
         ).to.be.revertedWithCustomError(portfolio, "ProtocolIsPaused");
       });
 
@@ -821,13 +820,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         await expect(
@@ -836,8 +835,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             .multiTokenWithdrawalFor(
               owner.address,
               owner.address,
-              BigNumber.from(amountPortfolioToken),
-            ),
+              BigNumber.from(amountPortfolioToken)
+            )
         ).to.be.revertedWith("ERC20: insufficient allowance");
       });
 
@@ -850,18 +849,18 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         await portfolio.approve(
           nonOwner.address,
-          BigNumber.from(amountPortfolioToken),
+          BigNumber.from(amountPortfolioToken)
         );
 
         await portfolio
@@ -869,42 +868,42 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           .multiTokenWithdrawalFor(
             owner.address,
             owner.address,
-            BigNumber.from(amountPortfolioToken),
+            BigNumber.from(amountPortfolioToken)
           );
 
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -918,16 +917,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const supplyBefore = await portfolio.totalSupply();
         const amountPortfolioToken = await portfolio.balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         await portfolio
@@ -938,35 +937,35 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           nonOwner.address,
           nonOwner.address,
           amountPortfolioToken,
-          [tokens[0], tokens[1]],
+          [tokens[0], tokens[1]]
         );
 
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(await portfolio.balanceOf(nonOwner.address))).to.be.equal(
-          0,
+          0
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -974,12 +973,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       it("assetmanager should be able to change initialPortfolioAmount", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
         await assetManagementConfig.updateInitialPortfolioAmount(
-          "100000000000000000",
+          "100000000000000000"
         );
       });
 
@@ -987,7 +986,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await ethers.provider.send("evm_increaseTime", [70]);
 
         const amountPortfolioTreasury = await portfolio.balanceOf(
-          treasury.address,
+          treasury.address
         );
 
         let exemptionTokens = [
@@ -1002,10 +1001,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await expect(
           portfolio
             .connect(treasury)
-            .emergencyWithdrawal(amountPortfolioTreasury, exemptionTokens),
+            .emergencyWithdrawal(amountPortfolioTreasury, exemptionTokens)
         ).to.be.revertedWithCustomError(
           portfolio,
-          "InvalidExemptionTokensLength",
+          "InvalidExemptionTokensLength"
         );
       });
 
@@ -1014,7 +1013,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const supplyBefore = await portfolio.totalSupply();
         const amountPortfolioTreasury = await portfolio.balanceOf(
-          treasury.address,
+          treasury.address
         );
         const tokens = await portfolio.getTokens();
         let balanceBefore = [];
@@ -1023,7 +1022,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         for (let i = 0; i < 2; i++) {
           balanceBefore[i] = await ERC20.attach(tokens[i]).balanceOf(
-            treasury.address,
+            treasury.address
           );
         }
 
@@ -1036,7 +1035,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         for (let i = 0; i < 2; i++) {
           let balanceAfter = await ERC20.attach(tokens[i]).balanceOf(
-            treasury.address,
+            treasury.address
           );
           expect(Number(balanceAfter)).to.be.greaterThan(balanceBefore[i]);
         }
@@ -1058,7 +1057,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const tokens = await portfolio.getTokens();
@@ -1067,7 +1066,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
             value: "100000000000000000",
@@ -1092,7 +1091,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
         await portfolio.multiTokenDeposit(amounts, "0", permit, signature);

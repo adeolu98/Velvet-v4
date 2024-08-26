@@ -17,10 +17,8 @@ library FunctionParameters {
    * @param _feeModuleImplementationAddress Fee Module implementation contract address
    * @param  _baseTokenRemovalVaultImplementation Token Removal Vault implementation contract address
    * @param  _basePositionManager Position manager implementation contract address
-   * @param  _basePositionWrapper Position wrapper implementation contract address
    * @param _baseVelvetGnosisSafeModuleAddress Base Gnosis-Safe module address for cloning
    * @param  _basePositionManager Position manager implementation contract address
-   * @param  _basePositionWrapper Position wrapper implementation contract address
    * @param _gnosisSingleton Gnosis Singleton contract address
    * @param _gnosisFallbackLibrary Gnosis Fallback Library address
    * @param _gnosisMultisendLibrary Gnosis Multisend Library address
@@ -37,7 +35,6 @@ library FunctionParameters {
     address _baseTokenRemovalVaultImplementation;
     address _baseVelvetGnosisSafeModuleAddress;
     address _basePositionManager;
-    address _basePositionWrapper;
     address _gnosisSingleton;
     address _gnosisFallbackLibrary;
     address _gnosisMultisendLibrary;
@@ -134,7 +131,6 @@ library FunctionParameters {
     address _feeModule;
     address _assetManagerTreasury;
     address _basePositionManager;
-    address _basePositionWrapper;
     address[] _whitelistedTokens;
     bool _publicPortfolio;
     bool _transferable;

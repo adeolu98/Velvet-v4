@@ -281,7 +281,6 @@ describe.only("Tests for Deposit", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -1021,6 +1020,30 @@ describe.only("Tests for Deposit", () => {
             token0,
             token1,
             0,
+            newTickLower,
+            newTickUpper
+          )
+        ).to.be.revertedWithCustomError(positionManager, "InvalidSwapAmount");
+
+        let totalSupplyAfter = await positionWrapper.totalSupply();
+        expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
+      });
+
+      it("owner should not be able to update the price range with random swap amount", async () => {
+        let totalSupplyBefore = await positionWrapper.totalSupply();
+
+        const token0 = await positionWrapper.token0();
+        const token1 = await positionWrapper.token1();
+
+        const newTickLower = -180;
+        const newTickUpper = 240;
+
+        await expect(
+          positionManager.updateRange(
+            position1,
+            token0,
+            token1,
+            1000,
             newTickLower,
             newTickUpper
           )
