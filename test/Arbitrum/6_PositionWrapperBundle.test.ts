@@ -510,7 +510,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         let postResponse = [];
 
-        let amountToSwap = "150000000000000000000";
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
 
         for (let i = 0; i < swapTokens.length; i++) {
           let amountIn = BigNumber.from(amountToSwap).div(swapTokens.length);

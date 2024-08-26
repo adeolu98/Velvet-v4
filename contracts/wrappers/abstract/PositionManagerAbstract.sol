@@ -565,10 +565,9 @@ abstract contract PositionManagerAbstract is
     uint256 _poolRatio,
     uint256 _ratioAfterSwap
   ) internal pure {
-    // allow 1% derivation
-
-    uint256 upperBound = (_poolRatio * 10_001) / 10_000;
-    uint256 lowerBound = (_poolRatio * 9_900) / 10_000;
+    // allow 0.5% derivation
+    uint256 upperBound = (_poolRatio * 10_050) / 10_000;
+    uint256 lowerBound = (_poolRatio * 9_950) / 10_000;
 
     if (_ratioAfterSwap > upperBound || _ratioAfterSwap < lowerBound) {
       revert ErrorLibrary.InvalidSwapAmount();
