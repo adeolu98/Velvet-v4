@@ -451,6 +451,12 @@ abstract contract PositionManagerAbstract is
     }
   }
 
+  /**
+   * @dev Handles swapping tokens to achieve a desired pool ratio.
+   * @param _params Parameters including tokens and amounts for the swap.
+   * @return balance0 Updated balance of token0.
+   * @return balance1 Updated balance of token1.
+   */
   function _swapTokensForAmount(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal virtual returns (uint256, uint256);
@@ -495,7 +501,23 @@ abstract contract PositionManagerAbstract is
     );
   }
 
-  function _verifyRatio(
+  /**
+   * @dev Verifies the token balance ratios after a swap to ensure they meet specific conditions set by the pool parameters.
+   * This function can apply a one-sided ratio check if the pool ratio is zero (indicating special conditions like fee collection or bootstrapping phases),
+   * or a normal ratio verification against the expected pool ratio under standard operation conditions.
+   * @param _positionWrapper The position wrapper associated with the Uniswap V3 position.
+   * @param _tickLower Lower bound of the price tick range for the position.
+   * @param _tickUpper Upper bound of the price tick range for the position.
+   * @param _token0 Address of the first token in the liquidity pair.
+   * @param _token1 Address of the second token in the liquidity pair.
+   * @param _balanceBeforeSwap The token balance before the swap, used for one-sided ratio verification.
+   * @param _balanceAfterSwap The token balance after the swap, also used for one-sided ratio verification.
+   * @return balance0 Updated balance of token0 after potential verification actions.
+   * @return balance1 Updated balance of token1 after potential verification actions.
+   * @notice This function performs checks to ensure the post-swap token distribution adheres to expected ratios,
+   * which are crucial for maintaining the integrity and stability of the liquidity pool.
+   */
+  function _verifyRatioAfterSwap(
     IPositionWrapper _positionWrapper,
     int24 _tickLower,
     int24 _tickUpper,
@@ -504,9 +526,11 @@ abstract contract PositionManagerAbstract is
     uint256 _balanceBeforeSwap,
     uint256 _balanceAfterSwap
   ) internal returns (uint256 balance0, uint256 balance1) {
+    // Fetch current balances of tokens
     balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
     balance1 = IERC20Upgradeable(_token1).balanceOf(address(this));
 
+    // Calculate the ratio after the swap and the expected pool ratio
     uint256 ratioAfterSwap;
     uint256 poolRatio;
     (balance0, balance1, ratioAfterSwap, poolRatio) = _calculateRatios(
@@ -517,6 +541,7 @@ abstract contract PositionManagerAbstract is
       _token1
     );
 
+    // If the pool ratio is zero, verify using a one-sided check, otherwise use a standard ratio check
     if (poolRatio == 0) {
       _verifyOneSidedRatio(_balanceBeforeSwap, _balanceAfterSwap);
     } else {
@@ -541,6 +566,13 @@ abstract contract PositionManagerAbstract is
     }
   }
 
+  /**
+   * @dev Verifies that the token ratio after a swap operation matches the expected pool ratio.
+   * This function is used in scenarios where a swap should result in a balance that adheres to predefined pool conditions,
+   * typically to maintain price stability or meet other strategic criteria.
+   * @param _params Swap parameters including details about the position, tokens, and price ticks.
+   * @notice This function calculates the current and expected ratios and checks them for consistency.
+   */
   function _verifyZeroSwapAmount(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal {
@@ -555,6 +587,16 @@ abstract contract PositionManagerAbstract is
     _verifyRatio(poolRatio, ratioAfterSwap);
   }
 
+  /**
+   * @dev Checks if the conditions are met to verify a zero swap amount based on tokens owed from fees.
+   * This function is specifically used to ensure that any fees due for reinvestment don't exceed
+   * certain thresholds before proceeding with a ratio verification step.
+   * @param _params Swap parameters encapsulating position and token details.
+   * @param _tokensOwed0 Tokens owed of type token0, typically fees that are ready for reinvestment.
+   * @param _tokensOwed1 Tokens owed of type token1, similarly fees that might be reinvested.
+   * @notice Only proceeds with the verification if either of the owed token amounts exceeds
+   * the minimum reinvestment threshold.
+   */
   function _verifyZeroSwapAmountForReinvestFees(
     WrapperFunctionParameters.SwapParams memory _params,
     uint128 _tokensOwed0,
@@ -568,6 +610,12 @@ abstract contract PositionManagerAbstract is
     }
   }
 
+  /**
+   * @dev Executes a token swap via a router.
+   * @param _params Swap parameters including input and output tokens and amounts.
+   * @return balance0 New balance of token0 after swap.
+   * @return balance1 New balance of token1 after swap.
+   */
   function _swapTokenToToken(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal virtual returns (uint256, uint256);
@@ -581,6 +629,12 @@ abstract contract PositionManagerAbstract is
     uint256 _tokenId
   ) internal view virtual returns (uint128 existingLiquidity);
 
+  /**
+   * @dev Retrieves the tick bounds for a given position.
+   * @param _tokenId Identifier of the Uniswap position.
+   * @return tickLower Lower tick of the position.
+   * @return tickUpper Upper tick of the position.
+   */
   function _getTicksFromPosition(
     uint256 _tokenId
   ) internal view virtual returns (int24, int24);

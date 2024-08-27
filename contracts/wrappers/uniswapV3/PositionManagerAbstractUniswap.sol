@@ -326,6 +326,12 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     );
   }
 
+  /**
+   * @dev Handles swapping tokens to achieve a desired pool ratio.
+   * @param _params Parameters including tokens and amounts for the swap.
+   * @return balance0 Updated balance of token0.
+   * @return balance1 Updated balance of token1.
+   */
   function _swapTokensForAmount(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal override returns (uint256 balance0, uint256 balance1) {
@@ -373,7 +379,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       .ExactInputSingleParams({
         tokenIn: tokenIn,
         tokenOut: tokenOut,
-        fee: 100, // @todo check if we need to define a value!!!
+        fee: 100,
         recipient: address(this),
         deadline: block.timestamp,
         amountIn: _params._amountIn,
@@ -387,7 +393,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       address(this)
     );
 
-    (balance0, balance1) = _verifyRatio(
+    (balance0, balance1) = _verifyRatioAfterSwap(
       _params._positionWrapper,
       _params._tickLower,
       _params._tickUpper,
@@ -443,6 +449,12 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       .positions(_tokenId);
   }
 
+  /**
+   * @dev Retrieves the tick bounds for a given position.
+   * @param _tokenId Identifier of the Uniswap position.
+   * @return tickLower Lower tick of the position.
+   * @return tickUpper Upper tick of the position.
+   */
   function _getTicksFromPosition(
     uint256 _tokenId
   ) internal view override returns (int24 tickLower, int24 tickUpper) {

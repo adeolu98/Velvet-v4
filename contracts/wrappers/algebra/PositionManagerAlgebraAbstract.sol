@@ -383,7 +383,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       address(this)
     );
 
-    (balance0, balance1) = _verifyRatio(
+    (balance0, balance1) = _verifyRatioAfterSwap(
       _params._positionWrapper,
       _params._tickLower,
       _params._tickUpper,
