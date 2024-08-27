@@ -44,18 +44,15 @@ library LiquidityAmountsCalculations {
   ) internal returns (uint256 ratio) {
     uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(_tickLower);
     uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(_tickUpper);
-    uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
-      sqrtRatioAX96,
-      sqrtRatioBX96,
-      1 ether
-    );
+
     (uint256 amount0, uint256 amount1) = _getUnderlyingAmounts(
       _positionWrapper,
       _factory,
       sqrtRatioAX96,
       sqrtRatioBX96,
-      liquidity
+      1 ether
     );
-    ratio = (amount0 * 1e18) / amount1;
+
+    ratio = amount0 == 0 ? 0 : (amount0 * 1e18) / amount1;
   }
 }

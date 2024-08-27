@@ -423,6 +423,8 @@ export async function calculateSwapAmountUpdateRange(
     tokenOut = token0;
   }
 
+  swapAmount = (swapAmount * 0.999).toFixed(0);
+
   return { swapAmount, tokenIn, tokenOut };
 }
 

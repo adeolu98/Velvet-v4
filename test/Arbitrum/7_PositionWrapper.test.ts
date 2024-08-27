@@ -863,6 +863,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             token0,
             token1,
             0,
+            0,
+            0,
             "100",
             MIN_TICK,
             MAX_TICK
@@ -886,6 +888,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           position1,
           token0,
           token1,
+          0,
+          0,
           0,
           "100",
           newTickLower,

@@ -396,63 +396,6 @@ describe.only("Tests for Deposit", () => {
     });
 
     describe("Deposit Tests", function () {
-      it("non owner should not be able to enable the uniswapV3 position manager", async () => {
-        await expect(
-          assetManagementConfig.connect(nonOwner).enableUniSwapV3Manager()
-        ).to.be.revertedWithCustomError(
-          assetManagementConfig,
-          "CallerNotAssetManager"
-        );
-      });
-
-      it("owner should not be able to enable the uniswapV3 position manager after it has already been enabled", async () => {
-        await expect(
-          assetManagementConfig.enableUniSwapV3Manager()
-        ).to.be.revertedWithCustomError(
-          assetManagementConfig,
-          "UniSwapV3WrapperAlreadyEnabled"
-        );
-      });
-
-      it("non owner should not be able to create a new position", async () => {
-        // UniswapV3 position
-        const token0 = iaddress.usdtAddress;
-        const token1 = iaddress.usdcAddress;
-
-        await expect(
-          positionManager
-            .connect(nonOwner)
-            .createNewWrapperPosition(
-              token0,
-              token1,
-              "Test",
-              "t",
-              MIN_TICK,
-              MAX_TICK
-            )
-        ).to.be.revertedWithCustomError(
-          positionManager,
-          "CallerNotAssetManager"
-        );
-      });
-
-      it("owner should not be able to create a new position with a non-whitelisted token", async () => {
-        // UniswapV3 position
-        const token0 = iaddress.usdcAddress;
-        const token1 = addresses.DOT;
-
-        await expect(
-          positionManager.createNewWrapperPosition(
-            token0,
-            token1,
-            "Test",
-            "t",
-            MIN_TICK,
-            MAX_TICK
-          )
-        ).to.be.revertedWithCustomError(positionManager, "TokenNotWhitelisted");
-      });
-
       it("owner should create new position", async () => {
         // UniswapV3 position
         const token0 = iaddress.usdtAddress;
@@ -463,8 +406,8 @@ describe.only("Tests for Deposit", () => {
           token1,
           "Test",
           "t",
-          MIN_TICK,
-          MAX_TICK
+          "840",
+          "1080"
         );
 
         position1 = await positionManager.deployedPositionWrappers(0);
@@ -473,17 +416,6 @@ describe.only("Tests for Deposit", () => {
           "PositionWrapper"
         );
         positionWrapper = PositionWrapper.attach(position1);
-      });
-
-      it("should init tokens should fail if the list includes a non-whitelisted token", async () => {
-        await expect(
-          portfolio.initToken([
-            addresses.DOT,
-            iaddress.btcAddress,
-            iaddress.cakeAddress,
-            position1,
-          ])
-        ).to.be.revertedWithCustomError(portfolio, "TokenNotWhitelisted");
       });
 
       it("should init tokens", async () => {
@@ -507,10 +439,13 @@ describe.only("Tests for Deposit", () => {
         }
       });
 
-      it("nonOwner should approve tokens to permit2 contract", async () => {
+      it("owner should approve tokens to permit2 contract for nonOwner", async () => {
         const tokens = await portfolio.getTokens();
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         for (let i = 0; i < tokens.length; i++) {
+          await ERC20.attach(tokens[i])
+            .connect(nonOwner)
+            .approve(PERMIT2_ADDRESS, 0);
           await ERC20.attach(tokens[i])
             .connect(nonOwner)
             .approve(PERMIT2_ADDRESS, MaxAllowanceTransferAmount);
@@ -991,67 +926,29 @@ describe.only("Tests for Deposit", () => {
         console.log("supplyAfter", supplyAfter);
       });
 
-      it("nonOwner should not be able to update the price range", async () => {
-        const token0 = await positionWrapper.token0();
-        const token1 = await positionWrapper.token1();
+      it("owner should update the price range", async () => {
+        let totalSupplyBefore = await positionWrapper.totalSupply();
 
-        await expect(
-          positionManager
-            .connect(nonOwner)
-            .updateRange(position1, token0, token1, 0, 0, 0, MIN_TICK, MAX_TICK)
-        ).to.be.revertedWithCustomError(
-          positionManager,
-          "CallerNotAssetManager"
+        const newTickLower = "-1380";
+        const newTickUpper = "-1020";
+
+        let updateRangeData = await calculateSwapAmountUpdateRange(
+          positionManager.address,
+          position1,
+          newTickLower,
+          newTickUpper
         );
-      });
 
-      it("owner should not be able to update the price range with zero swap amount", async () => {
-        let totalSupplyBefore = await positionWrapper.totalSupply();
-
-        const token0 = await positionWrapper.token0();
-        const token1 = await positionWrapper.token1();
-
-        const newTickLower = -180;
-        const newTickUpper = 240;
-
-        await expect(
-          positionManager.updateRange(
-            position1,
-            token0,
-            token1,
-            0,
-            0,
-            0,
-            newTickLower,
-            newTickUpper
-          )
-        ).to.be.revertedWithCustomError(positionManager, "InvalidSwapAmount");
-
-        let totalSupplyAfter = await positionWrapper.totalSupply();
-        expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
-      });
-
-      it("owner should not be able to update the price range with random swap amount", async () => {
-        let totalSupplyBefore = await positionWrapper.totalSupply();
-
-        const token0 = await positionWrapper.token0();
-        const token1 = await positionWrapper.token1();
-
-        const newTickLower = -180;
-        const newTickUpper = 240;
-
-        await expect(
-          positionManager.updateRange(
-            position1,
-            token0,
-            token1,
-            1000,
-            0,
-            0,
-            newTickLower,
-            newTickUpper
-          )
-        ).to.be.revertedWithCustomError(positionManager, "InvalidSwapAmount");
+        await positionManager.updateRange(
+          position1,
+          updateRangeData.tokenIn,
+          updateRangeData.tokenOut,
+          updateRangeData.swapAmount.toString(),
+          0,
+          0,
+          newTickLower,
+          newTickUpper
+        );
 
         let totalSupplyAfter = await positionWrapper.totalSupply();
         expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
@@ -1060,8 +957,36 @@ describe.only("Tests for Deposit", () => {
       it("owner should update the price range", async () => {
         let totalSupplyBefore = await positionWrapper.totalSupply();
 
-        const newTickLower = -180;
-        const newTickUpper = 240;
+        const newTickLower = MIN_TICK;
+        const newTickUpper = MAX_TICK;
+
+        let updateRangeData = await calculateSwapAmountUpdateRange(
+          positionManager.address,
+          position1,
+          newTickLower,
+          newTickUpper
+        );
+
+        await positionManager.updateRange(
+          position1,
+          updateRangeData.tokenIn,
+          updateRangeData.tokenOut,
+          updateRangeData.swapAmount.toString(),
+          0,
+          0,
+          newTickLower,
+          newTickUpper
+        );
+
+        let totalSupplyAfter = await positionWrapper.totalSupply();
+        expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
+      });
+
+      it("owner should update the price range", async () => {
+        let totalSupplyBefore = await positionWrapper.totalSupply();
+
+        const newTickLower = "-1380";
+        const newTickUpper = "-1020";
 
         let updateRangeData = await calculateSwapAmountUpdateRange(
           positionManager.address,

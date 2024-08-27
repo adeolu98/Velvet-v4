@@ -220,7 +220,7 @@ abstract contract PositionManagerAbstract is
     );
 
     // Execute the decrease liquidity operation and collect the freed assets.
-    decreaseLiquidityAndCollect(
+    _decreaseLiquidityAndCollect(
       liquidityToDecrease,
       tokenId,
       _amount0Min,
@@ -279,20 +279,24 @@ abstract contract PositionManagerAbstract is
   ) internal {
     // Safely transfer token0 from the sender to this contract.
 
-    TransferHelper.safeTransferFrom(
-      _token0,
-      msg.sender,
-      address(this),
-      _amount0
-    );
+    if (_amount0 > 0) {
+      TransferHelper.safeTransferFrom(
+        _token0,
+        msg.sender,
+        address(this),
+        _amount0
+      );
+    }
 
     // Safely transfer token1 from the sender to this contract.
-    TransferHelper.safeTransferFrom(
-      _token1,
-      msg.sender,
-      address(this),
-      _amount1
-    );
+    if (_amount1 > 0) {
+      TransferHelper.safeTransferFrom(
+        _token1,
+        msg.sender,
+        address(this),
+        _amount1
+      );
+    }
   }
 
   /**
@@ -354,7 +358,7 @@ abstract contract PositionManagerAbstract is
    * @param _amount1Min The minimum amount of token1 that must be returned.
    * @param _recipient The address that will receive the withdrawn tokens.
    */
-  function decreaseLiquidityAndCollect(
+  function _decreaseLiquidityAndCollect(
     uint128 _liquidityToDecrease,
     uint256 _tokenId,
     uint256 _amount0Min,
@@ -461,31 +465,63 @@ abstract contract PositionManagerAbstract is
    * @return balance0 New balance of token0.
    * @return balance1 New balance of token1.
    */
-  function _calculateRatioAndVerify(
+  function _calculateRatios(
     IPositionWrapper _positionWrapper,
     int24 _tickLower,
     int24 _tickUpper,
     address _token0,
     address _token1
-  ) internal returns (uint256 balance0, uint256 balance1) {
+  )
+    internal
+    returns (
+      uint256 balance0,
+      uint256 balance1,
+      uint256 ratioAfterSwap,
+      uint256 poolRatio
+    )
+  {
     balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
     balance1 = IERC20Upgradeable(_token1).balanceOf(address(this));
 
-    uint256 ratioAfterSwap;
-    if (balance1 == 0) {
-      ratioAfterSwap = 0;
-    } else {
-      ratioAfterSwap = (balance0 * 1e18) / balance1;
-    }
+    ratioAfterSwap = balance0 < 1_000_000 || balance1 < 1_000_000
+      ? 0
+      : (balance0 * 1e18) / balance1;
 
-    uint256 poolRatio = LiquidityAmountsCalculations.getRatioForTicks(
+    poolRatio = LiquidityAmountsCalculations.getRatioForTicks(
       _positionWrapper,
       _getFactoryAddress(),
       _tickLower,
       _tickUpper
     );
+  }
 
-    _verifyRatio(poolRatio, ratioAfterSwap);
+  function _verifyRatio(
+    IPositionWrapper _positionWrapper,
+    int24 _tickLower,
+    int24 _tickUpper,
+    address _token0,
+    address _token1,
+    uint256 _balanceBeforeSwap,
+    uint256 _balanceAfterSwap
+  ) internal returns (uint256 balance0, uint256 balance1) {
+    balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
+    balance1 = IERC20Upgradeable(_token1).balanceOf(address(this));
+
+    uint256 ratioAfterSwap;
+    uint256 poolRatio;
+    (balance0, balance1, ratioAfterSwap, poolRatio) = _calculateRatios(
+      _positionWrapper,
+      _tickLower,
+      _tickUpper,
+      _token0,
+      _token1
+    );
+
+    if (poolRatio == 0) {
+      _verifyOneSidedRatio(_balanceBeforeSwap, _balanceAfterSwap);
+    } else {
+      _verifyRatio(poolRatio, ratioAfterSwap);
+    }
   }
 
   /**
@@ -501,17 +537,25 @@ abstract contract PositionManagerAbstract is
     if (_params._amountIn > 0) {
       (balance0, balance1) = _swapTokenToToken(_params);
     } else {
-      _calculateRatioAndVerify(
-        _params._positionWrapper,
-        _params._tickLower,
-        _params._tickUpper,
-        _params._token0,
-        _params._token1
-      );
+      _verifyZeroSwapAmount(_params);
     }
   }
 
   function _verifyZeroSwapAmount(
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal {
+    (, , uint256 ratioAfterSwap, uint256 poolRatio) = _calculateRatios(
+      _params._positionWrapper,
+      _params._tickLower,
+      _params._tickUpper,
+      _params._token0,
+      _params._token1
+    );
+
+    _verifyRatio(poolRatio, ratioAfterSwap);
+  }
+
+  function _verifyZeroSwapAmountForReinvestFees(
     WrapperFunctionParameters.SwapParams memory _params,
     uint128 _tokensOwed0,
     uint128 _tokensOwed1
@@ -520,13 +564,7 @@ abstract contract PositionManagerAbstract is
       _tokensOwed0 > MIN_REINVESTMENT_AMOUNT ||
       _tokensOwed1 > MIN_REINVESTMENT_AMOUNT
     ) {
-      _calculateRatioAndVerify(
-        _params._positionWrapper,
-        _params._tickLower,
-        _params._tickUpper,
-        _params._token0,
-        _params._token1
-      );
+      _verifyZeroSwapAmount(_params);
     }
   }
 
@@ -570,6 +608,17 @@ abstract contract PositionManagerAbstract is
     uint256 lowerBound = (_poolRatio * 9_950) / 10_000;
 
     if (_ratioAfterSwap > upperBound || _ratioAfterSwap < lowerBound) {
+      revert ErrorLibrary.InvalidSwapAmount();
+    }
+  }
+
+  function _verifyOneSidedRatio(
+    uint256 _balanceBeforeSwap,
+    uint256 _balanceAfterSwap
+  ) internal pure {
+    uint256 dustAllowance = (_balanceBeforeSwap * 9_950) / 10_000;
+
+    if (_balanceAfterSwap > dustAllowance) {
       revert ErrorLibrary.InvalidSwapAmount();
     }
   }

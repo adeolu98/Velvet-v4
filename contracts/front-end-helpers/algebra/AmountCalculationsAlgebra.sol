@@ -15,6 +15,8 @@ import { IPositionWrapper } from "../../wrappers/abstract/IPositionWrapper.sol";
 
 import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
 
+import "hardhat/console.sol";
+
 contract AmountCalculationsAlgebra {
   INonfungiblePositionManager internal uniswapV3PositionManager =
     INonfungiblePositionManager(0xa51ADb08Cbe6Ae398046A23bec013979816B77Ab);
@@ -136,7 +138,8 @@ contract AmountCalculationsAlgebra {
       _tickUpper,
       1 ether
     );
-    ratio = (amount0 * 1 ether) / amount1;
+
+    ratio = amount0 == 0 ? 0 : (amount0 * 1 ether) / amount1;
   }
 
   function getRatioAmountsForTicks(

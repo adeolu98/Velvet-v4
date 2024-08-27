@@ -121,6 +121,8 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     address tokenIn,
     address tokenOut,
     uint256 amountIn,
+    uint256 _underlyingAmountOut0,
+    uint256 _underlyingAmountOut1,
     uint24 _fee,
     int24 _tickLower,
     int24 _tickUpper
@@ -134,11 +136,11 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     uint128 existingLiquidity = _getExistingLiquidity(tokenId);
 
     // Remove all liquidity and collect the underlying tokens to this contract.
-    decreaseLiquidityAndCollect(
+    _decreaseLiquidityAndCollect(
       existingLiquidity,
       tokenId,
-      1, // Minimal acceptable token amounts set to 1 as a formality; all liquidity is being removed.
-      1,
+      _underlyingAmountOut0, // Minimal acceptable token amounts set to 1 as a formality; all liquidity is being removed.
+      _underlyingAmountOut1,
       address(this)
     );
 
@@ -162,8 +164,8 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       WrapperFunctionParameters.PositionMintParams({
         _amount0Desired: IERC20Upgradeable(token0).balanceOf(address(this)),
         _amount1Desired: IERC20Upgradeable(token1).balanceOf(address(this)),
-        _amount0Min: 1,
-        _amount1Min: 1,
+        _amount0Min: 0,
+        _amount1Min: 0,
         _fee: _fee,
         _tickLower: _tickLower,
         _tickUpper: _tickUpper
@@ -334,7 +336,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       (uint128 tokensOwed0, uint128 tokensOwed1) = _getTokensOwed(
         _params._tokenId
       );
-      _verifyZeroSwapAmount(_params, tokensOwed0, tokensOwed1);
+      _verifyZeroSwapAmountForReinvestFees(_params, tokensOwed0, tokensOwed1);
     }
   }
 
@@ -353,8 +355,6 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     address token0 = _params._token0;
     address token1 = _params._token1;
 
-    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
-
     if (
       tokenIn == tokenOut ||
       !(tokenOut == token0 || tokenOut == token1) ||
@@ -362,6 +362,12 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     ) {
       revert ErrorLibrary.InvalidTokenAddress();
     }
+
+    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
+
+    uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(tokenIn).balanceOf(
+      address(this)
+    );
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
       .ExactInputSingleParams({
@@ -372,17 +378,23 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
         deadline: block.timestamp,
         amountIn: _params._amountIn,
         amountOutMinimum: 0, // @todo add slippage control
-        sqrtPriceLimitX96: 0 // @todo check what this is and if we need to define a value!!!
+        sqrtPriceLimitX96: 0
       });
 
     router.exactInputSingle(params);
 
-    (balance0, balance1) = _calculateRatioAndVerify(
+    uint256 balanceTokenInAfterSwap = IERC20Upgradeable(tokenIn).balanceOf(
+      address(this)
+    );
+
+    (balance0, balance1) = _verifyRatio(
       _params._positionWrapper,
       _params._tickLower,
       _params._tickUpper,
       token0,
-      token1
+      token1,
+      balanceTokenInBeforeSwap,
+      balanceTokenInAfterSwap
     );
   }
 

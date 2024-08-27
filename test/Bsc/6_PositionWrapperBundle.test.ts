@@ -731,12 +731,16 @@ describe.only("Tests for Deposit", () => {
               tokens[i],
               percentage.toString()
             );
-            swapAmounts.push(
-              (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
-            );
-            swapAmounts.push(
-              (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
-            );
+            if (withdrawAmounts.token0Amount > 0) {
+              swapAmounts.push(
+                (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+              );
+            }
+            if (withdrawAmounts.token1Amount > 0) {
+              swapAmounts.push(
+                (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+              );
+            }
             wrapperIndex++;
           }
         }
@@ -834,12 +838,16 @@ describe.only("Tests for Deposit", () => {
               tokens[i],
               percentage.toString()
             );
-            swapAmounts.push(
-              (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
-            );
-            swapAmounts.push(
-              (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
-            );
+            if (withdrawAmounts.token0Amount > 0) {
+              swapAmounts.push(
+                (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+              );
+            }
+            if (withdrawAmounts.token1Amount > 0) {
+              swapAmounts.push(
+                (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+              );
+            }
             wrapperIndex++;
           }
         }
