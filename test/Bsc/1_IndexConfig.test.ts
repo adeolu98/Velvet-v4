@@ -28,6 +28,8 @@ import {
   VelvetSafeModule,
   FeeModule,
   AssetManagementConfig,
+  TokenBalanceLibrary,
+  BorrowManager,
   AccessControl,
   PriceOracle,
   TokenExclusionManager__factory,
@@ -54,6 +56,8 @@ describe.only("Tests for Portfolio Config", () => {
   let assetManagementConfig0: AssetManagementConfig;
   let assetManagementConfig1: AssetManagementConfig;
   let assetManagementConfig2: AssetManagementConfig;
+  let borrowManager: BorrowManager;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
   let accessController0: any;
   let accessController1: any;
   let accessController2: any;
@@ -111,27 +115,29 @@ describe.only("Tests for Portfolio Config", () => {
 
       iaddress = await tokenAddresses();
 
-      const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary",
       );
-      const positionWrapperBaseAddress = await PositionWrapper.deploy();
-      await positionWrapperBaseAddress.deployed();
+
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      await tokenBalanceLibrary.deployed();
 
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
+
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" },
       );
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing");
+      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -141,13 +147,21 @@ describe.only("Tests for Portfolio Config", () => {
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
       const AssetManagementConfig = await ethers.getContractFactory(
         "AssetManagementConfig",
       );
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
@@ -179,12 +193,6 @@ describe.only("Tests for Portfolio Config", () => {
       ];
 
       let whitelist = [owner.address];
-
-      const PositionManagerThena = await ethers.getContractFactory(
-        "PositionManagerThena",
-      );
-      const positionManagerBaseAddress = await PositionManagerThena.deploy();
-      await positionManagerBaseAddress.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule", {});
       const feeModule = await FeeModule.deploy();
@@ -219,8 +227,7 @@ describe.only("Tests for Portfolio Config", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
-            _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
+            _baseBorrowManager: borrowManager.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -450,31 +457,25 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("asset manager should not be able to remove portfolio token if protocol is paused", async () => {
         await expect(
-          rebalancing.removePortfolioToken(iaddress.btcAddress),
+          rebalancing.removePortfolioToken(addresses.btcAddress),
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
       it("asset manager should not be able to remove non-portfolio token if protocol is paused", async () => {
         await expect(
-          rebalancing.removeNonPortfolioToken(iaddress.btcAddress),
+          rebalancing.removeNonPortfolioToken(addresses.btcAddress),
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
       it("asset manager should not be able to remove portfolio token partially if protocol is paused", async () => {
         await expect(
-          rebalancing.removePortfolioTokenPartially(
-            iaddress.btcAddress,
-            "1000",
-          ),
+          rebalancing.removePortfolioTokenPartially(addresses.btcAddress, "1000"),
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
       it("asset manager should not be able to remove non-portfolio partially token if protocol is paused", async () => {
         await expect(
-          rebalancing.removeNonPortfolioTokenPartially(
-            iaddress.btcAddress,
-            "1000",
-          ),
+          rebalancing.removeNonPortfolioTokenPartially(addresses.btcAddress, "1000"),
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
@@ -1091,31 +1092,25 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("claiming reward tokens should fail if reward target is not enabled", async () => {
         await expect(
-          rebalancing.claimRewardTokens(
-            addresses.WETH_Address,
-            addresses.WETH_Address,
-            "0x",
-          ),
+          rebalancing.claimRewardTokens(addresses.WETH, addresses.WETH, "0x"),
         ).to.be.revertedWithCustomError(rebalancing, "RewardTargetNotEnabled");
       });
 
       it("non protocol owner should not be able to enable reward target", async () => {
         await expect(
-          protocolConfig
-            .connect(nonOwner)
-            .enableRewardTarget(addresses.WETH_Address),
+          protocolConfig.connect(nonOwner).enableRewardTarget(addresses.WETH),
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("protocol owner should be able to enable reward target", async () => {
-        await expect(protocolConfig.enableRewardTarget(addresses.WETH_Address));
+        await expect(protocolConfig.enableRewardTarget(addresses.WETH));
       });
 
       it("non protocol owner should not be able to enable reward targets", async () => {
         await expect(
           protocolConfig
             .connect(nonOwner)
-            .enableRewardTargets([iaddress.usdtAddress]),
+            .enableRewardTargets([addresses.usdtAddress]),
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
@@ -1127,18 +1122,14 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("protocol owner should be able to enable reward target", async () => {
         await expect(
-          protocolConfig.enableRewardTargets([iaddress.usdtAddress]),
+          protocolConfig.enableRewardTargets([addresses.usdtAddress]),
         );
       });
 
       it("reward token target should be usable to claim after enabling", async () => {
         // empty calldata is passed, test case with calldata in file 4
         await expect(
-          rebalancing.claimRewardTokens(
-            addresses.WETH_Address,
-            addresses.WETH_Address,
-            "0x",
-          ),
+          rebalancing.claimRewardTokens(addresses.WETH, addresses.WETH, "0x"),
         ).to.be.revertedWithCustomError(rebalancing, "ClaimFailed");
       });
 
@@ -1842,34 +1833,6 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("owner should be able to update the token removal vault module base address", async () => {
         await portfolioFactory.setTokenRemovalVaultModule(addr1.address);
-      });
-
-      it("non owner should not be able to update portfolio manager base address", async () => {
-        const PositionWrapper = await ethers.getContractFactory(
-          "PositionWrapper",
-        );
-        const positionWrapperBaseAddress = await PositionWrapper.deploy();
-        await positionWrapperBaseAddress.deployed();
-
-        await expect(
-          protocolConfig
-            .connect(nonOwner)
-            .updatePositionWrapperBaseImplementationAlgebra(
-              positionWrapperBaseAddress.address,
-            ),
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-
-      it("owner should be able to update portfolio manager base address", async () => {
-        const PositionWrapper = await ethers.getContractFactory(
-          "PositionWrapper",
-        );
-        const positionWrapperBaseAddress = await PositionWrapper.deploy();
-        await positionWrapperBaseAddress.deployed();
-
-        await protocolConfig.updatePositionWrapperBaseImplementationAlgebra(
-          positionWrapperBaseAddress.address,
-        );
       });
     });
   });

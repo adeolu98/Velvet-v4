@@ -10,8 +10,8 @@ import {SystemSettings} from "./SystemSettings.sol";
 import {TokenManagement} from "./TokenManagement.sol";
 import {ProtocolFeeManagement} from "./ProtocolFeeManagement.sol";
 import {SolverManagement} from "./SolverManagement.sol";
+
 import {RewardTargetManagement} from "./RewardTargetManagement.sol";
-import {ExternalPositionManagement} from "./ExternalPositionManagement.sol";
 
 /**
  * @title MainContract
@@ -26,8 +26,7 @@ contract ProtocolConfig is
   TokenManagement,
   ProtocolFeeManagement,
   SolverManagement,
-  RewardTargetManagement,
-  ExternalPositionManagement
+  RewardTargetManagement
 {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -37,8 +36,7 @@ contract ProtocolConfig is
   // Implement the OwnableUpgradeable initialization.
   function initialize(
     address _velvetTreasury,
-    address _oracle,
-    address _positionWrapperBaseAlgebra
+    address _oracle
   ) external initializer {
     __Ownable2Step_init();
     __UUPSUpgradeable_init();
@@ -47,7 +45,6 @@ contract ProtocolConfig is
     __SystemSettings_init();
     __TokenManagement_init(_oracle);
     __FeeManagement_init();
-    __ExternalPositionManagement_init(_positionWrapperBaseAlgebra);
   }
 
   function _owner() internal view override(OwnableCheck) returns (address) {

@@ -31,6 +31,8 @@ import {
   EnsoHandler,
   VelvetSafeModule,
   FeeModule,
+  TokenBalanceLibrary,
+  BorrowManager,
   UniswapV2Handler,
   TokenExclusionManager,
   TokenExclusionManager__factory,
@@ -60,6 +62,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
+  let borrowManager: BorrowManager;
   let rebalancing: any;
   let rebalancing1: any;
   let rebalancing2: any;
@@ -104,28 +108,30 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ensoHandler = await EnsoHandler.deploy();
       await ensoHandler.deployed();
 
-      const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
-      );
-      const positionWrapperBaseAddress = await PositionWrapper.deploy();
-      await positionWrapperBaseAddress.deployed();
-
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
+
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" },
       );
+
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary",
+      );
+
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      tokenBalanceLibrary.deployed();
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing");
+      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -135,13 +141,21 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
       const AssetManagementConfig = await ethers.getContractFactory(
         "AssetManagementConfig",
       );
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
@@ -169,12 +183,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ];
 
       let whitelist = [owner.address];
-
-      const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap",
-      );
-      const positionManagerBaseAddress = await PositionManager.deploy();
-      await positionManagerBaseAddress.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule", {});
       const feeModule = await FeeModule.deploy();
@@ -208,8 +216,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
-            _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
+            _baseBorrowManager: borrowManager.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -294,6 +301,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       );
       const PortfolioCalculations = await ethers.getContractFactory(
         "PortfolioCalculations",
+        {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        },
       );
       feeModule0 = FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
@@ -2124,7 +2136,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("should withdraw in multitoken by nonwOwner(user2)", async () => {
         await ethers.provider.send("evm_increaseTime", [70]);
-
+        const zeroAddress = "0x0000000000000000000000000000000000000000";
         const supplyBefore = await portfolio.totalSupply();
         const amountPortfolioToken = await portfolio.balanceOf(
           nonOwner.address,
@@ -2142,7 +2154,17 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         await portfolio
           .connect(nonOwner)
-          .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken));
+          .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken),
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          });
 
         const supplyAfter = await portfolio.totalSupply();
 

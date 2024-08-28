@@ -76,6 +76,8 @@
   "packageManager": "yarn@3.1.1",
   "dependencies": {
     "@chainlink/contracts": "^0.4.2",
+    "@cryptoalgebra/integral-core": "^1.1.0",
+    "@cryptoalgebra/integral-periphery": "^1.0.2",
     "@gnosis.pm/safe-core-sdk": "^2.1.0",
     "@gnosis.pm/safe-core-sdk-types": "^1.1.0",
     "@gnosis.pm/safe-ethers-lib": "^1.1.0",
@@ -103,7 +105,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-no-only-tests": "^3.0.0",
     "eslint-plugin-prettier": "^4.0.0",
-    "hardhat-tracer": "^2.8.1",
+    "hardhat-tracer": "3.1.0",
     "merkletreejs": "^0.3.9",
     "prompt-sync": "^4.2.0",
     "solhint": "^3.3.6",

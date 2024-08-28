@@ -19,6 +19,9 @@ abstract contract VaultConfig is AccessModifiers, ChecksAndValidations {
   // Array storing addresses of underlying _tokens in the vault.
   address[] internal tokens;
 
+  //Array storing borrowed protocol tokens in vault.
+  address[] internal borrowedTokens;
+
   // Addresses of the vault and associated safe module.
   address public vault;
   address public safeModule;
@@ -110,6 +113,10 @@ abstract contract VaultConfig is AccessModifiers, ChecksAndValidations {
     }
     _resetPreviousTokenList(_tokens);
     tokens = _tokens;
+  }
+
+  function addBorrowedTokens(address _token) external onlyRebalancerContract {
+    borrowedTokens.push(_token);
   }
 
   /**

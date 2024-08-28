@@ -13,8 +13,10 @@ import {VaultConfigV3_4, ErrorLibrary} from "./VaultConfigV3_4.sol";
 import {VaultCalculations, Dependencies} from "../../../../core/calculations/VaultCalculations.sol";
 import {MathUtils} from "../../../../core/calculations/MathUtils.sol";
 import {PortfolioTokenV3_2} from "../v3_2/PortfolioTokenV3_2.sol";
+import {IProtocolConfig} from "../../../../config/protocol/IProtocolConfig.sol";
 
 import {IAllowanceTransfer} from "../../../../core/interfaces/IAllowanceTransfer.sol";
+import {TokenBalanceLibrary} from "../../../../core/calculations/TokenBalanceLibrary.sol";
 
 /**
  * @title VaultManager
@@ -31,6 +33,8 @@ abstract contract VaultManagerV3_4 is
   IAllowanceTransfer public immutable permit2 =
     IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
+  IProtocolConfig internal _protocolConfig;
+
   /**
    * @notice Initializes the VaultManager contract.
    * @dev This function sets up the ReentrancyGuard by calling its initializer. It's designed to be called
@@ -38,7 +42,10 @@ abstract contract VaultManagerV3_4 is
    *      safely in functions to prevent reentrancy attacks. This is a standard part of setting up contracts
    *      that handle external calls or token transfers, providing an additional layer of security.
    */
-  function __VaultManager_init() internal {
+  function __VaultManager_init(
+    address protocolConfig
+  ) internal onlyInitializing {
+    _protocolConfig = IProtocolConfig(protocolConfig);
     __ReentrancyGuard_init();
   }
 
@@ -188,7 +195,11 @@ abstract contract VaultManagerV3_4 is
     for (uint256 i; i < portfolioTokenLength; i++) {
       address _token = portfolioTokens[i];
       // Calculate the proportion of each token to return based on the burned portfolio tokens.
-      uint256 tokenBalance = _getTokenBalanceOf(_token, vault);
+      uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
+        portfolioTokens[i],
+        vault,
+        _protocolConfig
+      );
       tokenBalance =
         (tokenBalance * _portfolioTokenAmount) /
         totalSupplyPortfolio;
@@ -279,10 +290,8 @@ abstract contract VaultManagerV3_4 is
     }
 
     // Get current token balances in the vault for ratio calculations
-    uint256[] memory tokenBalancesBefore = getTokenBalancesOf(
-      portfolioTokens,
-      vault
-    );
+    uint256[] memory tokenBalancesBefore = TokenBalanceLibrary
+      .getTokenBalancesOf(portfolioTokens, vault, _protocolConfig);
 
     // If the vault is empty, accept the deposits and return zero as the initial ratio
     if (totalSupply() == 0) {
@@ -314,10 +323,22 @@ abstract contract VaultManagerV3_4 is
       transferAmount = (_minRatio * tokenBalancesBefore[i]) / ONE_ETH_IN_WEI;
       _transferToVault(_from, token, transferAmount);
 
-      balanceAfter = _getTokenBalanceOf(token, vault);
-      _minRatioAfterTransfer = _getMinDepositToVaultBalanceRatio(
-        tokenBalancesBefore[i],
-        balanceAfter,
+      balanceAfter = TokenBalanceLibrary._getTokenBalanceOf(
+        portfolioTokens[i],
+        vault,
+        _protocolConfig
+      );
+      uint256 tokenBalanceAfter = TokenBalanceLibrary._getTokenBalanceOf(
+        token,
+        vault,
+        _protocolConfig
+      );
+      uint256 currentRatio = _getDepositToVaultBalanceRatio(
+        tokenBalanceAfter - tokenBalanceAfter,
+        tokenBalanceAfter
+      );
+      _minRatioAfterTransfer = MathUtils._min(
+        currentRatio,
         _minRatioAfterTransfer
       );
     }

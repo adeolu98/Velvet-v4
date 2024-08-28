@@ -30,6 +30,8 @@ import {
   VelvetSafeModule,
   FeeModule,
   UniswapV2Handler,
+  TokenBalanceLibrary,
+  BorrowManager,
   AssetManagementConfig,
   AccessControl,
   TokenExclusionManager,
@@ -63,6 +65,8 @@ describe.only("Tests for Portfolio Config", () => {
   let rebalancing: any;
   let rebalancing1: any;
   let rebalancing2: any;
+  let borrowManager: BorrowManager;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
   let protocolConfig: ProtocolConfig;
   let txObject;
   let owner: SignerWithAddress;
@@ -110,27 +114,29 @@ describe.only("Tests for Portfolio Config", () => {
 
       const provider = ethers.getDefaultProvider();
 
-      const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary",
       );
-      const positionWrapperBaseAddress = await PositionWrapper.deploy();
-      await positionWrapperBaseAddress.deployed();
+
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      await tokenBalanceLibrary.deployed();
 
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
+
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" },
       );
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing");
+      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -146,7 +152,15 @@ describe.only("Tests for Portfolio Config", () => {
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
@@ -169,12 +183,6 @@ describe.only("Tests for Portfolio Config", () => {
       ];
 
       let whitelist = [owner.address];
-
-      const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap",
-      );
-      const positionManagerBaseAddress = await PositionManager.deploy();
-      await positionManagerBaseAddress.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule");
 
@@ -210,8 +218,7 @@ describe.only("Tests for Portfolio Config", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
-            _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
+            _baseBorrowManager: borrowManager.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,

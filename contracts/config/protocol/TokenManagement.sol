@@ -19,6 +19,9 @@ abstract contract TokenManagement is OwnableCheck, Initializable {
   // Mapping to track the tokens that are enabled for interaction on the platform.
   mapping(address => bool) public isEnabled;
 
+  // Mapping to track the protocol tokens that are enabled for interaction on the platform.
+  mapping(address => bool) public isProtocolToken;
+
   // Event emitted when tokens are enabled.
   event TokensEnabled(address[] tokens);
 
@@ -72,5 +75,26 @@ abstract contract TokenManagement is OwnableCheck, Initializable {
     if (_token == address(0)) revert ErrorLibrary.InvalidAddress();
     isEnabled[_token] = false;
     emit TokenDisabled(_token);
+  }
+
+  function enableProtocolTokens(
+    address[] memory _protocolTokens
+  ) external onlyProtocolOwner {
+    uint256 tokensLength = _protocolTokens.length;
+    for (uint256 i; i < tokensLength; i++) {
+      address token = _protocolTokens[i];
+      if (token == address(0)) revert ErrorLibrary.InvalidTokenAddress();
+      isProtocolToken[token] = true;
+    }
+  }
+
+  function disableProtocolTokens(
+    address[] memory _protocolTokens
+  ) external onlyProtocolOwner {
+    uint256 tokensLength = _protocolTokens.length;
+    for (uint256 i; i < tokensLength; i++) {
+      address token = _protocolTokens[i];
+      isProtocolToken[token] = false;
+    }
   }
 }

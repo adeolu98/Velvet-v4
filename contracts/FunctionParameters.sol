@@ -16,11 +16,7 @@ library FunctionParameters {
    * @param _baseAssetManagementConfigAddress Base AssetManagement Config address for cloning
    * @param _feeModuleImplementationAddress Fee Module implementation contract address
    * @param  _baseTokenRemovalVaultImplementation Token Removal Vault implementation contract address
-   * @param  _basePositionManager Position manager implementation contract address
-   * @param  _basePositionWrapper Position wrapper implementation contract address
    * @param _baseVelvetGnosisSafeModuleAddress Base Gnosis-Safe module address for cloning
-   * @param  _basePositionManager Position manager implementation contract address
-   * @param  _basePositionWrapper Position wrapper implementation contract address
    * @param _gnosisSingleton Gnosis Singleton contract address
    * @param _gnosisFallbackLibrary Gnosis Fallback Library address
    * @param _gnosisMultisendLibrary Gnosis Multisend Library address
@@ -36,8 +32,7 @@ library FunctionParameters {
     address _feeModuleImplementationAddress;
     address _baseTokenRemovalVaultImplementation;
     address _baseVelvetGnosisSafeModuleAddress;
-    address _basePositionManager;
-    address _basePositionWrapper;
+    address _baseBorrowManager;
     address _gnosisSingleton;
     address _gnosisFallbackLibrary;
     address _gnosisMultisendLibrary;
@@ -63,6 +58,7 @@ library FunctionParameters {
     address _vault;
     address _module;
     address _tokenExclusionManager;
+    address _borrowManager;
     address _accessController;
     address _protocolConfig;
     address _assetManagementConfig;
@@ -133,8 +129,6 @@ library FunctionParameters {
     address _accessController;
     address _feeModule;
     address _assetManagerTreasury;
-    address _basePositionManager;
-    address _basePositionWrapper;
     address[] _whitelistedTokens;
     bool _publicPortfolio;
     bool _transferable;
@@ -156,6 +150,7 @@ library FunctionParameters {
     address _portfolioCreator;
     address _rebalancing;
     address _feeModule;
+    address _borrowManager;
   }
 
   /**
@@ -212,34 +207,53 @@ library FunctionParameters {
     uint256 _threshold;
   }
 
-  /**
-   * @notice Struct to hold parameters for managing deposits into external positions.
-   * @dev This struct helps organize the data necessary for performing swaps and managing liquidity, especially for positions represented externally.
-   * @param _positionWrappers Array of addresses for external position wrapper contracts, which abstract underlying liquidity pools or other DeFi primitives.
-   * @param _swapTokens Array of tokens involved in swaps or to be added to liquidity pools.
-   * @param _positionWrapperIndex Array of indices specifying for each position wrapper the index of the corresponding portfolio token.
-   * @param _portfolioTokenIndex Array of indices linking each swap token or liquidity operation to specific tokens in the managing portfolio.
-   * @param _index0 Array of indices in _swapTokens representing the first token of each liquidity pair.
-   * @param _index1 Array of indices in _swapTokens representing the second token of each liquidity pair.
-   * @param _amount0Min Minimum amount of the first token in a liquidity pair to mitigate slippage, ensuring operations don't proceed under unfavorable market conditions.
-   * @param _amount1Min Minimum amount of the second token in a liquidity pair to mitigate slippage, similarly to _amount0Min.
-   * @param _isExternalPosition Array of booleans indicating whether each token operation involves an external position, allowing for specific handling.
-   */
-  struct ExternalPositionDepositParams {
-    address[] _positionWrappers;
-    address[] _swapTokens;
-    uint256[] _positionWrapperIndex;
-    uint256[] _portfolioTokenIndex;
-    uint256[] _index0;
-    uint256[] _index1;
-    uint256 _amount0Min;
-    uint256 _amount1Min;
-    bool[] _isExternalPosition;
+  struct RepayParams {
+    address _factory;
+    address _token0; //USDT
+    address _token1; //USDC
+    address _flashLoanToken;
+    address[] _debtToken;
+    address[] _protocolToken; // lending token in case of venus
+    address _solverHandler;
+    uint256[] _flashLoanAmount;
+    uint256[] _debtRepayAmount;
+    bytes[] firstSwapData;
+    bytes[] secondSwapData;
   }
 
-  struct ExternalPositionWithdrawParams {
-    address[] _positionWrappers;
-    uint256[] _amountsMin0;
-    uint256[] _amountsMin1;
+  struct withdrawRepayParams {
+    address _factory;
+    address _token0;
+    address _token1;
+    address _flashLoanToken;
+    address _solverHandler;
+    uint256[] _flashLoanAmount;
+    bytes[] firstSwapData;
+    bytes[] secondSwapData;
+  }
+
+  struct FlashLoanData {
+    address flashLoanToken;
+    address[] debtToken;
+    address[] protocolTokens;
+    address solverHandler;
+    uint256[] flashLoanAmount;
+    uint256[] debtRepayAmount;
+    bytes[] firstSwapData;
+    bytes[] secondSwapData;
+  }
+
+  struct AccountData {
+    uint totalCollateral;
+    uint totalDebt;
+    uint availableBorrows;
+    uint currentLiquidationThreshold;
+    uint ltv;
+    uint healthFactor;
+  }
+
+  struct TokenBalances {
+    address[] lendTokens;
+    address[] borrowTokens;
   }
 }

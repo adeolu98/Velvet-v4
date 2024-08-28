@@ -21,7 +21,7 @@ interface IRebalancing {
   event UpdatedWeights();
   event UpdatedTokens(address[] newTokens);
 
-  function init(IPortfolio _portfolio, address _accessController) external;
+  function init(IPortfolio _portfolio, address _accessController, address _borrowManager) external;
 
   /**
    * @notice The function updates the token weights and rebalances the portfolio to the new weights

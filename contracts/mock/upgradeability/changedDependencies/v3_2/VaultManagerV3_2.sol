@@ -14,8 +14,11 @@ import {VaultCalculations, Dependencies} from "../../../../core/calculations/Vau
 import {MathUtils} from "../../../../core/calculations/MathUtils.sol";
 
 import {PortfolioTokenV3_2} from "./PortfolioTokenV3_2.sol";
+import {IProtocolConfig} from "../../../../config/protocol/IProtocolConfig.sol";
 
 import {IAllowanceTransfer} from "../../../../core/interfaces/IAllowanceTransfer.sol";
+import {TokenBalanceLibrary} from "../../../../core/calculations/TokenBalanceLibrary.sol";
+import {IBorrowManager} from "../../../../core/interfaces/IBorrowManager.sol";
 
 /**
  * @title VaultManager
@@ -32,6 +35,9 @@ abstract contract VaultManagerV3_2 is
   IAllowanceTransfer public immutable permit2 =
     IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
+  IProtocolConfig internal _protocolConfig;
+  IBorrowManager internal _borrowManager;
+
   /**
    * @notice Initializes the VaultManager contract.
    * @dev This function sets up the ReentrancyGuard by calling its initializer. It's designed to be called
@@ -39,7 +45,12 @@ abstract contract VaultManagerV3_2 is
    *      safely in functions to prevent reentrancy attacks. This is a standard part of setting up contracts
    *      that handle external calls or token transfers, providing an additional layer of security.
    */
-  function __VaultManager_init() internal {
+  function __VaultManager_init(
+    address protocolConfig,
+    address borrowManager
+  ) internal onlyInitializing {
+    _protocolConfig = IProtocolConfig(protocolConfig);
+    _borrowManager = IBorrowManager(borrowManager);
     __ReentrancyGuard_init();
   }
 
@@ -198,7 +209,11 @@ abstract contract VaultManagerV3_2 is
     for (uint256 i; i < portfolioTokenLength; i++) {
       address _token = portfolioTokens[i];
       // Calculate the proportion of each token to return based on the burned portfolio tokens.
-      uint256 tokenBalance = _getTokenBalanceOf(_token, vault);
+      uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
+        portfolioTokens[i],
+        vault,
+        _protocolConfig
+      );
       userWithdrawalAmounts[i] = tokenBalance;
       tokenBalance =
         (tokenBalance * _portfolioTokenAmount) /
@@ -299,10 +314,8 @@ abstract contract VaultManagerV3_2 is
     }
 
     // Get current token balances in the vault for ratio calculations
-    uint256[] memory tokenBalancesBefore = getTokenBalancesOf(
-      portfolioTokens,
-      vault
-    );
+    uint256[] memory tokenBalancesBefore = TokenBalanceLibrary
+      .getTokenBalancesOf(portfolioTokens, vault, _protocolConfig);
 
     // If the vault is empty, accept the deposits and return zero as the initial ratio
     if (totalSupply() == 0) {
@@ -313,11 +326,8 @@ abstract contract VaultManagerV3_2 is
     }
 
     // Calculate the minimum ratio to maintain proportional token balances in the vault
-    uint256 _minRatio = _getDepositToVaultBalanceRatio(
-      depositAmounts[0],
-      tokenBalancesBefore[0]
-    );
-    for (uint256 i = 1; i < amountLength; i++) {
+    uint256 _minRatio = type(uint).max;
+    for (uint256 i; i < amountLength; i++) {
       uint256 _currentRatio = _getDepositToVaultBalanceRatio(
         depositAmounts[i],
         tokenBalancesBefore[i]
@@ -326,18 +336,25 @@ abstract contract VaultManagerV3_2 is
     }
 
     uint256 transferAmount;
-    uint256 balanceAfter;
     uint256 _minRatioAfterTransfer = type(uint256).max;
     // Adjust token deposits to match the minimum ratio and update the vault balances
     for (uint256 i; i < amountLength; i++) {
       address token = portfolioTokens[i];
-      transferAmount = (_minRatio * tokenBalancesBefore[i]) / ONE_ETH_IN_WEI;
+      uint256 tokenBalanceBefore = tokenBalancesBefore[i];
+      transferAmount = (_minRatio * tokenBalanceBefore) / ONE_ETH_IN_WEI;
       _transferToVault(_from, token, transferAmount);
 
-      balanceAfter = _getTokenBalanceOf(token, vault);
-      _minRatioAfterTransfer = _getMinDepositToVaultBalanceRatio(
-        tokenBalancesBefore[i],
-        balanceAfter,
+      uint256 tokenBalanceAfter = TokenBalanceLibrary._getTokenBalanceOf(
+        token,
+        vault,
+        _protocolConfig
+      );
+      uint256 currentRatio = _getDepositToVaultBalanceRatio(
+        tokenBalanceAfter - tokenBalanceBefore,
+        tokenBalanceAfter
+      );
+      _minRatioAfterTransfer = MathUtils._min(
+        currentRatio,
         _minRatioAfterTransfer
       );
     }

@@ -6,13 +6,11 @@ import {ErrorLibrary} from "../library/ErrorLibrary.sol";
 import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
 import {IAccessController} from "../access/IAccessController.sol";
 import {IProtocolConfig} from "../config/protocol/IProtocolConfig.sol";
-import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
-
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
 import {ITokenExclusionManager} from "../core/interfaces/ITokenExclusionManager.sol";
 
 import {AccessRoles} from "../access/AccessRoles.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
-
 import {TokenBalanceLibrary} from "../core/calculations/TokenBalanceLibrary.sol";
 
 /**
@@ -21,15 +19,13 @@ import {TokenBalanceLibrary} from "../core/calculations/TokenBalanceLibrary.sol"
  * @dev This contract includes helper functions for rebalancing operations such as validating handler, checking token balances, and initial setup.
  */
 
-contract RebalancingConfig is AccessRoles, Initializable, TokenBalanceLibrary {
+contract RebalancingConfig is AccessRoles, Initializable {
   IPortfolio public portfolio;
   IAccessController public accessController;
   IProtocolConfig public protocolConfig;
-  IAssetManagementConfig public assetManagementConfig;
   ITokenExclusionManager internal tokenExclusionManager;
 
   mapping(address => bool) public tokensMapping;
-
   address internal _vault;
 
   /**
@@ -43,13 +39,9 @@ contract RebalancingConfig is AccessRoles, Initializable, TokenBalanceLibrary {
   ) internal onlyInitializing {
     if (_portfolio == address(0) || _accessController == address(0))
       revert ErrorLibrary.InvalidAddress();
-
     portfolio = IPortfolio(_portfolio);
     accessController = IAccessController(_accessController);
     protocolConfig = IProtocolConfig(portfolio.protocolConfig());
-    assetManagementConfig = IAssetManagementConfig(
-      portfolio.assetManagementConfig()
-    );
     tokenExclusionManager = ITokenExclusionManager(
       portfolio.tokenExclusionManager()
     );
@@ -96,35 +88,6 @@ contract RebalancingConfig is AccessRoles, Initializable, TokenBalanceLibrary {
   }
 
   /**
-   * @notice Updates the token balance mapping based on the new token list.
-   * @param _portfolioTokens Array of current portfolio tokens.
-   * @param _newTokens Array of new tokens after rebalancing.
-   */
-  function _verifyZeroBalanceForRemovedTokens(
-    address[] memory _portfolioTokens,
-    address[] memory _newTokens
-  ) internal {
-    uint256 tokenLength = _portfolioTokens.length;
-    for (uint256 i; i < tokenLength; i++) {
-      tokensMapping[_portfolioTokens[i]] = true;
-    }
-
-    uint256 newTokensLength = _newTokens.length;
-    for (uint256 i; i < newTokensLength; i++) {
-      tokensMapping[_newTokens[i]] = false;
-    }
-
-    for (uint256 i; i < tokenLength; i++) {
-      address _portfolioToken = _portfolioTokens[i];
-      if (tokensMapping[_portfolioToken]) {
-        if (_getTokenBalanceOf(_portfolioToken, _vault) != 0)
-          revert ErrorLibrary.NonPortfolioTokenBalanceIsNotZero();
-      }
-      delete tokensMapping[_portfolioToken];
-    }
-  }
-
-  /**
    * @notice The function is used to get tokens from portfolio
    * @return Array of token returned
    */
@@ -146,5 +109,12 @@ contract RebalancingConfig is AccessRoles, Initializable, TokenBalanceLibrary {
       }
     }
     return false;
+  }
+
+  function _getTokenBalanceOf(
+    address _token,
+    address _of
+  ) internal view returns (uint256) {
+    return IERC20Upgradeable(_token).balanceOf(_of);
   }
 }

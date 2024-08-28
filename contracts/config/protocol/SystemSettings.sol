@@ -24,6 +24,11 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   bool public isProtocolPaused;
   bool public isProtocolEmergencyPaused;
 
+  address[] public supportedControllers;
+
+  mapping(address => address) public marketControllers;
+  mapping(address => address) public assetHandlers;
+
   event ProtocolPaused(bool indexed paused);
   event MinPortfolioTokenHoldingAmountUpdated(uint256 indexed newAmount);
   event CooldownPeriodUpdated(uint256 indexed newPeriod);
@@ -161,5 +166,52 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     allowedDustTolerance = _allowedDustTolerance;
 
     emit AllowedDustToleranceUpdated(_allowedDustTolerance);
+  }
+
+  function setMarketControllers(
+    address[] memory _assets,
+    address[] memory _controllers
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      marketControllers[_assets[i]] = _controllers[i];
+    }
+  }
+
+  function removeMarketControllers(
+    address[] memory _assets
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      delete marketControllers[_assets[i]];
+    }
+  }
+
+  function setAssetHandlers(
+    //Can also add controllers to handler mapping
+    address[] memory _assets,
+    address[] memory _handlers
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      assetHandlers[_assets[i]] = _handlers[i];
+    }
+  }
+
+  function removeAssetHandlers(
+    address[] memory _assets
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      delete assetHandlers[_assets[i]];
+    }
+  }
+
+  function setSupportedControllers(
+    address[] memory _controllers
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _controllers.length; i++) {
+      supportedControllers.push(_controllers[i]);
+    }
+  }
+
+  function getSupportedControllers() external view returns (address[] memory) {
+    return supportedControllers;
   }
 }

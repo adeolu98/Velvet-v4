@@ -9,7 +9,6 @@ pragma solidity 0.8.17;
  *      more complex mathematical functions as needed.
  */
 library MathUtils {
-  error InvalidCastToUint128();
   error InvalidCastToUint160();
 
   /**
@@ -46,17 +45,6 @@ library MathUtils {
     } else {
       return 0;
     }
-  }
-
-  /**
-   * @notice Safely casts a uint value to uint128, ensuring the value is within the range of uint160.
-   * @param _val The value to cast to uint128.
-   * @return The value cast to uint128, if it is representable.
-   * @dev Reverts with `InvalidCastToUint128` error if the value exceeds the maximum uint128 value.
-   */
-  function safe128(uint _val) internal pure returns (uint128) {
-    if (_val > type(uint128).max) revert InvalidCastToUint128();
-    return uint128(_val);
   }
 
   /**

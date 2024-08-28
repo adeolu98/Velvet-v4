@@ -7,6 +7,7 @@ import {TargetWhitelisting, ErrorLibrary} from "./TargetWhitelisting.sol";
 import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IWithdrawBatch} from "./IWithdrawBatch.sol";
+import {FunctionParameters} from "../FunctionParameters.sol";
 
 /**
  * @title WithdrawManager
@@ -37,6 +38,7 @@ contract WithdrawManager is ReentrancyGuard, TargetWhitelisting {
     address _target,
     address _tokenToWithdraw,
     uint256 _portfolioTokenAmount,
+    FunctionParameters.withdrawRepayParams calldata repayData,
     bytes[] memory _callData
   ) external nonReentrant {
     validateTargetWhitelisting(_target);
@@ -46,7 +48,8 @@ contract WithdrawManager is ReentrancyGuard, TargetWhitelisting {
     IPortfolio(_target).multiTokenWithdrawalFor(
       user,
       address(WITHDRAW_BATCH),
-      _portfolioTokenAmount
+      _portfolioTokenAmount,
+      repayData
     );
 
     WITHDRAW_BATCH.multiTokenSwapAndWithdraw(

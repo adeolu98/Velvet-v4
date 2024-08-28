@@ -229,5 +229,11 @@ interface IProtocolConfig {
    */
   function disableRewardTarget(address _rewardTargetAddress) external;
 
-  function positionWrapperBaseImplementation() external view returns (address);
+  function marketControllers(address _asset) external view returns (address);
+
+  function assetHandlers(address _asset) external view returns (address);
+
+  function getSupportedControllers() external view returns (address[] memory);
+
+  function isProtocolToken(address _asset) external view returns (bool);
 }

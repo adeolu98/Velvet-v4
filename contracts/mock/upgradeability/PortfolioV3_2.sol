@@ -32,7 +32,6 @@ contract PortfolioV3_2 is
 {
   // Configuration contracts for asset management, protocol parameters, and fee calculations.
   IAssetManagementConfig private _assetManagementConfig;
-  IProtocolConfig private _protocolConfig;
   IFeeModule private _feeModule;
 
   // Prevents the constructor from being called on the implementation contract, ensuring only proxy initialization is valid.
@@ -53,7 +52,7 @@ contract PortfolioV3_2 is
     // Initializes configurations for vault management, token settings, access controls, and user management.
     __VaultConfig_init(initData._vault, initData._module);
     __PortfolioToken_init(initData._name, initData._symbol);
-    __VaultManager_init();
+    __VaultManager_init(initData._protocolConfig, initData._borrowManager);
     __AccessModifiers_init(initData._accessController);
     __UserManagement_init(initData._tokenExclusionManager);
 
@@ -61,7 +60,6 @@ contract PortfolioV3_2 is
     _assetManagementConfig = IAssetManagementConfig(
       initData._assetManagementConfig
     );
-    _protocolConfig = IProtocolConfig(initData._protocolConfig);
     _feeModule = IFeeModule(initData._feeModule);
   }
 
