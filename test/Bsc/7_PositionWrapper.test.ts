@@ -1156,6 +1156,22 @@ describe.only("Tests for Deposit", () => {
 
         await decreaseLiquidity(owner, positionManager.address, position1);
       });
+
+      it("nonOwner should not be able to update allowedRatioDeviationBps param", async () => {
+        await expect(
+          protocolConfig.connect(nonOwner).updateAllowedRatioDeviationBps(100)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("owner should not be able to update allowedRatioDeviationBps param with invalid value", async () => {
+        await expect(
+          protocolConfig.updateAllowedRatioDeviationBps(20000)
+        ).to.be.revertedWithCustomError(protocolConfig, "InvalidDeviationBps");
+      });
+
+      it("owner should be able to update allowedRatioDeviationBps param", async () => {
+        await protocolConfig.updateAllowedRatioDeviationBps(100);
+      });
     });
   });
 });

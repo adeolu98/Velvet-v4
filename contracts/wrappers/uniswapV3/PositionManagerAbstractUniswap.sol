@@ -7,8 +7,6 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import { IFactory } from "./IFactory.sol";
 import { IPool } from "../interfaces/IPool.sol";
-import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
-
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 /**
@@ -16,7 +14,6 @@ import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRou
  * @dev Extension of PositionManagerAbstract for managing Uniswap V3 positions with added features like custom token swapping.
  */
 abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
-  IProtocolConfig internal protocolConfig;
   ISwapRouter router;
 
   /**
@@ -36,10 +33,10 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
   ) internal {
     PositionManagerAbstract__init(
       _nonFungiblePositionManagerAddress,
+      _protocolConfig,
       _assetManagerConfig,
       _accessController
     );
-    protocolConfig = IProtocolConfig(_protocolConfig);
 
     router = ISwapRouter(_swapRouter);
   }

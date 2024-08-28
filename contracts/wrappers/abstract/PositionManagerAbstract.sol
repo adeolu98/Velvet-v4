@@ -11,6 +11,7 @@ import { IPositionWrapper } from "./IPositionWrapper.sol";
 import { WrapperFunctionParameters } from "../WrapperFunctionParameters.sol";
 import { MathUtils } from "../../core/calculations/MathUtils.sol";
 import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManagementConfig.sol";
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 import { IAccessController } from "../../access/IAccessController.sol";
 import { AccessRoles } from "../../access/AccessRoles.sol";
 
@@ -30,6 +31,8 @@ abstract contract PositionManagerAbstract is
   /// @dev Reference to the Uniswap V3 Non-Fungible Position Manager for managing liquidity positions.
   INonfungiblePositionManager internal uniswapV3PositionManager;
 
+  IProtocolConfig internal protocolConfig;
+
   /// @dev Contract for managing asset configurations, used to enforce rules and parameters for asset operations.
   IAssetManagementConfig assetManagementConfig;
 
@@ -38,6 +41,8 @@ abstract contract PositionManagerAbstract is
 
   /// @notice Minimum amount of fees in smallest token unit that must be collected before they can be reinvested.
   uint256 internal constant MIN_REINVESTMENT_AMOUNT = 1000000;
+
+  uint256 internal constant TOTAL_WEIGHT = 10_000;
 
   /// @notice List of addresses for all deployed position wrapper contracts.
   address[] public deployedPositionWrappers;
@@ -78,12 +83,14 @@ abstract contract PositionManagerAbstract is
    */
   function PositionManagerAbstract__init(
     address _nonFungiblePositionManagerAddress,
+    address _protocolConfig,
     address _assetManagerConfig,
     address _accessController
   ) internal {
     uniswapV3PositionManager = INonfungiblePositionManager(
       _nonFungiblePositionManagerAddress
     );
+    protocolConfig = IProtocolConfig(_protocolConfig);
     assetManagementConfig = IAssetManagementConfig(_assetManagerConfig);
     accessController = IAccessController(_accessController);
   }
@@ -656,10 +663,14 @@ abstract contract PositionManagerAbstract is
   function _verifyRatio(
     uint256 _poolRatio,
     uint256 _ratioAfterSwap
-  ) internal pure {
+  ) internal view {
     // allow 0.5% derivation
-    uint256 upperBound = (_poolRatio * 10_050) / 10_000;
-    uint256 lowerBound = (_poolRatio * 9_950) / 10_000;
+    uint256 allowedRatioDeviationBps = protocolConfig
+      .allowedRatioDeviationBps();
+    uint256 upperBound = (_poolRatio *
+      (TOTAL_WEIGHT + allowedRatioDeviationBps)) / TOTAL_WEIGHT;
+    uint256 lowerBound = (_poolRatio *
+      (TOTAL_WEIGHT - allowedRatioDeviationBps)) / TOTAL_WEIGHT;
 
     if (_ratioAfterSwap > upperBound || _ratioAfterSwap < lowerBound) {
       revert ErrorLibrary.InvalidSwapAmount();
@@ -669,8 +680,11 @@ abstract contract PositionManagerAbstract is
   function _verifyOneSidedRatio(
     uint256 _balanceBeforeSwap,
     uint256 _balanceAfterSwap
-  ) internal pure {
-    uint256 dustAllowance = (_balanceBeforeSwap * 9_950) / 10_000;
+  ) internal view {
+    uint256 allowedRatioDeviationBps = protocolConfig
+      .allowedRatioDeviationBps();
+    uint256 dustAllowance = (_balanceBeforeSwap *
+      (TOTAL_WEIGHT - allowedRatioDeviationBps)) / TOTAL_WEIGHT;
 
     if (_balanceAfterSwap > dustAllowance) {
       revert ErrorLibrary.InvalidSwapAmount();

@@ -6,7 +6,6 @@ import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { IFactory } from "./IFactory.sol";
 import { IPool } from "../interfaces/IPool.sol";
-import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 import { ISwapRouter } from "./ISwapRouter.sol";
 
 import { LiquidityAmountsCalculations } from "../abstract/LiquidityAmountsCalculations.sol";
@@ -16,7 +15,6 @@ import { LiquidityAmountsCalculations } from "../abstract/LiquidityAmountsCalcul
  * @dev Extension of PositionManagerAbstract for managing Algebra V3 positions with added features like custom token swapping.
  */
 abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
-  IProtocolConfig internal protocolConfig;
   ISwapRouter router;
 
   /**
@@ -36,11 +34,11 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   ) internal {
     PositionManagerAbstract__init(
       _nonFungiblePositionManagerAddress,
+      _protocolConfig,
       _assetManagerConfig,
       _accessController
     );
 
-    protocolConfig = IProtocolConfig(_protocolConfig);
     router = ISwapRouter(_swapRouter);
   }
 

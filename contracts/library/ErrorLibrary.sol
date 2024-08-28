@@ -181,4 +181,6 @@ library ErrorLibrary {
   error InvalidBalance();
   // @notice Thrown when the swap amount is invalid
   error InvalidSwapAmount();
+  // @notice Thrown when the passed deviation bps is invalid
+  error InvalidDeviationBps();
 }
