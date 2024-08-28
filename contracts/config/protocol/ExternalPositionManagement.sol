@@ -13,6 +13,7 @@ abstract contract ExternalPositionManagement is OwnableCheck, Initializable {
 
   event PositionWrapperBaseAddressUpdated(address indexed _newAddress);
   event AllowedRatioDeviationBpsUpdated(uint256 indexed _newDeviationBps);
+  event UpgradePositionWrapper(address indexed newImplementation);
 
   /// @notice The maximum allowed deviation from the target ratio for external positions, measured in basis points.
   uint256 public allowedRatioDeviationBps;

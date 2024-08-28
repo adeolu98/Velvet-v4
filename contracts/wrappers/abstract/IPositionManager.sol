@@ -64,4 +64,8 @@ interface IPositionManager {
     address tokenOut,
     uint256 amountIn
   ) external;
+
+  function assetManagementConfig() external view returns (address);
+
+  function protocolConfig() external view returns (address);
 }

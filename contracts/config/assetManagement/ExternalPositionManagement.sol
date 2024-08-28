@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {IAccessController} from "../../access/IAccessController.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {IPositionManager} from "../../wrappers/abstract/IPositionManager.sol";
-import {PositionWrapper} from "../../wrappers/abstract/PositionWrapper.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {AccessRoles} from "../../access/AccessRoles.sol";
+import { IAccessController } from "../../access/IAccessController.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
+import { IPositionManager } from "../../wrappers/abstract/IPositionManager.sol";
+import { PositionWrapper } from "../../wrappers/abstract/PositionWrapper.sol";
 
-import {IAssetManagementConfig} from "../../config/assetManagement/IAssetManagementConfig.sol";
+import { AccessRoles } from "../../access/AccessRoles.sol";
+
+import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManagementConfig.sol";
 
 /**
  * @title External Position Management
@@ -65,13 +66,18 @@ abstract contract ExternalPositionManagement is AccessRoles {
       revert UniSwapV3WrapperAlreadyEnabled();
     }
 
-    // Clone and initialize the position manager.
-    positionManager = IPositionManager(Clones.clone(basePositionManager));
-    positionManager.init(
-      protocolConfig,
-      address(this),
-      accessControllerAddress
+    // Deploy and initialize the position manager.
+    ERC1967Proxy positionManagerProxy = new ERC1967Proxy(
+      basePositionManager,
+      abi.encodeWithSelector(
+        IPositionManager.init.selector,
+        protocolConfig,
+        address(this),
+        accessControllerAddress
+      )
     );
+
+    positionManager = IPositionManager(address(positionManagerProxy));
 
     // Mark the wrapper as enabled.
     uniswapV3WrapperEnabled = true;

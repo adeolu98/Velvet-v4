@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable } from "../abstract/PositionManagerAbstract.sol";
 import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IFactory } from "./IFactory.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { ISwapRouter } from "./ISwapRouter.sol";
@@ -198,15 +198,24 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       revert ErrorLibrary.TokenNotWhitelisted();
     }
 
-    // Clone the base implementation of a position wrapper.
-    IPositionWrapper positionWrapper = IPositionWrapper(
-      Clones.clone(protocolConfig.positionWrapperBaseImplementation())
-    );
-
     (address token0, address token1) = _getTokensInPoolOrder(_token0, _token1);
 
-    // Initialize the cloned position wrapper with token addresses, name, and symbol.
-    positionWrapper.init(address(this), token0, token1, _name, _symbol);
+    // Deploy and initialize the position wrapper.
+    ERC1967Proxy positionWrapperProxy = new ERC1967Proxy(
+      protocolConfig.positionWrapperBaseImplementation(),
+      abi.encodeWithSelector(
+        IPositionWrapper.init.selector,
+        address(this),
+        token0,
+        token1,
+        _name,
+        _symbol
+      )
+    );
+
+    IPositionWrapper positionWrapper = IPositionWrapper(
+      address(positionWrapperProxy)
+    );
 
     // Set init values for the position wrapper
     positionWrapper.setIntitialParameters(0, _tickLower, _tickUpper);

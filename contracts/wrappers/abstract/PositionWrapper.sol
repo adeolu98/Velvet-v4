@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/ERC20Upgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/ERC20Upgradeable.sol";
+import { IPositionManager } from "./IPositionManager.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
 
 /**
  * @title PositionWrapper
@@ -11,7 +15,11 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/token/
  *      to provide an ERC20 interface for Uniswap V3 liquidity positions, allowing them to be managed
  *      and interacted with like standard ERC20 tokens.
  */
-contract PositionWrapper is OwnableUpgradeable, ERC20Upgradeable {
+contract PositionWrapper is
+  OwnableUpgradeable,
+  ERC20Upgradeable,
+  UUPSUpgradeable
+{
   address public positionManager; // Address of the Uniswap V3 position manager.
 
   address public token0; // Address of the first token in the Uniswap V3 pair.
@@ -29,6 +37,11 @@ contract PositionWrapper is OwnableUpgradeable, ERC20Upgradeable {
   error PositionWrapperTokenIdIsTheSame(); // Custom error for trying to set the same token ID.
   error AlreadyInitialized(); // Custom error when ID is already initialized
 
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
   /**
    * @notice Initializes the PositionWrapper contract with specific token details and ERC20 token metadata.
    * @param _token0 Address of the first token in the Uniswap V3 pair.
@@ -44,6 +57,7 @@ contract PositionWrapper is OwnableUpgradeable, ERC20Upgradeable {
     string memory _name,
     string memory _symbol
   ) external initializer {
+    __UUPSUpgradeable_init();
     __Ownable_init();
     token0 = _token0;
     token1 = _token1;
@@ -106,5 +120,16 @@ contract PositionWrapper is OwnableUpgradeable, ERC20Upgradeable {
   function updateTokenId(uint256 _tokenId) external onlyOwner {
     if (tokenId == _tokenId) revert PositionWrapperTokenIdIsTheSame();
     tokenId = _tokenId;
+  }
+
+  /**
+   * @notice Authorizes upgrade for this contract
+   * @param newImplementation Address of the new implementation
+   */
+  function _authorizeUpgrade(address newImplementation) internal override {
+    address protocolConfig = IPositionManager(positionManager).protocolConfig();
+    if (!(msg.sender == protocolConfig)) revert ErrorLibrary.CallerNotAdmin();
+
+    // Intentionally left empty as required by an abstract contract
   }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {FunctionParameters} from "../../FunctionParameters.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
 
 /**
  * @title IAssetManagementConfig
@@ -117,4 +117,5 @@ interface IAssetManagementConfig {
   ) external;
 
   function isTokenWhitelisted(address _token) external returns (bool);
+  function owner() external view returns (address);
 }

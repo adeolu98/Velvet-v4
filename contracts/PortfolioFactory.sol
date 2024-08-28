@@ -84,6 +84,8 @@ contract PortfolioFactory is
 
   event TransferSuperAdminOwnership(address indexed newOwner);
 
+  event UpgradePositionManager(address indexed newImplementation);
+
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -413,6 +415,20 @@ contract PortfolioFactory is
     _setBaseRebalancingAddress(_newImpl);
     _upgrade(_proxy, _newImpl);
     emit UpgradeRebalance(_newImpl);
+  }
+
+  /**
+   * @notice This function is used to upgrade the Token Exclusion Manager contract
+   * @param _proxy Proxy address
+   * @param _newImpl New implementation address
+   */
+  function upgradePositionManager(
+    address[] calldata _proxy,
+    address _newImpl
+  ) external virtual onlyOwner {
+    setPositionManagerImplementationAddress(_newImpl);
+    _upgrade(_proxy, _newImpl);
+    emit UpgradePositionManager(_newImpl);
   }
 
   /**

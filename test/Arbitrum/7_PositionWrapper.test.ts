@@ -971,6 +971,113 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         await decreaseLiquidity(owner, positionManager.address, position1);
       });
+
+      it("nonOwner should not be able to update allowedRatioDeviationBps param", async () => {
+        await expect(
+          protocolConfig.connect(nonOwner).updateAllowedRatioDeviationBps(100)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("owner should not be able to update allowedRatioDeviationBps param with invalid value", async () => {
+        await expect(
+          protocolConfig.updateAllowedRatioDeviationBps(20000)
+        ).to.be.revertedWithCustomError(protocolConfig, "InvalidDeviationBps");
+      });
+
+      it("owner should be able to update allowedRatioDeviationBps param", async () => {
+        await protocolConfig.updateAllowedRatioDeviationBps(100);
+      });
+
+      it("owner should not be able to upgrade the position wrapper if protocol is not paused", async () => {
+        const PositionWrapper = await ethers.getContractFactory(
+          "PositionWrapper"
+        );
+        const positionWrapperBase = await PositionWrapper.deploy();
+        await positionWrapperBase.deployed();
+
+        await expect(
+          protocolConfig.upgradePositionWrapper(
+            [position1],
+            positionWrapperBase.address
+          )
+        ).to.be.revertedWithCustomError(protocolConfig, "ProtocolNotPaused");
+      });
+
+      it("owner should not be able to  upgrade the position manager if protocol is not paused", async () => {
+        const PositionManager = await ethers.getContractFactory(
+          "PositionManagerUniswap"
+        );
+        const positionManagerBase = await PositionManager.deploy();
+        await positionManagerBase.deployed();
+
+        await expect(
+          portfolioFactory.upgradePositionManager(
+            [positionManager.address],
+            positionManagerBase.address
+          )
+        ).to.be.revertedWithCustomError(portfolioFactory, "ProtocolNotPaused");
+      });
+
+      it("should pause protocol", async () => {
+        await protocolConfig.setProtocolPause(true);
+      });
+
+      it("should upgrade the position manager", async () => {
+        const PositionManager = await ethers.getContractFactory(
+          "PositionManagerUniswap"
+        );
+        const positionManagerBase = await PositionManager.deploy();
+        await positionManagerBase.deployed();
+
+        await portfolioFactory.upgradePositionManager(
+          [positionManager.address],
+          positionManagerBase.address
+        );
+      });
+
+      it("nonOwner should not be able to upgrade the position manager", async () => {
+        const PositionManager = await ethers.getContractFactory(
+          "PositionManagerUniswap"
+        );
+        const positionManagerBase = await PositionManager.deploy();
+        await positionManagerBase.deployed();
+
+        await expect(
+          portfolioFactory
+            .connect(nonOwner)
+            .upgradePositionManager(
+              [positionManager.address],
+              positionManagerBase.address
+            )
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("should upgrade the position wrapper", async () => {
+        const PositionWrapper = await ethers.getContractFactory(
+          "PositionWrapper"
+        );
+        const positionWrapperBase = await PositionWrapper.deploy();
+        await positionWrapperBase.deployed();
+
+        await protocolConfig.upgradePositionWrapper(
+          [position1],
+          positionWrapperBase.address
+        );
+      });
+
+      it("nonOwner should not be able to upgrade the position wrapper", async () => {
+        const PositionWrapper = await ethers.getContractFactory(
+          "PositionWrapper"
+        );
+        const positionWrapperBase = await PositionWrapper.deploy();
+        await positionWrapperBase.deployed();
+
+        await expect(
+          protocolConfig
+            .connect(nonOwner)
+            .upgradePositionWrapper([position1], positionWrapperBase.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
     });
   });
 });

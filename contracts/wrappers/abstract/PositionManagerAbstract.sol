@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
 import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
@@ -24,6 +25,7 @@ import { LiquidityAmountsCalculations } from "./LiquidityAmountsCalculations.sol
  * @dev Abstract contract for managing Uniswap V3 positions and representing them as ERC20 tokens.
  */
 abstract contract PositionManagerAbstract is
+  UUPSUpgradeable,
   TokenCalculations,
   ReentrancyGuardUpgradeable,
   AccessRoles
@@ -31,7 +33,7 @@ abstract contract PositionManagerAbstract is
   /// @dev Reference to the Uniswap V3 Non-Fungible Position Manager for managing liquidity positions.
   INonfungiblePositionManager internal uniswapV3PositionManager;
 
-  IProtocolConfig internal protocolConfig;
+  IProtocolConfig public protocolConfig;
 
   /// @dev Contract for managing asset configurations, used to enforce rules and parameters for asset operations.
   IAssetManagementConfig assetManagementConfig;
@@ -74,6 +76,11 @@ abstract contract PositionManagerAbstract is
     _;
   }
 
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
   /**
    * @notice Initializes the contract with necessary configurations and addresses.
    * @param _nonFungiblePositionManagerAddress Address of the Uniswap V3 Non-Fungible Position Manager.
@@ -87,6 +94,8 @@ abstract contract PositionManagerAbstract is
     address _assetManagerConfig,
     address _accessController
   ) internal {
+    __UUPSUpgradeable_init();
+
     uniswapV3PositionManager = INonfungiblePositionManager(
       _nonFungiblePositionManagerAddress
     );
@@ -689,5 +698,16 @@ abstract contract PositionManagerAbstract is
     if (_balanceAfterSwap > dustAllowance) {
       revert ErrorLibrary.InvalidSwapAmount();
     }
+  }
+
+  /**
+   * @notice Authorizes upgrade for this contract
+   * @param newImplementation Address of the new implementation
+   */
+  function _authorizeUpgrade(address newImplementation) internal override {
+    // Only the owner (PortfolioFactory contract) can authorize an upgrade
+    if (!(msg.sender == assetManagementConfig.owner()))
+      revert ErrorLibrary.CallerNotAdmin();
+    // Intentionally left empty as required by an abstract contract
   }
 }
