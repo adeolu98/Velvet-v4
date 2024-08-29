@@ -458,6 +458,14 @@ abstract contract PositionManagerAbstract is
       feeCollectedT0 > MIN_REINVESTMENT_AMOUNT &&
       feeCollectedT1 > MIN_REINVESTMENT_AMOUNT
     ) {
+      // Approve the Uniswap manager to use the tokens for liquidity.
+      _approveNonFungiblePositionManager(
+        _token0,
+        _token1,
+        feeCollectedT0,
+        feeCollectedT1
+      );
+
       // Increase liquidity using all collected fees
       uniswapV3PositionManager.increaseLiquidity(
         INonfungiblePositionManager.IncreaseLiquidityParams({
