@@ -37,6 +37,7 @@ contract Rebalancing is
         uint256 indexed balance,
         uint256 atSnapshotId
     );
+    event TokenRepayed(FunctionParameters.RepayParams);
 
     uint256 public constant TOTAL_WEIGHT = 10_000; // Represents 100% in basis points.
     IBorrowManager internal borrowManager;
@@ -193,10 +194,11 @@ contract Rebalancing is
      * The flash loan is obtained from the specified pool, and the function handles token swaps and repayments.
      */
     function repay(
+        address _controller,
         FunctionParameters.RepayParams calldata repayData
     ) external onlyAssetManager nonReentrant protocolNotPaused {
-        borrowManager.repayVault(repayData);
-        //Emit
+        borrowManager.repayVault(_controller, repayData);
+        emit TokenRepayed(repayData);
     }
 
     /**

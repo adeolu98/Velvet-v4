@@ -81,7 +81,7 @@ describe.only("Tests for Deposit", () => {
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
   const assetManagerHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("ASSET_MANAGER"),
+    ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
 
   const provider = ethers.provider;
@@ -125,13 +125,13 @@ describe.only("Tests for Deposit", () => {
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
-        "WithdrawManager",
+        "WithdrawManager"
       );
       withdrawManager = await WithdrawManager.deploy();
       await withdrawManager.deployed();
 
       const TokenBalanceLibrary = await ethers.getContractFactory(
-        "TokenBalanceLibrary",
+        "TokenBalanceLibrary"
       );
 
       tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
@@ -142,7 +142,7 @@ describe.only("Tests for Deposit", () => {
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
         [treasury.address, priceOracle.address],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       const chainLinkOracle = "0x1B2103441A0A108daD8848D8F5d790e4D402921F";
@@ -150,7 +150,7 @@ describe.only("Tests for Deposit", () => {
       let oracle = new ethers.Contract(
         chainLinkOracle,
         VENUS_CHAINLINK_ORACLE_ABI,
-        owner.provider,
+        owner.provider
       );
 
       let oracleOwner = await oracle.owner();
@@ -200,13 +200,13 @@ describe.only("Tests for Deposit", () => {
       await rebalancingDefult.deployed();
 
       const AssetManagementConfig = await ethers.getContractFactory(
-        "AssetManagementConfig",
+        "AssetManagementConfig"
       );
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
       const TokenExclusionManager = await ethers.getContractFactory(
-        "TokenExclusionManager",
+        "TokenExclusionManager"
       );
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
@@ -219,7 +219,7 @@ describe.only("Tests for Deposit", () => {
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
-        "UniswapV2Handler",
+        "UniswapV2Handler"
       );
       swapHandler = await PancakeSwapHandler.deploy();
       await swapHandler.deployed();
@@ -227,7 +227,7 @@ describe.only("Tests for Deposit", () => {
       swapHandler.init(addresses.PancakeSwapRouterAddress);
 
       const VenusAssetHandler = await ethers.getContractFactory(
-        "VenusAssetHandler",
+        "VenusAssetHandler"
       );
       venusAssetHandler = await VenusAssetHandler.deploy();
       await venusAssetHandler.deployed();
@@ -243,7 +243,7 @@ describe.only("Tests for Deposit", () => {
           addresses.vDAI_Address,
           addresses.vUSDT_Address,
           addresses.vUSDT_DeFi_Address,
-          addresses.corePool_controller
+          addresses.corePool_controller,
         ],
         [
           venusAssetHandler.address,
@@ -252,7 +252,7 @@ describe.only("Tests for Deposit", () => {
           venusAssetHandler.address,
           venusAssetHandler.address,
           venusAssetHandler.address,
-        ],
+        ]
       );
 
       await protocolConfig.setSupportedControllers([
@@ -273,7 +273,7 @@ describe.only("Tests for Deposit", () => {
           addresses.corePool_controller,
           addresses.corePool_controller,
           addresses.defi_controller,
-        ],
+        ]
       );
 
       let whitelistedTokens = [
@@ -298,7 +298,7 @@ describe.only("Tests for Deposit", () => {
       await feeModule.deployed();
 
       const TokenRemovalVault = await ethers.getContractFactory(
-        "TokenRemovalVault",
+        "TokenRemovalVault"
       );
       const tokenRemovalVault = await TokenRemovalVault.deploy();
       await tokenRemovalVault.deployed();
@@ -307,13 +307,13 @@ describe.only("Tests for Deposit", () => {
       await fakePortfolio.deployed();
 
       const VelvetSafeModule = await ethers.getContractFactory(
-        "VelvetSafeModule",
+        "VelvetSafeModule"
       );
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
       const PortfolioFactory = await ethers.getContractFactory(
-        "PortfolioFactory",
+        "PortfolioFactory"
       );
 
       const portfolioFactoryInstance = await upgrades.deployProxy(
@@ -336,16 +336,16 @@ describe.only("Tests for Deposit", () => {
             _protocolConfig: protocolConfig.address,
           },
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       portfolioFactory = PortfolioFactory.attach(
-        portfolioFactoryInstance.address,
+        portfolioFactoryInstance.address
       );
 
       await withdrawManager.initialize(
         withdrawBatch.address,
-        portfolioFactory.address,
+        portfolioFactory.address
       );
 
       console.log("portfolioFactory address:", portfolioFactory.address);
@@ -393,7 +393,7 @@ describe.only("Tests for Deposit", () => {
 
       portfolio = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress,
+        portfolioAddress
       );
       const PortfolioCalculations = await ethers.getContractFactory(
         "PortfolioCalculations",
@@ -401,7 +401,7 @@ describe.only("Tests for Deposit", () => {
           libraries: {
             TokenBalanceLibrary: tokenBalanceLibrary.address,
           },
-        },
+        }
       );
       feeModule0 = FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
@@ -409,27 +409,27 @@ describe.only("Tests for Deposit", () => {
 
       portfolio1 = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress1,
+        portfolioAddress1
       );
 
       rebalancing = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo.rebalancing,
+        portfolioInfo.rebalancing
       );
 
       rebalancing1 = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo1.rebalancing,
+        portfolioInfo1.rebalancing
       );
 
       tokenExclusionManager = await ethers.getContractAt(
         TokenExclusionManager__factory.abi,
-        portfolioInfo.tokenExclusionManager,
+        portfolioInfo.tokenExclusionManager
       );
 
       tokenExclusionManager1 = await ethers.getContractAt(
         TokenExclusionManager__factory.abi,
-        portfolioInfo1.tokenExclusionManager,
+        portfolioInfo1.tokenExclusionManager
       );
 
       console.log("portfolio deployed to:", portfolio.address);
@@ -462,7 +462,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "20000000000000000",
+            "20000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -477,7 +477,7 @@ describe.only("Tests for Deposit", () => {
           },
           {
             value: "1000000000000000000",
-          },
+          }
         );
 
         console.log("SupplyAfter", await portfolio.totalSupply());
@@ -501,7 +501,7 @@ describe.only("Tests for Deposit", () => {
 
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let balance = BigNumber.from(
-          await ERC20.attach(sellToken).balanceOf(vault),
+          await ERC20.attach(sellToken).balanceOf(vault)
         ).toString();
 
         console.log("Balance to rebalance", balance);
@@ -511,12 +511,12 @@ describe.only("Tests for Deposit", () => {
           ensoHandler.address,
           sellToken,
           buyToken,
-          balance,
+          balance
         );
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
           ["bytes[]", "address[]", "uint256[]"],
-          [[postResponse.data.tx.data], [buyToken], [0]],
+          [[postResponse.data.tx.data], [buyToken], [0]]
         );
 
         await rebalancing.updateTokens({
@@ -529,11 +529,11 @@ describe.only("Tests for Deposit", () => {
 
         console.log(
           "balance after sell",
-          await ERC20.attach(sellToken).balanceOf(vault),
+          await ERC20.attach(sellToken).balanceOf(vault)
         );
         console.log(
           "balance after buy",
-          await ERC20.attach(buyToken).balanceOf(vault),
+          await ERC20.attach(buyToken).balanceOf(vault)
         );
       });
 
@@ -555,7 +555,7 @@ describe.only("Tests for Deposit", () => {
 
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let balance = BigNumber.from(
-          await ERC20.attach(sellToken).balanceOf(vault),
+          await ERC20.attach(sellToken).balanceOf(vault)
         ).toString();
 
         console.log("Balance to rebalance", balance);
@@ -565,12 +565,12 @@ describe.only("Tests for Deposit", () => {
           ensoHandler.address,
           sellToken,
           buyToken,
-          balance,
+          balance
         );
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
           ["bytes[]", "address[]", "uint256[]"],
-          [[postResponse.data.tx.data], [buyToken], [0]],
+          [[postResponse.data.tx.data], [buyToken], [0]]
         );
 
         await rebalancing.updateTokens({
@@ -583,11 +583,11 @@ describe.only("Tests for Deposit", () => {
 
         console.log(
           "balance after sell",
-          await ERC20.attach(sellToken).balanceOf(vault),
+          await ERC20.attach(sellToken).balanceOf(vault)
         );
         console.log(
           "balance after buy",
-          await ERC20.attach(buyToken).balanceOf(vault),
+          await ERC20.attach(buyToken).balanceOf(vault)
         );
       });
 
@@ -604,7 +604,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "20000000000000000",
+            "20000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -619,7 +619,7 @@ describe.only("Tests for Deposit", () => {
           },
           {
             value: "1000000000000000000",
-          },
+          }
         );
 
         console.log("SupplyAfter", await portfolio.totalSupply());
@@ -631,7 +631,7 @@ describe.only("Tests for Deposit", () => {
         let tokens = await portfolio.getTokens();
         console.log(
           "DAI Balance before",
-          await ERC20.attach(addresses.USDT).balanceOf(vault),
+          await ERC20.attach(addresses.USDT).balanceOf(vault)
         );
 
         const newTokens = [...tokens, addresses.USDT];
@@ -640,11 +640,11 @@ describe.only("Tests for Deposit", () => {
           addresses.vBNB_Address,
           addresses.USDT,
           "1000000000000000000",
-          newTokens,
+          newTokens
         );
         console.log(
           "DAI Balance after",
-          await ERC20.attach(addresses.USDT).balanceOf(vault),
+          await ERC20.attach(addresses.USDT).balanceOf(vault)
         );
 
         console.log("newtokens", await portfolio.getTokens());
@@ -656,7 +656,7 @@ describe.only("Tests for Deposit", () => {
         let tokens = await portfolio.getTokens();
         console.log(
           "DAI Balance before",
-          await ERC20.attach(addresses.DAI_Address).balanceOf(vault),
+          await ERC20.attach(addresses.DAI_Address).balanceOf(vault)
         );
 
         const newTokens = [...tokens, addresses.DAI_Address];
@@ -665,11 +665,11 @@ describe.only("Tests for Deposit", () => {
           addresses.vBNB_Address,
           addresses.DAI_Address,
           "1000000000000000000",
-          newTokens,
+          newTokens
         );
         console.log(
           "DAI Balance after",
-          await ERC20.attach(addresses.DAI_Address).balanceOf(vault),
+          await ERC20.attach(addresses.DAI_Address).balanceOf(vault)
         );
 
         console.log("newtokens", await portfolio.getTokens());
@@ -688,7 +688,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "20000000000000000",
+            "20000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -705,7 +705,7 @@ describe.only("Tests for Deposit", () => {
             },
             {
               value: "1000000000000000000",
-            },
+            }
           );
 
         console.log("SupplyAfter", await portfolio.totalSupply());
@@ -718,18 +718,18 @@ describe.only("Tests for Deposit", () => {
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
             [addresses.vUSDT_Address],
-            vault,
+            vault
           );
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller,
+          addresses.corePool_controller
         );
         const lendTokens = userData[1].lendTokens;
         console.log("balanceBorrowed before repay", balanceBorrowed);
 
         console.log(
           "Balance of vToken before",
-          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault),
+          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
         );
 
         const balanceToRepay = (balanceBorrowed[0] / 2).toString();
@@ -743,12 +743,12 @@ describe.only("Tests for Deposit", () => {
           ensoHandler.address,
           addresses.USDT,
           addresses.DAI_Address,
-          balanceToSwap,
+          balanceToSwap
         );
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
           ["bytes[]", "address[]", "uint256[]"],
-          [["0x"], [addresses.DAI_Address], [0]],
+          [["0x"], [addresses.DAI_Address], [0]]
         );
         let encodedParameters1 = [];
         //Because repay(rebalance) is one borrow token at a time
@@ -759,7 +759,7 @@ describe.only("Tests for Deposit", () => {
             venusAssetHandler.address,
             addresses.vUSDT_Address,
             balanceToRepay,
-            "10",
+            "10"
           );
         for (let j = 0; j < lendTokens.length; j++) {
           console.log("amountToSell", amounToSell[j].toString());
@@ -769,18 +769,18 @@ describe.only("Tests for Deposit", () => {
             ensoHandler.address,
             lendTokens[j],
             addresses.USDT,
-            amounToSell[j].toString(), //Need calculation here
+            amounToSell[j].toString() //Need calculation here
           );
 
           encodedParameters1.push(
             ethers.utils.defaultAbiCoder.encode(
               ["bytes[]", "address[]", "uint256[]"],
-              [[postResponse1.data.tx.data], [addresses.USDT], [0]],
-            ),
+              [[postResponse1.data.tx.data], [addresses.USDT], [0]]
+            )
           );
         }
 
-        await rebalancing.repay({
+        await rebalancing.repay(addresses.corePool_controller, {
           _factory: addresses.thena_factory,
           _token0: addresses.USDT, //USDT - Pool token
           _token1: addresses.USDC_Address, //USDC - Pool token
@@ -796,19 +796,19 @@ describe.only("Tests for Deposit", () => {
 
         console.log(
           "Balance of vToken After",
-          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault),
+          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
         );
 
         balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
             [addresses.vUSDT_Address],
-            vault,
+            vault
           );
 
         console.log("balanceBorrowed after repay", balanceBorrowed);
       });
 
-      it("should withdraw in multitoken by owner(user1)", async () => {
+      it("should withdraw in BTC by owner(user1)", async () => {
         await ethers.provider.send("evm_increaseTime", [70]);
 
         const supplyBefore = await portfolio.totalSupply();
@@ -831,12 +831,12 @@ describe.only("Tests for Deposit", () => {
         let withdrawalAmounts =
           await portfolioCalculations.getWithdrawalAmounts(
             amountPortfolioToken,
-            portfolio.address,
+            portfolio.address
           );
 
         await portfolio.approve(
           withdrawManager.address,
-          BigNumber.from(amountPortfolioToken),
+          BigNumber.from(amountPortfolioToken)
         );
         let responses = [];
         let userBalanceBefore = [];
@@ -849,12 +849,12 @@ describe.only("Tests for Deposit", () => {
               user.address,
               tokens[i],
               tokenToSwapInto,
-              (withdrawalAmounts[i] * 0.993).toFixed(0),
+              (withdrawalAmounts[i] * 0.993).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
           userBalanceBefore.push(
-            await ERC20.attach(tokens[i]).balanceOf(user.address),
+            await ERC20.attach(tokens[i]).balanceOf(user.address)
           );
         }
 
@@ -865,7 +865,7 @@ describe.only("Tests for Deposit", () => {
             vault,
             amountPortfolioToken,
             addresses.corePool_controller,
-            venusAssetHandler.address,
+            venusAssetHandler.address
           );
 
         const borrowedPortion = values[0];
@@ -875,7 +875,7 @@ describe.only("Tests for Deposit", () => {
 
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller,
+          addresses.corePool_controller
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -884,20 +884,20 @@ describe.only("Tests for Deposit", () => {
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
             [addresses.vUSDT_Address],
-            vault,
+            vault
           );
 
         console.log("balanceBorrowed before withdraw", balanceBorrowed);
 
         console.log(
           "Balance of vToken before",
-          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault),
+          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
         );
 
         let tokenBalanceBefore: any = [];
         for (let i = 0; i < tokens.length; i++) {
           tokenBalanceBefore[i] = await ERC20.attach(tokens[i]).balanceOf(
-            owner.address,
+            owner.address
           );
         }
 
@@ -911,20 +911,20 @@ describe.only("Tests for Deposit", () => {
               ensoHandler.address,
               flashLoanToken,
               underlyings[i],
-              flashLoanAmount[i].toString(),
+              flashLoanAmount[i].toString()
             );
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
                 ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse.data.tx.data], [underlyings[i]], [0]],
-              ),
+                [[postResponse.data.tx.data], [underlyings[i]], [0]]
+              )
             );
           } else {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
                 ["bytes[]", "address[]", "uint256[]"],
-                [["0x"], [underlyings[i]], [0]],
-              ),
+                [["0x"], [underlyings[i]], [0]]
+              )
             );
           }
 
@@ -935,7 +935,7 @@ describe.only("Tests for Deposit", () => {
               venusAssetHandler.address,
               borrowedTokens[i],
               borrowedPortion[i],
-              "10",
+              "10"
             );
 
           for (let j = 0; j < lendTokens.length; j++) {
@@ -944,14 +944,14 @@ describe.only("Tests for Deposit", () => {
               ensoHandler.address,
               lendTokens[j],
               flashLoanToken,
-              amounToSell[j].toString(), //Need calculation here
+              amounToSell[j].toString() //Need calculation here
             );
 
             encodedParameters1.push(
               ethers.utils.defaultAbiCoder.encode(
                 ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]],
-              ),
+                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
+              )
             );
           }
         }
@@ -970,7 +970,7 @@ describe.only("Tests for Deposit", () => {
             firstSwapData: encodedParameters,
             secondSwapData: encodedParameters1,
           },
-          responses,
+          responses
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -978,13 +978,13 @@ describe.only("Tests for Deposit", () => {
 
         for (let i = 0; i < tokens.length; i++) {
           let balanceAfter = await ERC20.attach(tokens[i]).balanceOf(
-            owner.address,
+            owner.address
           );
           let balanceOFHandler = await ERC20.attach(tokens[i]).balanceOf(
-            withdrawBatch.address,
+            withdrawBatch.address
           );
           expect(Number(balanceAfter)).to.be.greaterThan(
-            Number(userBalanceBefore[i]),
+            Number(userBalanceBefore[i])
           );
           expect(Number(balanceOFHandler)).to.be.equal(0);
         }
@@ -992,7 +992,7 @@ describe.only("Tests for Deposit", () => {
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
       });
 
-      it("should withdraw in multitoken by non-owner(user2)", async () => {
+      it("should withdraw in ETH by non-owner(user2)", async () => {
         await ethers.provider.send("evm_increaseTime", [70]);
 
         const supplyBefore = await portfolio.totalSupply();
@@ -1016,14 +1016,14 @@ describe.only("Tests for Deposit", () => {
         let withdrawalAmounts =
           await portfolioCalculations.getWithdrawalAmounts(
             amountPortfolioToken,
-            portfolio.address,
+            portfolio.address
           );
 
         await portfolio
           .connect(user)
           .approve(
             withdrawManager.address,
-            BigNumber.from(amountPortfolioToken),
+            BigNumber.from(amountPortfolioToken)
           );
         let responses = [];
         let userBalanceBefore = [];
@@ -1036,12 +1036,12 @@ describe.only("Tests for Deposit", () => {
               user.address,
               tokens[i],
               tokenToSwapInto,
-              (withdrawalAmounts[i] * 0.993).toFixed(0),
+              (withdrawalAmounts[i] * 0.993).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
           userBalanceBefore.push(
-            await ERC20.attach(tokens[i]).balanceOf(user.address),
+            await ERC20.attach(tokens[i]).balanceOf(user.address)
           );
         }
 
@@ -1052,7 +1052,7 @@ describe.only("Tests for Deposit", () => {
             vault,
             amountPortfolioToken,
             addresses.corePool_controller,
-            venusAssetHandler.address,
+            venusAssetHandler.address
           );
 
         const borrowedPortion = values[0];
@@ -1062,7 +1062,7 @@ describe.only("Tests for Deposit", () => {
 
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller,
+          addresses.corePool_controller
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1071,20 +1071,20 @@ describe.only("Tests for Deposit", () => {
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
             [addresses.vUSDT_Address],
-            vault,
+            vault
           );
 
         console.log("balanceBorrowed before withdraw", balanceBorrowed);
 
         console.log(
           "Balance of vToken before",
-          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault),
+          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
         );
 
         let tokenBalanceBefore: any = [];
         for (let i = 0; i < tokens.length; i++) {
           tokenBalanceBefore[i] = await ERC20.attach(tokens[i]).balanceOf(
-            user.address,
+            user.address
           );
         }
 
@@ -1098,20 +1098,20 @@ describe.only("Tests for Deposit", () => {
               ensoHandler.address,
               flashLoanToken,
               underlyings[i],
-              flashLoanAmount[i].toString(),
+              flashLoanAmount[i].toString()
             );
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
                 ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse.data.tx.data], [underlyings[i]], [0]],
-              ),
+                [[postResponse.data.tx.data], [underlyings[i]], [0]]
+              )
             );
           } else {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
                 ["bytes[]", "address[]", "uint256[]"],
-                [["0x"], [underlyings[i]], [0]],
-              ),
+                [["0x"], [underlyings[i]], [0]]
+              )
             );
           }
 
@@ -1122,7 +1122,7 @@ describe.only("Tests for Deposit", () => {
               venusAssetHandler.address,
               borrowedTokens[i],
               borrowedPortion[i],
-              "10",
+              "10"
             );
 
           for (let j = 0; j < lendTokens.length; j++) {
@@ -1131,14 +1131,14 @@ describe.only("Tests for Deposit", () => {
               ensoHandler.address,
               lendTokens[j],
               flashLoanToken,
-              amounToSell[j].toString(), //Need calculation here
+              amounToSell[j].toString() //Need calculation here
             );
 
             encodedParameters1.push(
               ethers.utils.defaultAbiCoder.encode(
                 ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]],
-              ),
+                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
+              )
             );
           }
         }
@@ -1157,7 +1157,7 @@ describe.only("Tests for Deposit", () => {
             firstSwapData: encodedParameters,
             secondSwapData: encodedParameters1,
           },
-          responses,
+          responses
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -1165,13 +1165,13 @@ describe.only("Tests for Deposit", () => {
 
         for (let i = 0; i < tokens.length; i++) {
           let balanceAfter = await ERC20.attach(tokens[i]).balanceOf(
-            user.address,
+            user.address
           );
           let balanceOfHandler = await ERC20.attach(tokens[i]).balanceOf(
-            withdrawBatch.address,
+            withdrawBatch.address
           );
           expect(Number(balanceAfter)).to.be.greaterThan(
-            Number(userBalanceBefore[i]),
+            Number(userBalanceBefore[i])
           );
           expect(Number(balanceOfHandler)).to.be.equal(0);
         }

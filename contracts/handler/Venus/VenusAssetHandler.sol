@@ -6,6 +6,8 @@ import {IVenusPool} from "../../core/interfaces/IVenusPool.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
 import {IVenusComptroller, IVAIController, IPriceOracle} from "./IVenusComptroller.sol";
 import {FunctionParameters} from "../../FunctionParameters.sol";
+import {IThena} from "../../core/interfaces/IThena.sol";
+import {IAlgebraPool} from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import "./ExponentialNoError.sol";
 
 /**
@@ -148,7 +150,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         address account,
         address comptroller
     )
-        external
+        public
         view
         returns (address[] memory lendTokens, address[] memory borrowTokens)
     {
@@ -853,6 +855,104 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 count++;
             }
         }
+    }
+
+    function executeUserFlashLoan(
+        address _controller,
+        address _vault,
+        address _receiver,
+        uint256 _portfolioTokenAmount,
+        uint256 _totalSupply,
+        FunctionParameters.withdrawRepayParams calldata repayData
+    ) external {
+        (, address[] memory borrowedTokens) = getAllProtocolAssets(
+            _vault,
+            _controller
+        ); // Get all borrowed tokens for the vault under the controller
+        uint borrowedLength = borrowedTokens.length;
+        address[] memory underlying = new address[](borrowedLength); // Array to store underlying tokens of borrowed assets
+        uint256[] memory tokenBalance = new uint256[](borrowedLength); // Array to store balances of borrowed tokens
+        uint256 totalFlashAmount; // Variable to track total flash loan amount
+        underlying = new address[](borrowedLength);
+        tokenBalance = new uint256[](borrowedLength);
+
+        for (uint256 i; i < borrowedLength; i++) {
+            address token = borrowedTokens[i];
+            uint256 borrowedAmount = IVenusPool(token).borrowBalanceStored(
+                _vault
+            ); // Get the current borrowed balance for the token
+            underlying[i] = IVenusPool(token).underlying(); // Get the underlying asset for the borrowed token
+            tokenBalance[i] =
+                (borrowedAmount * _portfolioTokenAmount) /
+                _totalSupply; // Calculate the portion of the debt to repay
+            totalFlashAmount += repayData._flashLoanAmount[i]; // Accumulate the total flash loan amount
+        }
+
+        // Get the pool address for the flash loan
+        address _poolAddress = IThena(repayData._factory).poolByPair(
+            repayData._token0,
+            repayData._token1
+        );
+
+        // Prepare the flash loan data to be used in the flash loan callback
+        FunctionParameters.FlashLoanData memory flashData = FunctionParameters
+            .FlashLoanData({
+                flashLoanToken: repayData._flashLoanToken,
+                debtToken: underlying,
+                protocolTokens: borrowedTokens,
+                solverHandler: repayData._solverHandler,
+                flashLoanAmount: repayData._flashLoanAmount,
+                debtRepayAmount: tokenBalance,
+                firstSwapData: repayData.firstSwapData,
+                secondSwapData: repayData.secondSwapData
+            });
+        // Initiate the flash loan from the Algebra pool
+        IAlgebraPool(_poolAddress).flash(
+            _receiver, // Recipient of the flash loan
+            repayData._token0 == repayData._flashLoanToken
+                ? totalFlashAmount
+                : 0, // Amount of token0 to flash loan
+            repayData._token1 == repayData._flashLoanToken
+                ? totalFlashAmount
+                : 0, // Amount of token1 to flash loan
+            abi.encode(flashData) // Encode flash loan data to pass to the callback
+        );
+    }
+
+    function executeVaultFlashLoan(
+        address _receiver,
+        FunctionParameters.RepayParams calldata repayData
+    ) external {
+        // Getting pool address dynamically based on the token pair
+        address _poolAddress = IThena(repayData._factory).poolByPair(
+            repayData._token0,
+            repayData._token1
+        );
+
+        // Defining the data to be passed in the flash loan, including the amount and pool key
+        FunctionParameters.FlashLoanData memory flashData = FunctionParameters
+            .FlashLoanData({
+                flashLoanToken: repayData._flashLoanToken,
+                debtToken: repayData._debtToken,
+                protocolTokens: repayData._protocolToken,
+                solverHandler: repayData._solverHandler,
+                flashLoanAmount: repayData._flashLoanAmount,
+                debtRepayAmount: repayData._debtRepayAmount,
+                firstSwapData: repayData.firstSwapData,
+                secondSwapData: repayData.secondSwapData
+            });
+
+        // Initiate the flash loan from the Algebra pool
+        IAlgebraPool(_poolAddress).flash(
+            _receiver, // Recipient of the flash loan
+            repayData._token0 == repayData._flashLoanToken
+                ? repayData._flashLoanAmount[0]
+                : 0, // Amount of token0 to flash loan
+            repayData._token1 == repayData._flashLoanToken
+                ? repayData._flashLoanAmount[0]
+                : 0, // Amount of token1 to flash loan
+            abi.encode(flashData) // Encode flash loan data to pass to the callback
+        );
     }
 
     /**
