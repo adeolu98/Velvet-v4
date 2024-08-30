@@ -374,7 +374,7 @@ abstract contract VaultManager is
     );
 
     uint256 exemptionIndex = 0;
-    _borrowManager.repayDeposit(
+    _borrowManager.repayBorrow(
       _portfolioTokenAmount,
       totalSupplyPortfolio,
       repayData

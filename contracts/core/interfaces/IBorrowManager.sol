@@ -10,7 +10,7 @@ interface IBorrowManager {
     address accessController
   ) external;
 
-  function repayDeposit(
+  function repayBorrow(
     uint256 _portfolioTokenAmount,
     uint256 _totalSupply,
     FunctionParameters.withdrawRepayParams calldata repayData
