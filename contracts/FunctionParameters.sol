@@ -17,10 +17,8 @@ library FunctionParameters {
    * @param _feeModuleImplementationAddress Fee Module implementation contract address
    * @param  _baseTokenRemovalVaultImplementation Token Removal Vault implementation contract address
    * @param  _basePositionManager Position manager implementation contract address
-   * @param  _basePositionWrapper Position wrapper implementation contract address
    * @param _baseVelvetGnosisSafeModuleAddress Base Gnosis-Safe module address for cloning
    * @param  _basePositionManager Position manager implementation contract address
-   * @param  _basePositionWrapper Position wrapper implementation contract address
    * @param _gnosisSingleton Gnosis Singleton contract address
    * @param _gnosisFallbackLibrary Gnosis Fallback Library address
    * @param _gnosisMultisendLibrary Gnosis Multisend Library address
@@ -37,7 +35,6 @@ library FunctionParameters {
     address _baseTokenRemovalVaultImplementation;
     address _baseVelvetGnosisSafeModuleAddress;
     address _basePositionManager;
-    address _basePositionWrapper;
     address _gnosisSingleton;
     address _gnosisFallbackLibrary;
     address _gnosisMultisendLibrary;
@@ -134,7 +131,6 @@ library FunctionParameters {
     address _feeModule;
     address _assetManagerTreasury;
     address _basePositionManager;
-    address _basePositionWrapper;
     address[] _whitelistedTokens;
     bool _publicPortfolio;
     bool _transferable;
@@ -235,11 +231,28 @@ library FunctionParameters {
     uint256 _amount0Min;
     uint256 _amount1Min;
     bool[] _isExternalPosition;
+    address _tokenIn;
+    address _tokenOut;
+    uint256 _amountIn;
   }
 
+  /**
+   * @title ExternalPositionWithdrawParams
+   * @dev Struct to hold parameters for managing withdrawals from external positions, facilitating operations like swaps or liquidity removals.
+   * This structure is crucial for coordinating interactions with external DeFi protocols, ensuring that operations proceed within predefined parameters for risk and slippage management.
+   * @param _positionWrappers Array of addresses of external position wrapper contracts from which withdrawals are to be made. These wrappers abstract the interactions with the underlying liquidity pools or DeFi primitives.
+   * @param _tokenIn Address of the token being used in the operation, generally for swapping into another token.
+   * @param _tokenOut Address of the token expected to be received from the swap operation. This is crucial for operations where a specific output token is desired.
+   * @param _amountIn The total amount of the input token that will be used in the swap or withdrawal operation. This defines the scale of the operation.
+   * @param _amountsMin0 Array of minimum amounts of the first token that must be received when withdrawing liquidity or performing swaps, specific to each position or operation. This parameter helps to ensure that each operation adheres to risk thresholds specific to the token pair involved.
+   * @param _amountsMin1 Array of minimum amounts of the second token that must be received, analogous to _amountsMin0, providing a similar layer of protection and precision in managing slippage and output amounts.
+   */
   struct ExternalPositionWithdrawParams {
     address[] _positionWrappers;
     uint256[] _amountsMin0;
     uint256[] _amountsMin1;
+    address _tokenIn;
+    address _tokenOut;
+    uint256 _amountIn;
   }
 }

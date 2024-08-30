@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {IAllowanceTransfer} from "../core/interfaces/IAllowanceTransfer.sol";
-import {ErrorLibrary} from "../library/ErrorLibrary.sol";
-import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { IAllowanceTransfer } from "../core/interfaces/IAllowanceTransfer.sol";
+import { ErrorLibrary } from "../library/ErrorLibrary.sol";
+import { IPortfolio } from "../core/interfaces/IPortfolio.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import {MathUtils} from "../core/calculations/MathUtils.sol";
+import { MathUtils } from "../core/calculations/MathUtils.sol";
 
-import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
-import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
+import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
+import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
 
-import {FunctionParameters} from "../FunctionParameters.sol";
+import { FunctionParameters } from "../FunctionParameters.sol";
 
 /**
  * @title WithdrawBatchExternalPositions
@@ -67,7 +67,10 @@ contract WithdrawBatchExternalPositions is ReentrancyGuard {
         _positionWrapper,
         MathUtils.safe128(balance),
         _params._amountsMin0[i],
-        _params._amountsMin1[i]
+        _params._amountsMin1[i],
+        _params._tokenIn,
+        _params._tokenOut,
+        _params._amountIn
       );
     }
 

@@ -5,7 +5,7 @@ import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRou
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-contract SwapHandlerV3 {
+contract UniswapV3SwapHandler {
   address WETH;
   ISwapRouter router;
 

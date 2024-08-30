@@ -1,48 +1,56 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable} from "../abstract/PositionManagerAbstract.sol";
-import {INonfungiblePositionManager} from "./INonfungiblePositionManager.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {IFactory} from "./IFactory.sol";
-import {IPool} from "../interfaces/IPool.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
+import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable } from "../abstract/PositionManagerAbstract.sol";
+import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { IFactory } from "./IFactory.sol";
+import { IPool } from "../interfaces/IPool.sol";
+import { ISwapRouter } from "./ISwapRouter.sol";
+
+import { LiquidityAmountsCalculations } from "../abstract/LiquidityAmountsCalculations.sol";
 
 /**
- * @title PositionManagerAbstract
- * @dev Abstract contract for managing Uniswap V3 positions and representing them as ERC20 tokens.
- * This contract allows managing liquidity in Uniswap V3 positions through a tokenized interface.
+ * @title PositionManagerAbstractAlgebra
+ * @dev Extension of PositionManagerAbstract for managing Algebra V3 positions with added features like custom token swapping.
  */
 abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
-  IProtocolConfig internal protocolConfig;
+  ISwapRouter router;
 
+  /**
+   * @dev Initializes the contract with additional protocol configuration and swap router addresses.
+   * @param _nonFungiblePositionManagerAddress Address of the Algebra V3 Non-Fungible Position Manager.
+   * @param _swapRouter Address of the swap router.
+   * @param _protocolConfig Address of the protocol configuration.
+   * @param _assetManagerConfig Address of the asset management configuration.
+   * @param _accessController Address of the access controller.
+   */
   function PositionManagerAbstractAlgebra_init(
     address _nonFungiblePositionManagerAddress,
+    address _swapRouter,
     address _protocolConfig,
     address _assetManagerConfig,
     address _accessController
   ) internal {
     PositionManagerAbstract__init(
       _nonFungiblePositionManagerAddress,
+      _protocolConfig,
       _assetManagerConfig,
       _accessController
     );
 
-    protocolConfig = IProtocolConfig(_protocolConfig);
+    router = ISwapRouter(_swapRouter);
   }
 
   /**
-   * @notice Mints a new Uniswap V3 position along with corresponding ERC-20 wrapper tokens.
-   * @dev This function orchestrates the creation of a new liquidity position on Uniswap V3 and also creates a new
-   *      wrapper token that represents this position. It handles creating a new wrapper, initializing the position with
-   *      the specified liquidity, and returning the address of the new wrapper.
-   * @param _token0 The address of the first token (token0) for the new liquidity position.
-   * @param _token1 The address of the second token (token1) for the new liquidity position.
-   * @param _name The desired name for the new wrapper token.
-   * @param _symbol The desired symbol for the new wrapper token.
-   * @param params A struct containing parameters necessary for liquidity provision including:
-   *        amount of token0 and token1 desired, minimum amounts to prevent slippage, and other necessary details.
-   * @return The address of the newly created wrapper position that now represents the staked liquidity tokens.
+   * @notice Creates a new position wrapper and initializes it with specified liquidity.
+   * @param _dustReceiver Address to receive any leftover tokens after transactions.
+   * @param _token0 Address of the first token in the liquidity pair.
+   * @param _token1 Address of the second token in the liquidity pair.
+   * @param _name Name for the new wrapper token.
+   * @param _symbol Symbol for the new wrapper token.
+   * @param params Parameters for initializing the liquidity position.
+   * @return Address of the newly created position wrapper.
    */
   function createNewWrapperPositionAndDeposit(
     address _dustReceiver,
@@ -71,11 +79,8 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
 
   /**
    * @notice Initializes a new Uniswap V3 position with liquidity for the first time and mints wrapper tokens.
-   * @dev This function is used to start a new liquidity position in Uniswap V3 using the tokens specified in the parameters.
-   *      It handles the transfer of initial liquidity tokens from the sender, mints the position on Uniswap, and then mints
-   *      the corresponding wrapper tokens. It also ensures that no initial minting has occurred previously for the given position.
-   *      This function manages token balances to ensure only the necessary tokens are used and any excess is returned (dust).
-   * @param _positionWrapper The wrapper interface for the Uniswap V3 position which facilitates interaction with the core contract.
+   * @notice Adjusts the price range and liquidity of an existing Algebra V3 position.
+   * @param _positionWrapper The wrapper of the position to be adjusted.
    * @param params The liquidity parameters including the desired amounts of token0 and token1, and slippage protections.
    */
   function initializePositionAndDeposit(
@@ -83,7 +88,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     IPositionWrapper _positionWrapper,
     WrapperFunctionParameters.InitialMintParams memory params
   ) external nonReentrant {
-    // Mint the new Uniswap V3 position using the provided liquidity parameters.
+    // Mint the new Algebra V3 position using the provided liquidity parameters.
     _initializePositionAndDeposit(
       _dustReceiver,
       _positionWrapper,
@@ -109,11 +114,15 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
    */
   function updateRange(
     IPositionWrapper _positionWrapper,
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
+    uint256 _underlyingAmountOut0,
+    uint256 _underlyingAmountOut1,
     int24 _tickLower,
     int24 _tickUpper
   ) external onlyAssetManager {
     uint256 tokenId = _positionWrapper.tokenId();
-
     address token0 = _positionWrapper.token0();
     address token1 = _positionWrapper.token1();
 
@@ -121,12 +130,26 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     uint128 existingLiquidity = _getExistingLiquidity(tokenId);
 
     // Remove all liquidity and collect the underlying tokens to this contract.
-    decreaseLiquidityAndCollect(
+    _decreaseLiquidityAndCollect(
       existingLiquidity,
       tokenId,
-      1, // Minimal acceptable token amounts set to 1 as a formality; all liquidity is being removed.
-      1,
+      _underlyingAmountOut0, // Minimal acceptable token amounts set to 1 as a formality; all liquidity is being removed.
+      _underlyingAmountOut1,
       address(this)
+    );
+
+    _swapTokensForAmountUpdateRange(
+      WrapperFunctionParameters.SwapParams({
+        _positionWrapper: _positionWrapper,
+        _tokenId: tokenId,
+        _amountIn: amountIn,
+        _token0: token0,
+        _token1: token1,
+        _tokenIn: tokenIn,
+        _tokenOut: tokenOut,
+        _tickLower: _tickLower,
+        _tickUpper: _tickUpper
+      })
     );
 
     // Mint a new position with the adjusted range and fee, using the tokens just collected.
@@ -135,8 +158,8 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       WrapperFunctionParameters.PositionMintParamsThena({
         _amount0Desired: IERC20Upgradeable(token0).balanceOf(address(this)),
         _amount1Desired: IERC20Upgradeable(token1).balanceOf(address(this)),
-        _amount0Min: 1,
-        _amount1Min: 1,
+        _amount0Min: 0,
+        _amount1Min: 0,
         _tickLower: _tickLower,
         _tickUpper: _tickUpper
       })
@@ -175,15 +198,24 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       revert ErrorLibrary.TokenNotWhitelisted();
     }
 
-    // Clone the base implementation of a position wrapper.
-    IPositionWrapper positionWrapper = IPositionWrapper(
-      Clones.clone(protocolConfig.positionWrapperBaseImplementation())
-    );
-
     (address token0, address token1) = _getTokensInPoolOrder(_token0, _token1);
 
-    // Initialize the cloned position wrapper with token addresses, name, and symbol.
-    positionWrapper.init(address(this), token0, token1, _name, _symbol);
+    // Deploy and initialize the position wrapper.
+    ERC1967Proxy positionWrapperProxy = new ERC1967Proxy(
+      protocolConfig.positionWrapperBaseImplementation(),
+      abi.encodeWithSelector(
+        IPositionWrapper.init.selector,
+        address(this),
+        token0,
+        token1,
+        _name,
+        _symbol
+      )
+    );
+
+    IPositionWrapper positionWrapper = IPositionWrapper(
+      address(positionWrapperProxy)
+    );
 
     // Set init values for the position wrapper
     positionWrapper.setIntitialParameters(0, _tickLower, _tickUpper);
@@ -197,6 +229,12 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     return positionWrapper;
   }
 
+  /**
+   * @dev Initializes the position and deposits tokens into it while taking care of dust returns.
+   * @param _dustReceiver Address to send any excess tokens.
+   * @param _positionWrapper Wrapper contract of the position.
+   * @param params Parameters for the position including amounts and ticks.
+   */
   function _initializePositionAndDeposit(
     address _dustReceiver,
     IPositionWrapper _positionWrapper,
@@ -246,16 +284,11 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   }
 
   /**
-   * @notice Mints a new Uniswap V3 position with specified liquidity parameters.
-   * @dev This function handles the process of minting a new liquidity position directly on Uniswap V3.
-   *      It first approves the Uniswap V3 Non-Fungible Position Manager to use the required amounts of token0 and token1.
-   *      Then, it mints the position with the desired parameters, setting the contract as the recipient of the position's NFT.
-   *      This function is crucial for initializing positions that represent liquidity in specific token pairs.
-   * @param _positionWrapper The interface wrapper around the Uniswap V3 position, providing token addresses and other utilities.
-   * @param params The parameters struct containing all necessary details to mint the position such as:
-   *        token amounts desired, minimum acceptable amounts (to guard against slippage), fee tier, tick boundaries, and deadline.
-   * @return tokenId The unique identifier of the newly created Uniswap V3 position.
-   * @return liquidity The amount of liquidity that was successfully added to the position.
+   * @dev Mints a new Uniswap V3 position with specific liquidity parameters.
+   * @param _positionWrapper Wrapper of the position.
+   * @param params Liquidity parameters including token amounts and price range.
+   * @return tokenId ID of the new Uniswap position.
+   * @return liquidity Amount of liquidity added.
    */
   function _mintNewUniswapPosition(
     IPositionWrapper _positionWrapper,
@@ -292,6 +325,129 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   }
 
   /**
+   * @dev Handles swapping tokens to achieve a desired pool ratio.
+   * @param _params Parameters including tokens and amounts for the swap.
+   * @return balance0 Updated balance of token0.
+   * @return balance1 Updated balance of token1.
+   */
+  function _swapTokensForAmount(
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal override returns (uint256 balance0, uint256 balance1) {
+    // Swap tokens to the token0 or token1 pool ratio
+    if (_params._amountIn > 0) {
+      (balance0, balance1) = _swapTokenToToken(_params);
+    } else {
+      (uint128 tokensOwed0, uint128 tokensOwed1) = _getTokensOwed(
+        _params._tokenId
+      );
+      _verifyZeroSwapAmountForReinvestFees(_params, tokensOwed0, tokensOwed1);
+    }
+  }
+
+  /**
+   * @dev Executes a token swap via a router.
+   * @param _params Swap parameters including input and output tokens and amounts.
+   * @return balance0 New balance of token0 after swap.
+   * @return balance1 New balance of token1 after swap.
+   */
+  function _swapTokenToToken(
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal override returns (uint256 balance0, uint256 balance1) {
+    address tokenIn = _params._tokenIn;
+    address tokenOut = _params._tokenOut;
+
+    address token0 = _params._token0;
+    address token1 = _params._token1;
+
+    if (
+      tokenIn == tokenOut ||
+      !(tokenOut == token0 || tokenOut == token1) ||
+      !(tokenIn == token0 || tokenIn == token1)
+    ) {
+      revert ErrorLibrary.InvalidTokenAddress();
+    }
+
+    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
+
+    uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(tokenIn).balanceOf(
+      address(this)
+    );
+
+    ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+      .ExactInputSingleParams({
+        tokenIn: tokenIn,
+        tokenOut: tokenOut,
+        recipient: address(this),
+        deadline: block.timestamp,
+        amountIn: _params._amountIn,
+        amountOutMinimum: 0, // @todo add slippage control
+        limitSqrtPrice: 0
+      });
+
+    router.exactInputSingle(params);
+
+    uint256 balanceTokenInAfterSwap = IERC20Upgradeable(tokenIn).balanceOf(
+      address(this)
+    );
+
+    (balance0, balance1) = _verifyRatioAfterSwap(
+      _params._positionWrapper,
+      _params._tickLower,
+      _params._tickUpper,
+      token0,
+      token1,
+      balanceTokenInBeforeSwap,
+      balanceTokenInAfterSwap
+    );
+  }
+
+  /**
+   * @dev Retrieves tokens in the correct pool order.
+   * @param _token0 First token address.
+   * @param _token1 Second token address.
+   * @return token0 Token address that is token0 in the pool.
+   * @return token1 Token address that is token1 in the pool.
+   */
+  function _getTokensInPoolOrder(
+    address _token0,
+    address _token1
+  ) internal view returns (address token0, address token1) {
+    IFactory factory = IFactory(_getFactoryAddress());
+    IPool pool = IPool(factory.poolByPair(_token0, _token1));
+
+    token0 = pool.token0();
+    token1 = pool.token1();
+  }
+
+  /**
+   * @dev Retrieves the tokens owed amounts for a given position.
+   * @param _tokenId Identifier of the Uniswap position.
+   * @return tokensOwed0 Amount of token0 owed.
+   * @return tokensOwed1 Amount of token1 owed.
+   */
+  function _getTokensOwed(
+    uint256 _tokenId
+  ) internal view returns (uint128 tokensOwed0, uint128 tokensOwed1) {
+    (, , , , , , , , , tokensOwed0, tokensOwed1) = INonfungiblePositionManager(
+      address(uniswapV3PositionManager)
+    ).positions(_tokenId);
+  }
+
+  /**
+   * @dev Retrieves the tick bounds for a given position.
+   * @param _tokenId Identifier of the Uniswap position.
+   * @return tickLower Lower tick of the position.
+   * @return tickUpper Upper tick of the position.
+   */
+  function _getTicksFromPosition(
+    uint256 _tokenId
+  ) internal view override returns (int24 tickLower, int24 tickUpper) {
+    (, , , , tickLower, tickUpper, , , , , ) = INonfungiblePositionManager(
+      address(uniswapV3PositionManager)
+    ).positions(_tokenId);
+  }
+
+  /**
    * @notice Retrieves the current liquidity amount for a given position.
    * @param _tokenId The ID of the position.
    * @return existingLiquidity The current amount of liquidity in the position.
@@ -302,16 +458,5 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     (, , , , , , existingLiquidity, , , , ) = INonfungiblePositionManager(
       address(uniswapV3PositionManager)
     ).positions(_tokenId);
-  }
-
-  function _getTokensInPoolOrder(
-    address _token0,
-    address _token1
-  ) internal view returns (address token0, address token1) {
-    IFactory factory = IFactory(uniswapV3PositionManager.factory());
-    IPool pool = IPool(factory.poolByPair(_token0, _token1));
-
-    token0 = pool.token0();
-    token1 = pool.token1();
   }
 }

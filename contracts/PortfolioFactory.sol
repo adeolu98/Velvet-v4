@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
-import {AccessController} from "./access/AccessController.sol";
-import {IPortfolio} from "./core/interfaces/IPortfolio.sol";
-import {IAssetManagementConfig} from "./config/assetManagement/IAssetManagementConfig.sol";
-import {ITokenExclusionManager} from "./core/interfaces/ITokenExclusionManager.sol";
-import {IRebalancing} from "./rebalance/IRebalancing.sol";
-import {IAccessController} from "./access/IAccessController.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/Ownable2StepUpgradeable.sol";
-import {FunctionParameters} from "./FunctionParameters.sol";
-import {ErrorLibrary} from "./library/ErrorLibrary.sol";
-import {IProtocolConfig} from "./config/protocol/IProtocolConfig.sol";
-import {IFeeModule} from "./fee/IFeeModule.sol";
-import {IVelvetSafeModule} from "./vault/IVelvetSafeModule.sol";
-import {VelvetSafeModule} from "./vault/VelvetSafeModule.sol";
-import {GnosisDeployer} from "contracts/library/GnosisDeployer.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { AccessController } from "./access/AccessController.sol";
+import { IPortfolio } from "./core/interfaces/IPortfolio.sol";
+import { IAssetManagementConfig } from "./config/assetManagement/IAssetManagementConfig.sol";
+import { ITokenExclusionManager } from "./core/interfaces/ITokenExclusionManager.sol";
+import { IRebalancing } from "./rebalance/IRebalancing.sol";
+import { IAccessController } from "./access/IAccessController.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/Ownable2StepUpgradeable.sol";
+import { FunctionParameters } from "./FunctionParameters.sol";
+import { ErrorLibrary } from "./library/ErrorLibrary.sol";
+import { IProtocolConfig } from "./config/protocol/IProtocolConfig.sol";
+import { IFeeModule } from "./fee/IFeeModule.sol";
+import { IVelvetSafeModule } from "./vault/IVelvetSafeModule.sol";
+import { VelvetSafeModule } from "./vault/VelvetSafeModule.sol";
+import { GnosisDeployer } from "contracts/library/GnosisDeployer.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
 
 contract PortfolioFactory is
   Ownable2StepUpgradeable,
@@ -31,7 +31,6 @@ contract PortfolioFactory is
   address internal baseVelvetGnosisSafeModuleAddress;
   address internal baseTokenRemovalVaultAddress;
   address internal basePositionManager;
-  address internal basePositionWrapper;
 
   address public protocolConfig;
   bool internal portfolioCreationPause;
@@ -85,6 +84,8 @@ contract PortfolioFactory is
 
   event TransferSuperAdminOwnership(address indexed newOwner);
 
+  event UpgradePositionManager(address indexed newImplementation);
+
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -107,7 +108,6 @@ contract PortfolioFactory is
       initData._feeModuleImplementationAddress == address(0) ||
       initData._baseVelvetGnosisSafeModuleAddress == address(0) ||
       initData._basePositionManager == address(0) ||
-      initData._basePositionWrapper == address(0) ||
       initData._gnosisSingleton == address(0) ||
       initData._gnosisFallbackLibrary == address(0) ||
       initData._gnosisMultisendLibrary == address(0) ||
@@ -131,7 +131,6 @@ contract PortfolioFactory is
       initData._baseTokenRemovalVaultImplementation
     );
     setPositionManagerImplementationAddress(initData._basePositionManager);
-    setPositionWrapperImplementationAddress(initData._basePositionWrapper);
     baseVelvetGnosisSafeModuleAddress = initData
       ._baseVelvetGnosisSafeModuleAddress;
     protocolConfig = initData._protocolConfig;
@@ -221,7 +220,6 @@ contract PortfolioFactory is
           _feeModule: address(_feeModule),
           _assetManagerTreasury: initData._assetManagerTreasury,
           _basePositionManager: basePositionManager,
-          _basePositionWrapper: basePositionWrapper,
           _whitelistedTokens: initData._whitelistedTokens,
           _publicPortfolio: initData._public,
           _transferable: initData._transferable,
@@ -420,6 +418,20 @@ contract PortfolioFactory is
   }
 
   /**
+   * @notice This function is used to upgrade the Token Exclusion Manager contract
+   * @param _proxy Proxy address
+   * @param _newImpl New implementation address
+   */
+  function upgradePositionManager(
+    address[] calldata _proxy,
+    address _newImpl
+  ) external virtual onlyOwner {
+    setPositionManagerImplementationAddress(_newImpl);
+    _upgrade(_proxy, _newImpl);
+    emit UpgradePositionManager(_newImpl);
+  }
+
+  /**
    * @notice This function is the base UUPS upgrade function used to make all the upgrades happen
    * @param _proxy Address of the upgrade proxy contract
    * @param _newImpl Address of the new implementation that is the module to be upgraded to
@@ -511,16 +523,6 @@ contract PortfolioFactory is
     address _basePositionManager
   ) internal {
     basePositionManager = _basePositionManager;
-  }
-
-  /**
-   * @notice This function is used to set the position wrapper implementation address
-   * @param _basePositionWrapper Address of the position wrapper to set as base
-   */
-  function setPositionWrapperImplementationAddress(
-    address _basePositionWrapper
-  ) internal {
-    basePositionWrapper = _basePositionWrapper;
   }
 
   /**

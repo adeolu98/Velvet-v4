@@ -230,4 +230,6 @@ interface IProtocolConfig {
   function disableRewardTarget(address _rewardTargetAddress) external;
 
   function positionWrapperBaseImplementation() external view returns (address);
+
+  function allowedRatioDeviationBps() external view returns (uint256);
 }

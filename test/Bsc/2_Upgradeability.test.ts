@@ -87,7 +87,7 @@ describe.only("Tests for Upgradeability", () => {
   const addresses = chainIdToAddresses[chainId];
 
   const assetManagerHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("ASSET_MANAGER"),
+    ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
 
   function delay(ms: number) {
@@ -112,7 +112,7 @@ describe.only("Tests for Upgradeability", () => {
       iaddress = await tokenAddresses();
 
       const PositionWrapper = await ethers.getContractFactory(
-        "PositionWrapper",
+        "PositionWrapper"
       );
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
@@ -125,7 +125,7 @@ describe.only("Tests for Upgradeability", () => {
           priceOracle.address,
           positionWrapperBaseAddress.address,
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
@@ -136,13 +136,13 @@ describe.only("Tests for Upgradeability", () => {
       await rebalancingDefult.deployed();
 
       const AssetManagementConfig = await ethers.getContractFactory(
-        "AssetManagementConfig",
+        "AssetManagementConfig"
       );
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
       const TokenExclusionManager = await ethers.getContractFactory(
-        "TokenExclusionManager",
+        "TokenExclusionManager"
       );
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
@@ -151,7 +151,7 @@ describe.only("Tests for Upgradeability", () => {
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
-        "UniswapV2Handler",
+        "UniswapV2Handler"
       );
       swapHandler = await PancakeSwapHandler.deploy();
       await swapHandler.deployed();
@@ -184,7 +184,7 @@ describe.only("Tests for Upgradeability", () => {
       let whitelist = [owner.address];
 
       const PositionManagerThena = await ethers.getContractFactory(
-        "PositionManagerThena",
+        "PositionManagerThena"
       );
       const positionManagerBaseAddress = await PositionManagerThena.deploy();
       await positionManagerBaseAddress.deployed();
@@ -194,19 +194,19 @@ describe.only("Tests for Upgradeability", () => {
       await feeModule.deployed();
 
       const TokenRemovalVault = await ethers.getContractFactory(
-        "TokenRemovalVault",
+        "TokenRemovalVault"
       );
       const tokenRemovalVault = await TokenRemovalVault.deploy();
       await tokenRemovalVault.deployed();
 
       const VelvetSafeModule = await ethers.getContractFactory(
-        "VelvetSafeModule",
+        "VelvetSafeModule"
       );
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
       const PortfolioFactory = await ethers.getContractFactory(
-        "PortfolioFactory",
+        "PortfolioFactory"
       );
 
       const portfolioFactoryInstance = await upgrades.deployProxy(
@@ -223,7 +223,6 @@ describe.only("Tests for Upgradeability", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
-            _basePositionWrapper: positionWrapperBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -231,11 +230,11 @@ describe.only("Tests for Upgradeability", () => {
             _protocolConfig: protocolConfig.address,
           },
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       portfolioFactory = PortfolioFactory.attach(
-        portfolioFactoryInstance.address,
+        portfolioFactoryInstance.address
       );
 
       console.log("portfolioFactory address:", portfolioFactory.address);
@@ -283,10 +282,10 @@ describe.only("Tests for Upgradeability", () => {
 
       portfolio = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress,
+        portfolioAddress
       );
       const PortfolioCalculations = await ethers.getContractFactory(
-        "PortfolioCalculations",
+        "PortfolioCalculations"
       );
       feeModule0 = FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
@@ -294,19 +293,19 @@ describe.only("Tests for Upgradeability", () => {
 
       portfolio1 = await ethers.getContractAt(
         Portfolio__factory.abi,
-        portfolioAddress1,
+        portfolioAddress1
       );
       portfolioCalculations1 = await PortfolioCalculations.deploy();
       await portfolioCalculations1.deployed();
 
       rebalancing = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo.rebalancing,
+        portfolioInfo.rebalancing
       );
 
       rebalancing1 = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo1.rebalancing,
+        portfolioInfo1.rebalancing
       );
 
       console.log("portfolio deployed to:", portfolio.address);
@@ -329,7 +328,7 @@ describe.only("Tests for Upgradeability", () => {
         for (let i = 0; i < tokens.length; i++) {
           await ERC20.attach(tokens[i]).approve(
             PERMIT2_ADDRESS,
-            MaxAllowanceTransferAmount,
+            MaxAllowanceTransferAmount
           );
 
           await ERC20.attach(tokens[i])
@@ -349,7 +348,7 @@ describe.only("Tests for Upgradeability", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -360,7 +359,7 @@ describe.only("Tests for Upgradeability", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
             value: "100000000000000000",
@@ -385,7 +384,7 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
@@ -410,7 +409,7 @@ describe.only("Tests for Upgradeability", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         let tokenDetails = [];
@@ -421,7 +420,7 @@ describe.only("Tests for Upgradeability", () => {
           let { nonce } = await permit2.allowance(
             nonOwner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens(
             "500",
@@ -429,10 +428,10 @@ describe.only("Tests for Upgradeability", () => {
             nonOwner.address,
             {
               value: "100000000000000000",
-            },
+            }
           );
           let balance = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           let detail = {
             token: tokens[i],
@@ -453,14 +452,14 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await nonOwner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -490,19 +489,19 @@ describe.only("Tests for Upgradeability", () => {
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         let userBalanceBefore = await portfolio.balanceOf(owner.address);
 
         const tx = await portfolio.multiTokenWithdrawal(
-          BigNumber.from(amountPortfolioToken),
+          BigNumber.from(amountPortfolioToken)
         );
         let receipt = await tx.wait();
 
@@ -513,7 +512,7 @@ describe.only("Tests for Upgradeability", () => {
 
         // Calculate the Keccak-256 hash of the event signature
         const eventSignatureHashEntryExit = ethers.utils.keccak256(
-          ethers.utils.toUtf8Bytes(eventSignatureEntryExit),
+          ethers.utils.toUtf8Bytes(eventSignatureEntryExit)
         );
 
         const FeeModuleAbi = new ethers.utils.Interface(FeeModule__factory.abi);
@@ -560,36 +559,36 @@ describe.only("Tests for Upgradeability", () => {
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -598,19 +597,19 @@ describe.only("Tests for Upgradeability", () => {
         await ethers.provider.send("evm_increaseTime", [70]);
         const supplyBefore = await portfolio.totalSupply();
         const amountPortfolioToken = await portfolio.balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         await portfolio
@@ -620,39 +619,39 @@ describe.only("Tests for Upgradeability", () => {
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         expect(Number(await portfolio.balanceOf(nonOwner.address))).to.be.equal(
-          0,
+          0
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -680,13 +679,13 @@ describe.only("Tests for Upgradeability", () => {
         expect(await portfolio.vault()).to.be.equal(vaultBefore);
         expect(await portfolio.safeModule()).to.be.equal(safeModuleBefore);
         expect(await portfolio.tokenExclusionManager()).to.be.equal(
-          tokenExclusionManagerBefore,
+          tokenExclusionManagerBefore
         );
         expect(await portfolio.assetManagementConfig()).to.be.equal(
-          assetManagerConfigBefore,
+          assetManagerConfigBefore
         );
         expect(await portfolio.protocolConfig()).to.be.equal(
-          protocolConfigBefore,
+          protocolConfigBefore
         );
         expect(await portfolio.feeModule()).to.be.equal(feeModuleBefore);
       });
@@ -699,7 +698,7 @@ describe.only("Tests for Upgradeability", () => {
         const proxyAddress = await portfolioFactory.getPortfolioList(0);
         await portfolioFactory.upgradePortfolio(
           [proxyAddress],
-          portfolioContractV3_2.address,
+          portfolioContractV3_2.address
         );
       });
 
@@ -718,7 +717,7 @@ describe.only("Tests for Upgradeability", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -729,7 +728,7 @@ describe.only("Tests for Upgradeability", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
             value: "100000000000000000",
@@ -754,7 +753,7 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
@@ -775,7 +774,7 @@ describe.only("Tests for Upgradeability", () => {
         const supplyBefore = await portfolio.totalSupply();
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         function toDeadline(expiration: number) {
@@ -790,7 +789,7 @@ describe.only("Tests for Upgradeability", () => {
           let { nonce } = await permit2.allowance(
             nonOwner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens(
             "500",
@@ -798,10 +797,10 @@ describe.only("Tests for Upgradeability", () => {
             nonOwner.address,
             {
               value: "100000000000000000",
-            },
+            }
           );
           let balance = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           let detail = {
             token: tokens[i],
@@ -822,14 +821,14 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await nonOwner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -858,19 +857,19 @@ describe.only("Tests for Upgradeability", () => {
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         let userBalanceBefore = await portfolio.balanceOf(owner.address);
 
         const tx = await portfolio.multiTokenWithdrawal(
-          BigNumber.from(amountPortfolioToken),
+          BigNumber.from(amountPortfolioToken)
         );
         let receipt = await tx.wait();
 
@@ -881,7 +880,7 @@ describe.only("Tests for Upgradeability", () => {
 
         // Calculate the Keccak-256 hash of the event signature
         const eventSignatureHashEntryExit = ethers.utils.keccak256(
-          ethers.utils.toUtf8Bytes(eventSignatureEntryExit),
+          ethers.utils.toUtf8Bytes(eventSignatureEntryExit)
         );
 
         const FeeModuleAbi = new ethers.utils.Interface(FeeModule__factory.abi);
@@ -928,36 +927,36 @@ describe.only("Tests for Upgradeability", () => {
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -966,19 +965,19 @@ describe.only("Tests for Upgradeability", () => {
         await ethers.provider.send("evm_increaseTime", [70]);
         const supplyBefore = await portfolio.totalSupply();
         const amountPortfolioToken = await portfolio.balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         await portfolio
@@ -988,39 +987,39 @@ describe.only("Tests for Upgradeability", () => {
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         expect(Number(await portfolio.balanceOf(nonOwner.address))).to.be.equal(
-          0,
+          0
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -1043,13 +1042,13 @@ describe.only("Tests for Upgradeability", () => {
         expect(await portfolio.vault()).to.be.equal(vaultBefore);
         expect(await portfolio.safeModule()).to.be.equal(safeModuleBefore);
         expect(await portfolio.tokenExclusionManager()).to.be.equal(
-          tokenExclusionManagerBefore,
+          tokenExclusionManagerBefore
         );
         expect(await portfolio.assetManagementConfig()).to.be.equal(
-          assetManagerConfigBefore,
+          assetManagerConfigBefore
         );
         expect(await portfolio.protocolConfig()).to.be.equal(
-          protocolConfigBefore,
+          protocolConfigBefore
         );
         expect(await portfolio.feeModule()).to.be.equal(feeModuleBefore);
       });
@@ -1062,7 +1061,7 @@ describe.only("Tests for Upgradeability", () => {
         const proxyAddress = await portfolioFactory.getPortfolioList(0);
         await portfolioFactory.upgradePortfolio(
           [proxyAddress],
-          portfolioContractV3_3.address,
+          portfolioContractV3_3.address
         );
       });
 
@@ -1081,7 +1080,7 @@ describe.only("Tests for Upgradeability", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -1092,7 +1091,7 @@ describe.only("Tests for Upgradeability", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
             value: "100000000000000000",
@@ -1117,7 +1116,7 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
@@ -1142,7 +1141,7 @@ describe.only("Tests for Upgradeability", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -1153,7 +1152,7 @@ describe.only("Tests for Upgradeability", () => {
           let { nonce } = await permit2.allowance(
             nonOwner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens(
             "500",
@@ -1161,10 +1160,10 @@ describe.only("Tests for Upgradeability", () => {
             nonOwner.address,
             {
               value: "100000000000000000",
-            },
+            }
           );
           let balance = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           let detail = {
             token: tokens[i],
@@ -1185,14 +1184,14 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await nonOwner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -1221,19 +1220,19 @@ describe.only("Tests for Upgradeability", () => {
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         let userBalanceBefore = await portfolio.balanceOf(owner.address);
 
         const tx = await portfolio.multiTokenWithdrawal(
-          BigNumber.from(amountPortfolioToken),
+          BigNumber.from(amountPortfolioToken)
         );
         let receipt = await tx.wait();
 
@@ -1244,7 +1243,7 @@ describe.only("Tests for Upgradeability", () => {
 
         // Calculate the Keccak-256 hash of the event signature
         const eventSignatureHashEntryExit = ethers.utils.keccak256(
-          ethers.utils.toUtf8Bytes(eventSignatureEntryExit),
+          ethers.utils.toUtf8Bytes(eventSignatureEntryExit)
         );
 
         const FeeModuleAbi = new ethers.utils.Interface(FeeModule__factory.abi);
@@ -1291,36 +1290,36 @@ describe.only("Tests for Upgradeability", () => {
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -1329,19 +1328,19 @@ describe.only("Tests for Upgradeability", () => {
         await ethers.provider.send("evm_increaseTime", [70]);
         const supplyBefore = await portfolio.totalSupply();
         const amountPortfolioToken = await portfolio.balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         await portfolio
@@ -1351,39 +1350,39 @@ describe.only("Tests for Upgradeability", () => {
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         expect(Number(await portfolio.balanceOf(nonOwner.address))).to.be.equal(
-          0,
+          0
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -1407,19 +1406,19 @@ describe.only("Tests for Upgradeability", () => {
 
         await portfolioFactory.upgradeFeeModule(
           [feeModule0.address],
-          newFeeImpl.address,
+          newFeeImpl.address
         );
       });
 
       it("validate values after upgrade", async () => {
         expect(await feeModule0.lastChargedProtocolFee()).to.be.equal(
-          lastProtocolFeeChargedBefore,
+          lastProtocolFeeChargedBefore
         );
         expect(await feeModule0.lastChargedManagementFee()).to.be.equal(
-          lastManagementFeeChargedBefore,
+          lastManagementFeeChargedBefore
         );
         expect(await feeModule0.highWatermark()).to.be.equal(
-          highWaterMarkBefore,
+          highWaterMarkBefore
         );
       });
 
@@ -1438,7 +1437,7 @@ describe.only("Tests for Upgradeability", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -1449,7 +1448,7 @@ describe.only("Tests for Upgradeability", () => {
           let { nonce } = await permit2.allowance(
             owner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens("500", tokens[i], owner.address, {
             value: "100000000000000000",
@@ -1474,7 +1473,7 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
 
@@ -1499,7 +1498,7 @@ describe.only("Tests for Upgradeability", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const supplyBefore = await portfolio.totalSupply();
@@ -1510,7 +1509,7 @@ describe.only("Tests for Upgradeability", () => {
           let { nonce } = await permit2.allowance(
             nonOwner.address,
             tokens[i],
-            portfolio.address,
+            portfolio.address
           );
           await swapHandler.swapETHToTokens(
             "500",
@@ -1518,10 +1517,10 @@ describe.only("Tests for Upgradeability", () => {
             nonOwner.address,
             {
               value: "100000000000000000",
-            },
+            }
           );
           let balance = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           let detail = {
             token: tokens[i],
@@ -1542,14 +1541,14 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await nonOwner._signTypedData(domain, types, values);
 
         // Calculation to make minimum amount value for user---------------------------------
         let result = await portfolioCalculations.getUserAmountToDeposit(
           amounts,
-          portfolio.address,
+          portfolio.address
         );
         //-----------------------------------------------------------------------------------
 
@@ -1578,52 +1577,52 @@ describe.only("Tests for Upgradeability", () => {
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         await portfolio.multiTokenWithdrawal(
-          BigNumber.from(amountPortfolioToken),
+          BigNumber.from(amountPortfolioToken)
         );
 
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          owner.address,
+          owner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          owner.address,
+          owner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -1632,19 +1631,19 @@ describe.only("Tests for Upgradeability", () => {
         await ethers.provider.send("evm_increaseTime", [70]);
         const supplyBefore = await portfolio.totalSupply();
         const amountPortfolioToken = await portfolio.balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
         const token0BalanceBefore = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceBefore = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token2BalanceBefore = await ERC20.attach(tokens[2]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         await portfolio
@@ -1654,39 +1653,39 @@ describe.only("Tests for Upgradeability", () => {
         const supplyAfter = await portfolio.totalSupply();
 
         const token0BalanceAfter = await ERC20.attach(tokens[0]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token1BalanceAfter = await ERC20.attach(tokens[1]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
         const token2BalanceAfter = await ERC20.attach(tokens[2]).balanceOf(
-          nonOwner.address,
+          nonOwner.address
         );
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
         expect(Number(token0BalanceAfter)).to.be.greaterThan(
-          Number(token0BalanceBefore),
+          Number(token0BalanceBefore)
         );
         expect(Number(token1BalanceAfter)).to.be.greaterThan(
-          Number(token1BalanceBefore),
+          Number(token1BalanceBefore)
         );
         expect(Number(token2BalanceAfter)).to.be.greaterThan(
-          Number(token2BalanceBefore),
+          Number(token2BalanceBefore)
         );
         expect(Number(await portfolio.balanceOf(nonOwner.address))).to.be.equal(
-          0,
+          0
         );
         console.log(
           "token0Balance",
-          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore),
+          BigNumber.from(token0BalanceAfter).sub(token0BalanceBefore)
         );
         console.log(
           "token1Balance",
-          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore),
+          BigNumber.from(token1BalanceAfter).sub(token1BalanceBefore)
         );
         console.log(
           "token2Balance",
-          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore),
+          BigNumber.from(token2BalanceAfter).sub(token2BalanceBefore)
         );
         console.log("supplyAfter", supplyAfter);
       });
@@ -1704,7 +1703,7 @@ describe.only("Tests for Upgradeability", () => {
         const proxyAddress = await portfolioFactory.getPortfolioList(0);
         await portfolioFactory.upgradePortfolio(
           [proxyAddress],
-          portfolioContractV3_4.address,
+          portfolioContractV3_4.address
         );
       });
 
@@ -1724,7 +1723,7 @@ describe.only("Tests for Upgradeability", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
@@ -1745,12 +1744,12 @@ describe.only("Tests for Upgradeability", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await owner._signTypedData(domain, types, values);
         let amounts = ["10000", "10000"];
         await expect(
-          portfolio.multiTokenDeposit(amounts, "0", permit, signature),
+          portfolio.multiTokenDeposit(amounts, "0", permit, signature)
         ).to.be.reverted;
       });
 
@@ -1768,13 +1767,13 @@ describe.only("Tests for Upgradeability", () => {
         const proxyAddress = await portfolioFactory.getPortfolioList(0);
         await portfolioFactory.upgradePortfolio(
           [proxyAddress],
-          portfolioContractV3_3.address,
+          portfolioContractV3_3.address
         );
       });
 
       it("owner should be able upgrade tokenExclusionManager", async () => {
         const TokenExclusionManagerV3_2 = await ethers.getContractFactory(
-          "TokenExclusionManagerV3_2",
+          "TokenExclusionManagerV3_2"
         );
         const tokenExclusionManagerV3_2 =
           await TokenExclusionManagerV3_2.deploy();
@@ -1784,12 +1783,12 @@ describe.only("Tests for Upgradeability", () => {
 
         const proxyAddress = await ethers.getContractAt(
           TokenExclusionManager__factory.abi,
-          portfolioInfo.tokenExclusionManager,
+          portfolioInfo.tokenExclusionManager
         );
 
         await portfolioFactory.upgradePortfolio(
           [proxyAddress.address],
-          tokenExclusionManagerV3_2.address,
+          tokenExclusionManagerV3_2.address
         );
       });
 
