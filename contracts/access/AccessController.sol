@@ -66,6 +66,7 @@ contract AccessController is AccessControl, AccessRoles, IAccessController {
 
     _grantRole(PORTFOLIO_MANAGER_ROLE, _setupData._rebalancing);
     _grantRole(REBALANCER_CONTRACT, _setupData._rebalancing);
+    _grantRole(REBALANCER_CONTRACT, _setupData._borrowManager);
 
     _grantRole(MINTER_ROLE, _setupData._feeModule);
   }

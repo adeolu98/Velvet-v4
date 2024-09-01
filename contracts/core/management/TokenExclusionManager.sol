@@ -6,7 +6,6 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/u
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
 import {AccessController} from "../../access/AccessController.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
 

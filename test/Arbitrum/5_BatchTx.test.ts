@@ -34,6 +34,8 @@ import {
   UniswapV2Handler,
   DepositBatch,
   DepositManager,
+  TokenBalanceLibrary,
+  BorrowManager,
   TokenExclusionManager,
   TokenExclusionManager__factory,
   WithdrawBatch,
@@ -64,6 +66,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let depositManager: DepositManager;
   let withdrawBatch: WithdrawBatch;
   let withdrawManager: WithdrawManager;
+  let borrowManager: BorrowManager;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
@@ -81,6 +85,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let addr1: SignerWithAddress;
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
+  let zeroAddress: any;
   let approve_amount = ethers.constants.MaxUint256; //(2^256 - 1 )
   let token;
 
@@ -106,6 +111,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary"
+      );
+
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      await tokenBalanceLibrary.deployed();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
       ensoHandler = await EnsoHandler.deploy();
@@ -150,7 +162,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.setCoolDownPeriod("60");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing");
+      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -166,7 +182,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
@@ -191,6 +215,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ];
 
       let whitelist = [owner.address];
+
+      zeroAddress = "0x0000000000000000000000000000000000000000";
 
       const PositionManager = await ethers.getContractFactory(
         "PositionManagerUniswap"
@@ -233,6 +259,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
+            _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
@@ -301,7 +328,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         portfolioAddress
       );
       const PortfolioCalculations = await ethers.getContractFactory(
-        "PortfolioCalculations"
+        "PortfolioCalculations",
+        {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        }
       );
       feeModule0 = FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
@@ -579,6 +611,17 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             portfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            {
+              _factory: zeroAddress,
+              _token0: zeroAddress, //USDT - Pool token
+              _token1: zeroAddress, //USDC - Pool token
+              _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _solverHandler: zeroAddress, //Handler to swap
+              _flashLoanAmount: [0],
+              firstSwapData: ["0x"],
+              secondSwapData: ["0x"],
+            },
+
             responses
           )
         ).to.be.revertedWithCustomError(withdrawBatch, "InvalidBalanceDiff");
@@ -633,6 +676,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             portfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            {
+              _factory: zeroAddress,
+              _token0: zeroAddress, //USDT - Pool token
+              _token1: zeroAddress, //USDC - Pool token
+              _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _solverHandler: zeroAddress, //Handler to swap
+              _flashLoanAmount: [0],
+              firstSwapData: ["0x"],
+              secondSwapData: ["0x"],
+            },
             responses
           )
         ).to.be.revertedWithCustomError(withdrawBatch, "InvalidBalanceDiff");
@@ -650,6 +703,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             fakePortfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            {
+              _factory: zeroAddress,
+              _token0: zeroAddress, //USDT - Pool token
+              _token1: zeroAddress, //USDC - Pool token
+              _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _solverHandler: zeroAddress, //Handler to swap
+              _flashLoanAmount: [0],
+              firstSwapData: ["0x"],
+              secondSwapData: ["0x"],
+            },
             ["0x"]
           )
         ).to.be.revertedWithCustomError(
@@ -712,6 +775,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
           responses
         );
 
@@ -772,6 +845,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
           responses
         );
 

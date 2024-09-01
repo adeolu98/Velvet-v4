@@ -35,6 +35,8 @@ import {
   FeeModule,
   FeeModule__factory,
   EnsoHandler,
+  TokenBalanceLibrary,
+  BorrowManager,
   EnsoHandlerBundled,
   AccessController__factory,
   TokenExclusionManager__factory,
@@ -42,6 +44,11 @@ import {
   DepositManager,
   WithdrawBatchExternalPositions,
   WithdrawManagerExternalPositions,
+  DepositBatchExternalPositions,
+  DepositManagerExternalPositions,
+  PositionManagerThena,
+  AssetManagementConfig,
+  AmountCalculationsAlgebra,
   IFactory__factory,
   INonfungiblePositionManager__factory,
   IPool__factory,
@@ -66,6 +73,8 @@ describe.only("Tests for Deposit", () => {
   let tokenExclusionManager: any;
   let tokenExclusionManager1: any;
   let ensoHandler: EnsoHandler;
+  let borrowManager: BorrowManager;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
   let depositBatch: DepositBatchExternalPositions;
   let depositManager: DepositManagerExternalPositions;
   let withdrawBatch: WithdrawBatchExternalPositions;
@@ -140,6 +149,13 @@ describe.only("Tests for Deposit", () => {
 
       const provider = ethers.getDefaultProvider();
 
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary"
+      );
+
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      await tokenBalanceLibrary.deployed();
+
       iaddress = await tokenAddresses();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
@@ -176,6 +192,10 @@ describe.only("Tests for Deposit", () => {
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
 
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
@@ -191,7 +211,11 @@ describe.only("Tests for Deposit", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing");
+      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -207,7 +231,11 @@ describe.only("Tests for Deposit", () => {
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
@@ -283,6 +311,7 @@ describe.only("Tests for Deposit", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
+            _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
@@ -351,7 +380,12 @@ describe.only("Tests for Deposit", () => {
         portfolioAddress
       );
       const PortfolioCalculations = await ethers.getContractFactory(
-        "PortfolioCalculations"
+        "PortfolioCalculations",
+        {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        }
       );
       feeModule0 = FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
@@ -774,6 +808,16 @@ describe.only("Tests for Deposit", () => {
           amountPortfolioToken,
           responses,
           {
+            _factory: ZERO_ADDRESS,
+            _token0: ZERO_ADDRESS, //USDT - Pool token
+            _token1: ZERO_ADDRESS, //USDC - Pool token
+            _flashLoanToken: ZERO_ADDRESS, //Token to take flashlaon
+            _solverHandler: ZERO_ADDRESS, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
+          {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
@@ -880,6 +924,16 @@ describe.only("Tests for Deposit", () => {
           tokenToSwapInto,
           amountPortfolioToken,
           responses,
+          {
+            _factory: ZERO_ADDRESS,
+            _token0: ZERO_ADDRESS, //USDT - Pool token
+            _token1: ZERO_ADDRESS, //USDC - Pool token
+            _flashLoanToken: ZERO_ADDRESS, //Token to take flashlaon
+            _solverHandler: ZERO_ADDRESS, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
           {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
@@ -1175,6 +1229,16 @@ describe.only("Tests for Deposit", () => {
           tokenToSwapInto,
           amountPortfolioToken,
           responses,
+          {
+            _factory: ZERO_ADDRESS,
+            _token0: ZERO_ADDRESS, //USDT - Pool token
+            _token1: ZERO_ADDRESS, //USDC - Pool token
+            _flashLoanToken: ZERO_ADDRESS, //Token to take flashlaon
+            _solverHandler: ZERO_ADDRESS, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
           {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
