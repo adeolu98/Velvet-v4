@@ -126,6 +126,8 @@ lib/forge-std/
 
 forge-cache
 
+.prettierrc
+
 out
 .vs
 lib

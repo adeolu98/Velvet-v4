@@ -15,55 +15,55 @@ import {FunctionParameters} from "../FunctionParameters.sol";
  * @dev This contract utilizes a WITHDRAW_BATCH contract to perform multi-token swaps and withdrawals. It inherits from ReentrancyGuard to prevent reentrant calls.
  */
 contract WithdrawManagerExternalPositions is
-    ReentrancyGuard,
-    TargetWhitelisting
+  ReentrancyGuard,
+  TargetWhitelisting
 {
-    /// @notice The WITHDRAW_BATCH contract that handles the multi-token swap and withdrawal logic.
-    IWithdrawBatchExternalPositions WITHDRAW_BATCH;
+  /// @notice The WITHDRAW_BATCH contract that handles the multi-token swap and withdrawal logic.
+  IWithdrawBatchExternalPositions WITHDRAW_BATCH;
 
-    function initialize(
-        address _withdrawBatch,
-        address _portfolioFactory
-    ) external initializer {
-        WITHDRAW_BATCH = IWithdrawBatchExternalPositions(_withdrawBatch);
-        __TargetWhitelisting_init(_portfolioFactory);
-    }
+  function initialize(
+    address _withdrawBatch,
+    address _portfolioFactory
+  ) external initializer {
+    WITHDRAW_BATCH = IWithdrawBatchExternalPositions(_withdrawBatch);
+    __TargetWhitelisting_init(_portfolioFactory);
+  }
 
-    /**
-     * @notice Withdraws a specified amount of portfolio tokens from the contract and executes a multi-token swap and withdrawal.
-     * @dev Transfers the specified portfolio token amount from the user to the WITHDRAW_BATCH contract, then calls the multiTokenSwapAndWithdraw function.
-     * @param _target The address of the portfolio.
-     * @param _tokenToWithdraw The address of the token to receive after withdrawal.
-     * @param _portfolioTokenAmount The amount of the portfolio token to be withdrawn.
-     * @param _callData Additional data required for the multi-token swap and withdrawal.
-     */
-    function withdraw(
-        address[] memory _swapTokens,
-        address _target,
-        address _tokenToWithdraw,
-        uint256 _portfolioTokenAmount,
-        bytes[] memory _callData,
-        FunctionParameters.withdrawRepayParams calldata repayData,
-        FunctionParameters.ExternalPositionWithdrawParams memory _params
-    ) external nonReentrant {
-        validateTargetWhitelisting(_target);
+  /**
+   * @notice Withdraws a specified amount of portfolio tokens from the contract and executes a multi-token swap and withdrawal.
+   * @dev Transfers the specified portfolio token amount from the user to the WITHDRAW_BATCH contract, then calls the multiTokenSwapAndWithdraw function.
+   * @param _target The address of the portfolio.
+   * @param _tokenToWithdraw The address of the token to receive after withdrawal.
+   * @param _portfolioTokenAmount The amount of the portfolio token to be withdrawn.
+   * @param _callData Additional data required for the multi-token swap and withdrawal.
+   */
+  function withdraw(
+    address[] memory _swapTokens,
+    address _target,
+    address _tokenToWithdraw,
+    uint256 _portfolioTokenAmount,
+    bytes[] memory _callData,
+    FunctionParameters.withdrawRepayParams calldata repayData,
+    FunctionParameters.ExternalPositionWithdrawParams memory _params
+  ) external nonReentrant {
+    validateTargetWhitelisting(_target);
 
-        address user = msg.sender;
+    address user = msg.sender;
 
-        IPortfolio(_target).multiTokenWithdrawalFor(
-            user,
-            address(WITHDRAW_BATCH),
-            _portfolioTokenAmount,
-            repayData
-        );
+    IPortfolio(_target).multiTokenWithdrawalFor(
+      user,
+      address(WITHDRAW_BATCH),
+      _portfolioTokenAmount,
+      repayData
+    );
 
-        WITHDRAW_BATCH.multiTokenSwapAndWithdraw(
-            _swapTokens,
-            _target,
-            _tokenToWithdraw,
-            user,
-            _callData,
-            _params
-        );
-    }
+    WITHDRAW_BATCH.multiTokenSwapAndWithdraw(
+      _swapTokens,
+      _target,
+      _tokenToWithdraw,
+      user,
+      _callData,
+      _params
+    );
+  }
 }

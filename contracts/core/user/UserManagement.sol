@@ -25,7 +25,9 @@ contract UserManagement is Initializable {
    * @dev Initializes the UserManagement contract with a reference to the TokenExclusionManager contract.
    * @param _tokenExclusionManager The address of the TokenExclusionManager contract.
    */
-  function __UserManagement_init(address _tokenExclusionManager) internal onlyInitializing{
+  function __UserManagement_init(
+    address _tokenExclusionManager
+  ) internal onlyInitializing {
     tokenExclusionManager = ITokenExclusionManager(_tokenExclusionManager);
   }
 

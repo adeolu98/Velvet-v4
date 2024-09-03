@@ -11,22 +11,22 @@ import {Dependencies} from "../config/Dependencies.sol";
  * securely and in accordance with platform rules.
  */
 abstract contract FeeManager is Dependencies {
-    /**
-     * @notice Charges applicable fees by calling the fee module.
-     * @dev Calls the `_chargeProtocolAndManagementFees` function of the fee module. Charges are only applied
-     * if the caller is not the asset manager treasury or the protocol treasury, preventing unnecessary fee deduction
-     * during internal operations.
-     * This design ensures that fees are dynamically managed based on the transaction context and are only deducted
-     * when appropriate, maintaining platform efficiency.
-     */
-    function _chargeFees(address _user) internal {
-        // Check if the sender is not a treasury account to avoid charging fees on internal transfers.
-        if (
-            !(_user == assetManagementConfig().assetManagerTreasury() ||
-                _user == protocolConfig().velvetTreasury())
-        ) {
-            // Invoke the fee module to charge both protocol and management fees.
-            feeModule().chargeProtocolAndManagementFeesProtocol();
-        }
+  /**
+   * @notice Charges applicable fees by calling the fee module.
+   * @dev Calls the `_chargeProtocolAndManagementFees` function of the fee module. Charges are only applied
+   * if the caller is not the asset manager treasury or the protocol treasury, preventing unnecessary fee deduction
+   * during internal operations.
+   * This design ensures that fees are dynamically managed based on the transaction context and are only deducted
+   * when appropriate, maintaining platform efficiency.
+   */
+  function _chargeFees(address _user) internal {
+    // Check if the sender is not a treasury account to avoid charging fees on internal transfers.
+    if (
+      !(_user == assetManagementConfig().assetManagerTreasury() ||
+        _user == protocolConfig().velvetTreasury())
+    ) {
+      // Invoke the fee module to charge both protocol and management fees.
+      feeModule().chargeProtocolAndManagementFeesProtocol();
     }
+  }
 }

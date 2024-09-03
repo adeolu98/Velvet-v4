@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import { IAllowanceTransfer } from "../core/interfaces/IAllowanceTransfer.sol";
-import { ErrorLibrary } from "../library/ErrorLibrary.sol";
-import { IPortfolio } from "../core/interfaces/IPortfolio.sol";
-import { FunctionParameters } from "../FunctionParameters.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
-import { IPositionWrapper } from "../wrappers/abstract/IPositionWrapper.sol";
-import { WrapperFunctionParameters } from "../wrappers/WrapperFunctionParameters.sol";
-import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import {IAllowanceTransfer} from "../core/interfaces/IAllowanceTransfer.sol";
+import {ErrorLibrary} from "../library/ErrorLibrary.sol";
+import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
+import {FunctionParameters} from "../FunctionParameters.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
+import {IPositionWrapper} from "../wrappers/abstract/IPositionWrapper.sol";
+import {WrapperFunctionParameters} from "../wrappers/WrapperFunctionParameters.sol";
+import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
 
 import "hardhat/console.sol";
 
@@ -40,7 +40,7 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
 
     _multiTokenSwapAndDeposit(data, _params, user);
 
-    (bool sent, ) = user.call{ value: address(this).balance }("");
+    (bool sent, ) = user.call{value: address(this).balance}("");
     if (!sent) revert ErrorLibrary.TransferFailed();
   }
 

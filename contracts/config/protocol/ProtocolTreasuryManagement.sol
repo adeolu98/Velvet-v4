@@ -39,9 +39,8 @@ abstract contract ProtocolTreasuryManagement is OwnableCheck, Initializable {
   }
 
   function _updateVelvetTreasury(address _newTreasury) internal {
-    if (_newTreasury == address(0))
-      revert ErrorLibrary.ZeroAddressTreasury();
-    if(_newTreasury == velvetTreasury)
+    if (_newTreasury == address(0)) revert ErrorLibrary.ZeroAddressTreasury();
+    if (_newTreasury == velvetTreasury)
       revert ErrorLibrary.PreviousTreasuryAddress();
 
     velvetTreasury = _newTreasury;
