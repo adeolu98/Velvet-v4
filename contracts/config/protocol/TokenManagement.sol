@@ -19,8 +19,8 @@ abstract contract TokenManagement is OwnableCheck, Initializable {
   // Mapping to track the tokens that are enabled for interaction on the platform.
   mapping(address => bool) public isEnabled;
 
-  // Mapping to track the protocol tokens that are enabled for interaction on the platform.
-  mapping(address => bool) public isProtocolToken;
+  // Mapping to track the borrowed tokens that are enabled for interaction on the platform.
+  mapping(address => bool) public isBorrowableToken;
 
   // Event emitted when tokens are enabled.
   event TokensEnabled(address[] tokens);
@@ -84,7 +84,7 @@ abstract contract TokenManagement is OwnableCheck, Initializable {
    * making them valid for interaction within the platform. Any token address provided
    * must not be the zero address.
    *
-   * @param _protocolTokens An array of addresses representing the protocol tokens to be enabled.
+   * @param _borrowableTokens An array of addresses representing the borrowed tokens to be enabled.
    *
    * Requirements:
    * - Can only be called by the protocol owner (`onlyProtocolOwner`).
@@ -93,14 +93,14 @@ abstract contract TokenManagement is OwnableCheck, Initializable {
    * Reverts:
    * - If any token address in the `_protocolTokens` array is the zero address, the function will revert with `ErrorLibrary.InvalidTokenAddress()`.
    */
-  function enableProtocolTokens(
-    address[] memory _protocolTokens
+  function enableBorrowableTokens(
+    address[] memory _borrowableTokens
   ) external onlyProtocolOwner {
-    uint256 tokensLength = _protocolTokens.length;
+    uint256 tokensLength = _borrowableTokens.length;
     for (uint256 i; i < tokensLength; i++) {
-      address token = _protocolTokens[i];
+      address token = _borrowableTokens[i];
       if (token == address(0)) revert ErrorLibrary.InvalidTokenAddress();
-      isProtocolToken[token] = true;
+      isBorrowableToken[token] = true;
     }
   }
 
@@ -110,18 +110,18 @@ abstract contract TokenManagement is OwnableCheck, Initializable {
    * This function allows the protocol owner to mark specific tokens as disabled,
    * preventing them from being used in interactions within the platform.
    *
-   * @param _protocolTokens An array of addresses representing the protocol tokens to be disabled.
+   * @param _borrowableTokens An array of addresses representing the protocol tokens to be disabled.
    *
    * Requirements:
    * - Can only be called by the protocol owner (`onlyProtocolOwner`).
    */
-  function disableProtocolTokens(
-    address[] memory _protocolTokens
+  function disableBorrowableTokens(
+    address[] memory _borrowableTokens
   ) external onlyProtocolOwner {
-    uint256 tokensLength = _protocolTokens.length;
+    uint256 tokensLength = _borrowableTokens.length;
     for (uint256 i; i < tokensLength; i++) {
-      address token = _protocolTokens[i];
-      isProtocolToken[token] = false;
+      address token = _borrowableTokens[i];
+      isBorrowableToken[token] = false;
     }
   }
 }

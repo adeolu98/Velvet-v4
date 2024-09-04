@@ -31,25 +31,6 @@ abstract contract VaultCalculations is Dependencies, TokenCalculations {
     return mintAmount;
   }
 
-  // /**
-  //  * @notice Determines the minimum deposit ratio after a transfer, based on the token balance before and after the transfer.
-  //  * @param _balanceBefore The token balance before the transfer.
-  //  * @param _balanceAfter The token balance after the transfer.
-  //  * @param _currentMinRatio The current minimum ratio before this transfer.
-  //  * @return The new minimum ratio after the transfer.
-  //  */
-  // function _getMinDepositToVaultBalanceRatio(
-  //   uint256 _balanceBefore,
-  //   uint256 _balanceAfter,
-  //   uint256 _currentMinRatio
-  // ) internal pure returns (uint256) {
-  //   uint256 currentRatio = _getDepositToVaultBalanceRatio(
-  //     _balanceAfter - _balanceBefore,
-  //     _balanceAfter
-  //   );
-  //   return MathUtils._min(currentRatio, _currentMinRatio);
-  // }
-
   /**
    * @notice Calculates the total USD value of the vault by converting the balance of each token in the vault to USD.
    * @param _oracle The address of the price oracle contract.

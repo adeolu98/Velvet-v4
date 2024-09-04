@@ -195,7 +195,7 @@ describe.only("Tests for Deposit", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
-      await protocolConfig.enableProtocolTokens([
+      await protocolConfig.enableBorrowableTokens([
         addresses.vBNB_Address,
         addresses.vBTC_Address,
         addresses.vDAI_Address,
