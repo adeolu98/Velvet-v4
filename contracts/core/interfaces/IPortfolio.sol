@@ -155,7 +155,10 @@ interface IPortfolio {
                BNB and returns it to the user and burns the amount of portfolio token being withdrawn
      * @param _portfolioTokenAmount The portfolio token amount the user wants to withdraw from the fund
      */
-  function multiTokenWithdrawal(uint256 _portfolioTokenAmount) external;
+  function multiTokenWithdrawal(
+    uint256 _portfolioTokenAmount,
+    FunctionParameters.withdrawRepayParams calldata repayData
+  ) external;
 
   /**
    * @notice Allows an approved user to withdraw portfolio tokens on behalf of another user.
@@ -165,7 +168,8 @@ interface IPortfolio {
   function multiTokenWithdrawalFor(
     address _withdrawFor,
     address _tokenReceiver,
-    uint256 _portfolioTokenAmount
+    uint256 _portfolioTokenAmount,
+    FunctionParameters.withdrawRepayParams calldata repayData
   ) external;
 
   /**
@@ -200,7 +204,7 @@ interface IPortfolio {
 
   function _calculateMintAmount(uint256, uint256) external returns (uint256);
 
-  function claimRewardTokens(
+  function vaultInteraction(
     address _target,
     bytes memory _claimCalldata
   ) external;

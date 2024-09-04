@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-// Import the IFeeModule interface to interact with the fee module.
-import {IFeeModule} from "../../fee/IFeeModule.sol";
-
-// Import AccessModifiers to utilize role-based access control.
-import {AccessModifiers} from "../access/AccessModifiers.sol";
-
 // Import Dependencies to access configurations and modules.
 import {Dependencies} from "../config/Dependencies.sol";
 
@@ -16,7 +10,7 @@ import {Dependencies} from "../config/Dependencies.sol";
  * Provides functionality to charge management and protocol fees, ensuring that fee operations are handled
  * securely and in accordance with platform rules.
  */
-abstract contract FeeManager is AccessModifiers, Dependencies {
+abstract contract FeeManager is Dependencies {
   /**
    * @notice Charges applicable fees by calling the fee module.
    * @dev Calls the `_chargeProtocolAndManagementFees` function of the fee module. Charges are only applied

@@ -35,6 +35,7 @@ library FunctionParameters {
     address _baseTokenRemovalVaultImplementation;
     address _baseVelvetGnosisSafeModuleAddress;
     address _basePositionManager;
+    address _baseBorrowManager;
     address _gnosisSingleton;
     address _gnosisFallbackLibrary;
     address _gnosisMultisendLibrary;
@@ -60,6 +61,7 @@ library FunctionParameters {
     address _vault;
     address _module;
     address _tokenExclusionManager;
+    address _borrowManager;
     address _accessController;
     address _protocolConfig;
     address _assetManagementConfig;
@@ -152,6 +154,112 @@ library FunctionParameters {
     address _portfolioCreator;
     address _rebalancing;
     address _feeModule;
+    address _borrowManager;
+  }
+
+  /**
+   * @dev Struct containing the parameters required for repaying a debt using a flash loan.
+   *
+   * @param _factory The address of the factory contract responsible for creating necessary contracts.
+   * @param _token0 The address of the first token in the swap pair (e.g., USDT).
+   * @param _token1 The address of the second token in the swap pair (e.g., USDC).
+   * @param _flashLoanToken The address of the token to be borrowed in the flash loan.
+   * @param _debtToken The addresses of the tokens representing the debt to be repaid.
+   * @param _protocolToken The addresses of the protocol-specific tokens, such as lending tokens (e.g., vTokens for Venus protocol).
+   * @param _solverHandler The address of the contract handling the execution of swaps and other logic.
+   * @param _flashLoanAmount The amounts of the flash loan to be taken for each corresponding `_flashLoanToken`.
+   * @param _debtRepayAmount The amounts of debt to be repaid for each corresponding `_debtToken`.
+   * @param firstSwapData The encoded data for the first swap operation, used for repaying the debt.
+   * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after repaying the debt.
+   */
+  struct RepayParams {
+    address _factory;
+    address _token0; //USDT
+    address _token1; //USDC
+    address _flashLoanToken;
+    address[] _debtToken;
+    address[] _protocolToken; // lending token in case of venus
+    address _solverHandler;
+    uint256[] _flashLoanAmount;
+    uint256[] _debtRepayAmount;
+    bytes[] firstSwapData;
+    bytes[] secondSwapData;
+  }
+
+  /**
+   * @dev Struct containing the parameters required for withdrawing and repaying debt using a flash loan.
+   *
+   * @param _factory The address of the factory contract responsible for creating necessary contracts.
+   * @param _token0 The address of the first token in the swap pair.
+   * @param _token1 The address of the second token in the swap pair.
+   * @param _flashLoanToken The address of the token to be borrowed in the flash loan.
+   * @param _solverHandler The address of the contract handling the execution of swaps and other logic.
+   * @param _flashLoanAmount The amounts of the flash loan to be taken for each corresponding `_flashLoanToken`.
+   * @param firstSwapData The encoded data for the first swap operation, used in the process of repaying or withdrawing.
+   * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after the first swap.
+   */
+  struct withdrawRepayParams {
+    address _factory;
+    address _token0;
+    address _token1;
+    address _flashLoanToken;
+    address _solverHandler;
+    uint256[] _flashLoanAmount;
+    bytes[] firstSwapData;
+    bytes[] secondSwapData;
+  }
+
+  /**
+   * @dev Struct containing detailed data for executing a flash loan and managing debt repayment.
+   *
+   * @param flashLoanToken The address of the token to be borrowed in the flash loan.
+   * @param debtToken The addresses of the tokens representing the debt to be repaid.
+   * @param protocolTokens The addresses of the protocol-specific tokens, such as lending tokens (e.g., vTokens for Venus protocol).
+   * @param solverHandler The address of the contract handling the execution of swaps and other logic.
+   * @param flashLoanAmount The amounts of the flash loan to be taken for each corresponding `flashLoanToken`.
+   * @param debtRepayAmount The amounts of debt to be repaid for each corresponding `debtToken`.
+   * @param firstSwapData The encoded data for the first swap operation, used for repaying the debt.
+   * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after repaying the debt.
+   */
+  struct FlashLoanData {
+    address flashLoanToken;
+    address[] debtToken;
+    address[] protocolTokens;
+    address solverHandler;
+    uint256[] flashLoanAmount;
+    uint256[] debtRepayAmount;
+    bytes[] firstSwapData;
+    bytes[] secondSwapData;
+  }
+
+  /**
+   * @dev Struct containing account-related data such as collateral, debt, and health factors.
+   *
+   * @param totalCollateral The total collateral value of the account.
+   * @param totalDebt The total debt value of the account.
+   * @param availableBorrows The total amount available for borrowing.
+   * @param currentLiquidationThreshold The current liquidation threshold value of the account.
+   * @param ltv The loan-to-value ratio of the account.
+   * @param healthFactor The health factor of the account, used to determine its risk of liquidation.
+   */
+  struct AccountData {
+    uint totalCollateral;
+    uint totalDebt;
+    uint availableBorrows;
+    uint currentLiquidationThreshold;
+    uint ltv;
+    uint healthFactor;
+  }
+
+  /**
+   * @dev Struct containing arrays of token addresses related to lending and borrowing activities.
+   *
+   * @param lendTokens The array of addresses for tokens that are used in lending operations.
+   * @param borrowTokens The array of addresses for tokens that are used in borrowing operations.
+   */
+  struct TokenAddresses {
+    address[] lendTokens;
+    address[] borrowTokens;
   }
 
   /**

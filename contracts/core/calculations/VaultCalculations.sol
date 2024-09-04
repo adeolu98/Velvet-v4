@@ -6,7 +6,6 @@ import {IPriceOracle} from "../../oracle/IPriceOracle.sol";
 import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
 import {Dependencies} from "../config/Dependencies.sol";
 import {TokenCalculations} from "./TokenCalculations.sol";
-import {TokenBalanceLibrary} from "./TokenBalanceLibrary.sol";
 import {MathUtils} from "./MathUtils.sol";
 
 /**
@@ -14,11 +13,7 @@ import {MathUtils} from "./MathUtils.sol";
  * @dev Extends the Dependencies and TokenCalculations contracts to provide additional calculation functionalities for vault operations.
  * Includes functions for determining mint amounts based on deposits, calculating token balances, and evaluating vault value in USD.
  */
-abstract contract VaultCalculations is
-  Dependencies,
-  TokenCalculations,
-  TokenBalanceLibrary
-{
+abstract contract VaultCalculations is Dependencies, TokenCalculations {
   /**
    * @notice Calculates the amount of portfolio tokens to mint based on the deposit ratio and the total supply of portfolio tokens.
    * @param _depositRatio The ratio of the user's deposit to the total value of the vault.
@@ -34,25 +29,6 @@ abstract contract VaultCalculations is
       revert ErrorLibrary.MintedAmountIsNotAccepted();
     }
     return mintAmount;
-  }
-
-  /**
-   * @notice Determines the minimum deposit ratio after a transfer, based on the token balance before and after the transfer.
-   * @param _balanceBefore The token balance before the transfer.
-   * @param _balanceAfter The token balance after the transfer.
-   * @param _currentMinRatio The current minimum ratio before this transfer.
-   * @return The new minimum ratio after the transfer.
-   */
-  function _getMinDepositToVaultBalanceRatio(
-    uint256 _balanceBefore,
-    uint256 _balanceAfter,
-    uint256 _currentMinRatio
-  ) internal pure returns (uint256) {
-    uint256 currentRatio = _getDepositToVaultBalanceRatio(
-      _balanceAfter - _balanceBefore,
-      _balanceAfter
-    );
-    return MathUtils._min(currentRatio, _currentMinRatio);
   }
 
   /**

@@ -27,6 +27,8 @@ import {
   UniswapV2Handler,
   VelvetSafeModule,
   FeeModule,
+  TokenBalanceLibrary,
+  BorrowManager,
   AssetManagementConfig,
   AccessControl,
   PriceOracle,
@@ -60,6 +62,8 @@ describe.only("Tests for Portfolio Config", () => {
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
+  let borrowManager: BorrowManager;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
   let rebalancing: any;
   let rebalancing1: any;
   let rebalancing2: any;
@@ -107,6 +111,13 @@ describe.only("Tests for Portfolio Config", () => {
         ...addrs
       ] = accounts;
 
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary"
+      );
+
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      await tokenBalanceLibrary.deployed();
+
       const provider = ethers.getDefaultProvider();
 
       iaddress = await tokenAddresses();
@@ -131,7 +142,11 @@ describe.only("Tests for Portfolio Config", () => {
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing");
+      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -147,7 +162,11 @@ describe.only("Tests for Portfolio Config", () => {
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
@@ -190,6 +209,10 @@ describe.only("Tests for Portfolio Config", () => {
       const feeModule = await FeeModule.deploy();
       await feeModule.deployed();
 
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
       const TokenRemovalVault = await ethers.getContractFactory(
         "TokenRemovalVault"
       );
@@ -219,6 +242,7 @@ describe.only("Tests for Portfolio Config", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
+            _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
@@ -815,7 +839,7 @@ describe.only("Tests for Portfolio Config", () => {
             _performanceFee: "2500",
             _entryFee: "0",
             _exitFee: "0",
-            _initialPortfolioAmount: "1000000000000000",
+            _initialPortfolioAmount: "100000000000",
             _minPortfolioTokenHoldingAmount: "10000000000000000",
             _assetManagerTreasury: treasury.address,
             _whitelistedTokens: [],

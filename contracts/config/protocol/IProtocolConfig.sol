@@ -232,4 +232,16 @@ interface IProtocolConfig {
   function positionWrapperBaseImplementation() external view returns (address);
 
   function allowedRatioDeviationBps() external view returns (uint256);
+
+  function marketControllers(address _asset) external view returns (address);
+
+  function assetHandlers(address _asset) external view returns (address);
+
+  function getSupportedControllers() external view returns (address[] memory);
+
+  function isSupportedControllers(
+    address _controllers
+  ) external view returns (bool);
+
+  function isProtocolToken(address _asset) external view returns (bool);
 }

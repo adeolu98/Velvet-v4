@@ -21,21 +21,33 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   uint256 public lastUnpausedByUser;
   uint256 public lastEmergencyPaused;
 
+  address[] public supportedControllers;
+
   bool public isProtocolPaused;
   bool public isProtocolEmergencyPaused;
+
+  mapping(address => address) public marketControllers;
+  mapping(address => address) public assetHandlers;
+  mapping(address => bool) public isSupportedControllers;
 
   event ProtocolPaused(bool indexed paused);
   event MinPortfolioTokenHoldingAmountUpdated(uint256 indexed newAmount);
   event CooldownPeriodUpdated(uint256 indexed newPeriod);
   event MinInitialPortfolioAmountUpdated(uint256 indexed newAmount);
   event AllowedDustToleranceUpdated(uint256 indexed newDustTolerance);
+  event MarketControllersAdded(address[] _assets, address[] _controllers);
+  event MarketControllersRemoved(address[] _assets);
+  event AssetHandlersAdded(address[] _assets, address[] _handlers);
+  event AssetHandlersRemoved(address[] _assets);
+  event SupportedControllersAdded(address[] _controllers);
+  event SupportedControllersRemoved(address _controller);
 
   /**
    * @dev Sets default fee percentages and system limits.
    */
   function __SystemSettings_init() internal onlyInitializing {
-    minPortfolioTokenHoldingAmount = 1e16; // 0.01 ETH or equivalent
-    minInitialPortfolioAmount = 1e16; // 0.01 ETH or equivalent
+    minPortfolioTokenHoldingAmount = 1e14; // 0.0001 ETH or equivalent
+    minInitialPortfolioAmount = 1e14; // 0.0001 ETH or equivalent
     cooldownPeriod = 1 days;
     assetLimit = 15;
     whitelistLimit = 300;
@@ -161,5 +173,129 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     allowedDustTolerance = _allowedDustTolerance;
 
     emit AllowedDustToleranceUpdated(_allowedDustTolerance);
+  }
+
+  /**
+   * @notice Sets the market controllers for specified assets.
+   * @param _assets An array of asset addresses.
+   * @param _controllers An array of controller addresses corresponding to the assets.
+   */
+  function setMarketControllers(
+    address[] memory _assets, //Lending Token Address
+    address[] memory _controllers // Their respective controllers(comptrollers)
+  ) external onlyProtocolOwner {
+    uint256 assetLength = _assets.length;
+    if (assetLength != _controllers.length) revert ErrorLibrary.InvalidLength();
+    for (uint256 i; i < assetLength; i++) {
+      marketControllers[_assets[i]] = _controllers[i];
+    }
+    emit MarketControllersAdded(_assets, _controllers);
+  }
+
+  /**
+   * @notice Removes the market controllers for specified assets.
+   * @param _assets An array of asset addresses to remove controllers for.
+   */
+  function removeMarketControllers(
+    address[] memory _assets
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      delete marketControllers[_assets[i]];
+    }
+    emit MarketControllersRemoved(_assets);
+  }
+
+  /**
+   * @notice Sets the asset handlers for specified assets.
+   * @param _assets An array of asset addresses.
+   * @param _handlers An array of handler addresses corresponding to the assets.
+   */
+  function setAssetHandlers(
+    address[] memory _assets, //Third-Party Token Address
+    address[] memory _handlers // Their respective handlers
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      assetHandlers[_assets[i]] = _handlers[i];
+    }
+    emit AssetHandlersAdded(_assets, _handlers);
+  }
+
+  /**
+   * @notice Removes the asset handlers for specified assets.
+   * @param _assets An array of asset addresses to remove handlers for.
+   */
+  function removeAssetHandlers(
+    address[] memory _assets
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      delete assetHandlers[_assets[i]];
+    }
+    emit AssetHandlersRemoved(_assets);
+  }
+
+  /**
+   * @notice Adds supported controllers to the protocol.
+   * @param _controllers An array of controller addresses to add.
+   */
+  function setSupportedControllers(
+    address[] memory _controllers
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _controllers.length; i++) {
+      address controller = _controllers[i];
+      if (!isSupportedControllers[controller]) {
+        supportedControllers.push(controller);
+        isSupportedControllers[controller] = true;
+      }
+    }
+    emit SupportedControllersAdded(_controllers);
+  }
+
+  /**
+   * @notice Removes a controller from the list of supported controllers.
+   * @dev This function finds the controller in the array, swaps it with the last element, and then removes the last element to avoid leaving a gap.
+   * @param _controller The address of the controller to remove from the list of supported controllers.
+   * @dev The function reverts if the controller is not found in the array.
+   * @dev This function can only be called by the protocol owner.
+   */
+  function removeSupportedControllers(
+    address _controller
+  ) external onlyProtocolOwner {
+    // Find the index of the address to remove
+    uint256 indexToRemove = findAddressIndex(_controller);
+
+    // Swap the address to remove with the last address in the array
+    supportedControllers[indexToRemove] = supportedControllers[
+      supportedControllers.length - 1
+    ];
+    delete isSupportedControllers[_controller];
+    // Remove the last element (which is now a duplicate)
+    supportedControllers.pop();
+
+    emit SupportedControllersRemoved(_controller);
+  }
+
+  /**
+   * @notice Finds the index of an address in the array of addresses.
+   * @param _addressToFind The address to find in the array.
+   * @return The index of the address in the array.
+   * @dev The function reverts if the address is not found.
+   */
+  function findAddressIndex(
+    address _addressToFind
+  ) internal view returns (uint256) {
+    for (uint256 i = 0; i < supportedControllers.length; i++) {
+      if (supportedControllers[i] == _addressToFind) {
+        return i;
+      }
+    }
+    revert ErrorLibrary.InvalidAddress();
+  }
+
+  /**
+   * @notice Returns the list of supported controllers.
+   * @return An array of addresses representing the supported controllers.
+   */
+  function getSupportedControllers() external view returns (address[] memory) {
+    return supportedControllers;
   }
 }

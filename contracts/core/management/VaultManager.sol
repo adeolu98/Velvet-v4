@@ -15,6 +15,11 @@ import {MathUtils} from "../calculations/MathUtils.sol";
 import {PortfolioToken} from "../token/PortfolioToken.sol";
 import {IAllowanceTransfer} from "../interfaces/IAllowanceTransfer.sol";
 
+import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
+import {FunctionParameters} from "../../FunctionParameters.sol";
+import {TokenBalanceLibrary} from "../calculations/TokenBalanceLibrary.sol";
+import {IBorrowManager} from "../interfaces/IBorrowManager.sol";
+
 /**
  * @title VaultManager
  * @dev Extends functionality for managing deposits and withdrawals in the vault.
@@ -30,14 +35,24 @@ abstract contract VaultManager is
   IAllowanceTransfer public immutable permit2 =
     IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
+  IProtocolConfig internal _protocolConfig;
+  IBorrowManager internal _borrowManager;
+
   /**
    * @notice Initializes the VaultManager contract.
    * @dev This function sets up the ReentrancyGuard by calling its initializer. It's designed to be called
    *      during the contract initialization process to ensure that the non-reentrant modifier can be used
    *      safely in functions to prevent reentrancy attacks. This is a standard part of setting up contracts
    *      that handle external calls or token transfers, providing an additional layer of security.
+   * @param protocolConfig The address of the protocol configuration contract.
+   * @param borrowManager The address of borrowManager contract
    */
-  function __VaultManager_init() internal onlyInitializing {
+  function __VaultManager_init(
+    address protocolConfig,
+    address borrowManager
+  ) internal onlyInitializing {
+    _protocolConfig = IProtocolConfig(protocolConfig);
+    _borrowManager = IBorrowManager(borrowManager);
     __ReentrancyGuard_init();
   }
 
@@ -94,7 +109,8 @@ abstract contract VaultManager is
   function multiTokenWithdrawalFor(
     address _withdrawFor,
     address _tokenReceiver,
-    uint256 _portfolioTokenAmount
+    uint256 _portfolioTokenAmount,
+    FunctionParameters.withdrawRepayParams calldata repayData
   ) external virtual nonReentrant {
     _spendAllowance(_withdrawFor, msg.sender, _portfolioTokenAmount);
     address[] memory _emptyArray;
@@ -102,7 +118,8 @@ abstract contract VaultManager is
       _withdrawFor,
       _tokenReceiver,
       _portfolioTokenAmount,
-      _emptyArray
+      _emptyArray,
+      repayData
     );
   }
 
@@ -111,14 +128,16 @@ abstract contract VaultManager is
    * @param _portfolioTokenAmount The amount of portfolio tokens to withdraw.
    */
   function multiTokenWithdrawal(
-    uint256 _portfolioTokenAmount
+    uint256 _portfolioTokenAmount,
+    FunctionParameters.withdrawRepayParams calldata repayData
   ) external virtual nonReentrant {
     address[] memory _emptyArray;
     _multiTokenWithdrawal(
       msg.sender,
       msg.sender,
       _portfolioTokenAmount,
-      _emptyArray
+      _emptyArray,
+      repayData
     );
   }
 
@@ -133,13 +152,15 @@ abstract contract VaultManager is
    */
   function emergencyWithdrawal(
     uint256 _portfolioTokenAmount,
-    address[] memory _exemptionTokens
+    address[] memory _exemptionTokens,
+    FunctionParameters.withdrawRepayParams calldata repayData
   ) external virtual nonReentrant {
     _multiTokenWithdrawal(
       msg.sender,
       msg.sender,
       _portfolioTokenAmount,
-      _exemptionTokens
+      _exemptionTokens,
+      repayData
     );
   }
 
@@ -159,14 +180,16 @@ abstract contract VaultManager is
     address _withdrawFor,
     address _tokenReceiver,
     uint256 _portfolioTokenAmount,
-    address[] memory _exemptionTokens
+    address[] memory _exemptionTokens,
+    FunctionParameters.withdrawRepayParams calldata repayData
   ) external virtual nonReentrant {
     _spendAllowance(_withdrawFor, msg.sender, _portfolioTokenAmount);
     _multiTokenWithdrawal(
       _withdrawFor,
       _tokenReceiver,
       _portfolioTokenAmount,
-      _exemptionTokens
+      _exemptionTokens,
+      repayData
     );
   }
 
@@ -182,6 +205,20 @@ abstract contract VaultManager is
     uint256 _amount,
     address _to
   ) external onlyRebalancerContract {
+    _pullFromVault(_token, _amount, _to);
+  }
+
+  /**
+   * @notice Internal function to handle the withdrawal of tokens from the vault.
+   * @param _token The token to be pulled from the vault.
+   * @param _amount The amount of the token to pull.
+   * @param _to The destination address for the tokens.
+   */
+  function _pullFromVault(
+    address _token,
+    uint256 _amount,
+    address _to
+  ) internal {
     // Prepare the data for ERC20 token transfer
     bytes memory inputData = abi.encodeWithSelector(
       IERC20Upgradeable.transfer.selector,
@@ -207,20 +244,30 @@ abstract contract VaultManager is
    * @param _target The address where the rewards are claimed from
    * @param _claimCalldata The calldata to be used for the claim.
    */
-  function claimRewardTokens(
+  function vaultInteraction(
     address _target,
     bytes memory _claimCalldata
   ) external onlyRebalancerContract {
+    _vaultInteraction(_target, _claimCalldata);
+  }
+
+  /**
+   * @notice Internal function to interact with the vault.
+   * @dev Executes the interaction through the safe module and checks for success.
+   * @param _target The address where the interaction is targeted.
+   * @param _claimCalldata The calldata to be used for the interaction.
+   */
+  function _vaultInteraction(
+    address _target,
+    bytes memory _claimCalldata
+  ) internal {
     // Execute the transfer through the safe module and check for success
-    (, bytes memory data) = IVelvetSafeModule(safeModule).executeWallet(
+    (bool success, ) = IVelvetSafeModule(safeModule).executeWallet(
       _target,
       _claimCalldata
     );
 
-    // Ensure the transfer was successful; revert if not
-    if (!(data.length == 0 || abi.decode(data, (bool)))) {
-      revert ErrorLibrary.ClaimFailed();
-    }
+    if (!success) revert ErrorLibrary.CallFailed();
   }
 
   /**
@@ -307,13 +354,12 @@ abstract contract VaultManager is
     // Ensure the minted amount meets the user's minimum expectation to mitigate slippage.
     _verifyUserMintedAmount(tokenAmount, _minMintAmount);
 
-    uint256 userBalanceAfterDeposit = balanceOf(_depositFor);
     // Notify listeners of the deposit event.
     emit Deposited(
       address(this),
       _depositFor,
       tokenAmount,
-      userBalanceAfterDeposit
+      balanceOf(_depositFor)
     );
   }
 
@@ -321,12 +367,15 @@ abstract contract VaultManager is
    * @notice Internal function to handle the multi-token withdrawal logic.
    * @param _withdrawFor The address of the user making the withdrawal.
    * @param _portfolioTokenAmount The amount of portfolio tokens to burn for withdrawal.
+   * * @param _tokenReceiver The address to receive the withdrawn tokens.
+   * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
    */
   function _multiTokenWithdrawal(
     address _withdrawFor,
     address _tokenReceiver,
     uint256 _portfolioTokenAmount,
-    address[] memory _exemptionTokens
+    address[] memory _exemptionTokens,
+    FunctionParameters.withdrawRepayParams calldata repayData
   ) internal virtual {
     // Retrieve the list of tokens currently in the portfolio.
     address[] memory portfolioTokens = tokens;
@@ -359,10 +408,19 @@ abstract contract VaultManager is
     );
 
     uint256 exemptionIndex = 0;
+    _borrowManager.repayBorrow(
+      _portfolioTokenAmount,
+      totalSupplyPortfolio,
+      repayData
+    );
     for (uint256 i; i < portfolioTokenLength; i++) {
       address _token = portfolioTokens[i];
       // Calculate the proportion of each token to return based on the burned portfolio tokens.
-      uint256 tokenBalance = _getTokenBalanceOf(_token, vault);
+      uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
+        _token,
+        vault,
+        _protocolConfig
+      );
       tokenBalance =
         (tokenBalance * _portfolioTokenAmount) /
         totalSupplyPortfolio;
@@ -393,15 +451,13 @@ abstract contract VaultManager is
       }
     }
 
-    uint256 userBalanceAfterWithdrawal = balanceOf(_withdrawFor);
-
     // Notify listeners of the withdrawal event.
     emit Withdrawn(
       _withdrawFor,
       _portfolioTokenAmount,
       address(this),
       portfolioTokens,
-      userBalanceAfterWithdrawal,
+      balanceOf(_withdrawFor),
       userWithdrawalAmounts
     );
   }
@@ -411,6 +467,7 @@ abstract contract VaultManager is
    * @dev Utilizes `TransferHelper` for secure token transfer from user to vault.
    * @param _token Address of the token to be transferred.
    * @param _depositAmount Amount of the token to be transferred.
+   * @param _from The address from which the tokens are transferred.
    */
   function _transferToVaultWithPermit(
     address _from,
@@ -443,6 +500,9 @@ abstract contract VaultManager is
    * @notice Processes multi-token deposits by calculating the minimum deposit ratio.
    * @dev Ensures that the deposited token amounts align with the current vault token ratios.
    * @param depositAmounts Array of amounts for each token the user wants to deposit.
+   *  @param _permit Batch permit data for token allowance.
+   * @param _signature Signature corresponding to the permit batch.
+   * @param _from The address from which the tokens are transferred.
    * @return The minimum deposit ratio after deposits.
    */
   function _multiTokenTransferWithPermit(
@@ -488,6 +548,7 @@ abstract contract VaultManager is
   /**
    * @notice Processes multi-token deposits by calculating the minimum deposit ratio.
    * @dev Ensures that the deposited token amounts align with the current vault token ratios.
+   * @param _from The address from which the tokens are transferred.
    * @param depositAmounts Array of amounts for each token the user wants to deposit.
    * @return The minimum deposit ratio after deposits.
    */
@@ -533,10 +594,8 @@ abstract contract VaultManager is
     }
 
     // Get current token balances in the vault for ratio calculations
-    uint256[] memory tokenBalancesBefore = getTokenBalancesOf(
-      portfolioTokens,
-      vault
-    );
+    uint256[] memory tokenBalancesBefore = TokenBalanceLibrary
+      .getTokenBalancesOf(portfolioTokens, vault, _protocolConfig);
 
     return (amountLength, portfolioTokens, tokenBalancesBefore);
   }
@@ -566,31 +625,30 @@ abstract contract VaultManager is
     if (totalSupply() == 0) {
       for (uint256 i; i < amountLength; i++) {
         uint256 depositAmount = depositAmounts[i];
-        depositedAmounts[i] = depositAmount;
         if (depositAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
+        address portfolioToken = portfolioTokens[i];
         if (usePermit) {
-          _transferToVaultWithPermit(_from, portfolioTokens[i], depositAmount);
+          _transferToVaultWithPermit(_from, portfolioToken, depositAmount);
         } else {
-          _transferToVault(_from, portfolioTokens[i], depositAmount);
+          // TransferHelper.safeTransferFrom(portfolioToken, _from, vault, depositAmount);
+          _transferToVault(_from, portfolioToken, depositAmount);
         }
-        uint256 tokenBalanceAfter = _getTokenBalanceOf(
-          portfolioTokens[i],
-          vault
-        );
 
-        if (!(tokenBalanceAfter > tokenBalancesBefore[i]))
-          revert ErrorLibrary.TransferFailed();
+        if (
+          TokenBalanceLibrary._getTokenBalanceOf(
+            portfolioToken,
+            vault,
+            _protocolConfig
+          ) <= tokenBalancesBefore[i]
+        ) revert ErrorLibrary.TransferFailed();
+        depositedAmounts[i] = depositAmount;
       }
       emit UserDepositedAmounts(depositedAmounts, portfolioTokens);
       return 0;
     }
 
-    // Calculate the minimum ratio to maintain proportional token balances in the vault
-    uint256 _minRatio = _getDepositToVaultBalanceRatio(
-      depositAmounts[0],
-      tokenBalancesBefore[0]
-    );
-    for (uint256 i = 1; i < amountLength; i++) {
+    uint256 _minRatio = type(uint).max;
+    for (uint256 i = 0; i < amountLength; i++) {
       uint256 _currentRatio = _getDepositToVaultBalanceRatio(
         depositAmounts[i],
         tokenBalancesBefore[i]
@@ -600,7 +658,6 @@ abstract contract VaultManager is
 
     uint256 transferAmount;
     uint256 _minRatioAfterTransfer = type(uint256).max;
-    // Adjust token deposits to match the minimum ratio and update the vault balances
     for (uint256 i; i < amountLength; i++) {
       address token = portfolioTokens[i];
       uint256 tokenBalanceBefore = tokenBalancesBefore[i];
@@ -612,9 +669,17 @@ abstract contract VaultManager is
         _transferToVault(_from, token, transferAmount);
       }
 
-      _minRatioAfterTransfer = _getMinDepositToVaultBalanceRatio(
-        tokenBalanceBefore,
-        _getTokenBalanceOf(token, vault),
+      uint256 tokenBalanceAfter = TokenBalanceLibrary._getTokenBalanceOf(
+        token,
+        vault,
+        _protocolConfig
+      );
+      uint256 currentRatio = _getDepositToVaultBalanceRatio(
+        tokenBalanceAfter - tokenBalanceBefore,
+        tokenBalanceAfter
+      );
+      _minRatioAfterTransfer = MathUtils._min(
+        currentRatio,
         _minRatioAfterTransfer
       );
     }

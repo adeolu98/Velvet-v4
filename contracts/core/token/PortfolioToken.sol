@@ -6,6 +6,7 @@ import {AccessModifiers} from "../access/AccessModifiers.sol";
 import {CooldownManager, ErrorLibrary} from "../cooldown/CooldownManager.sol";
 import {Dependencies} from "../config/Dependencies.sol";
 import {UserManagement} from "../user/UserManagement.sol";
+import {IAssetManagementConfig} from "../../config/assetManagement/IAssetManagementConfig.sol";
 
 /**
  * @title PortfolioToken
@@ -116,14 +117,15 @@ abstract contract PortfolioToken is
     address to,
     uint256 amount
   ) internal override {
+    IAssetManagementConfig assetManagementConfig = assetManagementConfig();
     super._beforeTokenTransfer(from, to, amount);
     if (from == address(0) || to == address(0)) {
       return;
     }
     if (
-      !(assetManagementConfig().transferableToPublic() ||
-        (assetManagementConfig().transferable() &&
-          assetManagementConfig().whitelistedUsers(to)))
+      !(assetManagementConfig.transferableToPublic() ||
+        (assetManagementConfig.transferable() &&
+          assetManagementConfig.whitelistedUsers(to)))
     ) {
       revert ErrorLibrary.Transferprohibited();
     }

@@ -29,6 +29,8 @@ import {
   ERC20Upgradeable,
   VelvetSafeModule,
   FeeModule,
+  TokenBalanceLibrary,
+  BorrowManager,
   FeeModule__factory,
   UniswapV2Handler,
   AssetManagementConfig,
@@ -59,6 +61,8 @@ describe.only("Tests for Upgradeability", () => {
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
+  let borrowManager: BorrowManager;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
   let txObject;
   let owner: SignerWithAddress;
   let treasury: SignerWithAddress;
@@ -68,6 +72,7 @@ describe.only("Tests for Upgradeability", () => {
   let addr1: SignerWithAddress;
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
+  let zeroAddress: any;
   let approve_amount = ethers.constants.MaxUint256; //(2^256 - 1 )
   let token;
 
@@ -99,6 +104,13 @@ describe.only("Tests for Upgradeability", () => {
       [owner, depositor1, nonOwner, treasury, addr1, addr2, ...addrs] =
         accounts;
 
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary"
+      );
+
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      await tokenBalanceLibrary.deployed();
+
       const PositionWrapper = await ethers.getContractFactory(
         "PositionWrapper"
       );
@@ -119,7 +131,11 @@ describe.only("Tests for Upgradeability", () => {
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {});
+      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -135,7 +151,15 @@ describe.only("Tests for Upgradeability", () => {
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
@@ -156,6 +180,8 @@ describe.only("Tests for Upgradeability", () => {
       ];
 
       let whitelist = [owner.address];
+
+      zeroAddress = "0x0000000000000000000000000000000000000000";
 
       const PositionManager = await ethers.getContractFactory(
         "PositionManagerUniswap"
@@ -196,6 +222,7 @@ describe.only("Tests for Upgradeability", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
+            _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
@@ -259,7 +286,12 @@ describe.only("Tests for Upgradeability", () => {
         portfolioAddress
       );
       const PortfolioCalculations = await ethers.getContractFactory(
-        "PortfolioCalculations"
+        "PortfolioCalculations",
+        {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        }
       );
       feeModule0 = await FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
@@ -471,7 +503,17 @@ describe.only("Tests for Upgradeability", () => {
         );
 
         await portfolio.multiTokenWithdrawal(
-          BigNumber.from(amountPortfolioToken)
+          BigNumber.from(amountPortfolioToken),
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          }
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -531,7 +573,16 @@ describe.only("Tests for Upgradeability", () => {
 
         await portfolio
           .connect(nonOwner)
-          .multiTokenWithdrawal(amountPortfolioToken);
+          .multiTokenWithdrawal(amountPortfolioToken, {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          });
 
         const supplyAfter = await portfolio.totalSupply();
 
@@ -608,7 +659,11 @@ describe.only("Tests for Upgradeability", () => {
       });
 
       it("should upgrade portfolio contract to V3.2", async () => {
-        const PortfolioV3_2 = await ethers.getContractFactory("PortfolioV3_2");
+        const PortfolioV3_2 = await ethers.getContractFactory("PortfolioV3_2", {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        });
         const portfolioContractV3_2 = await PortfolioV3_2.deploy();
         await portfolioContractV3_2.deployed();
 
@@ -783,7 +838,17 @@ describe.only("Tests for Upgradeability", () => {
         );
 
         await portfolio.multiTokenWithdrawal(
-          BigNumber.from(amountPortfolioToken)
+          BigNumber.from(amountPortfolioToken),
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          }
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -845,7 +910,16 @@ describe.only("Tests for Upgradeability", () => {
 
         await portfolio
           .connect(nonOwner)
-          .multiTokenWithdrawal(amountPortfolioToken);
+          .multiTokenWithdrawal(amountPortfolioToken, {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          });
 
         const supplyAfter = await portfolio.totalSupply();
 
@@ -917,7 +991,11 @@ describe.only("Tests for Upgradeability", () => {
       });
 
       it("should upgrade portfolio contract to V3.3", async () => {
-        const PortfolioV3_3 = await ethers.getContractFactory("PortfolioV3_3");
+        const PortfolioV3_3 = await ethers.getContractFactory("PortfolioV3_3", {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        });
         const portfolioContractV3_3 = await PortfolioV3_3.deploy();
         await portfolioContractV3_3.deployed();
 
@@ -1094,7 +1172,17 @@ describe.only("Tests for Upgradeability", () => {
         );
 
         await portfolio.multiTokenWithdrawal(
-          BigNumber.from(amountPortfolioToken)
+          BigNumber.from(amountPortfolioToken),
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          }
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -1154,7 +1242,16 @@ describe.only("Tests for Upgradeability", () => {
 
         await portfolio
           .connect(nonOwner)
-          .multiTokenWithdrawal(amountPortfolioToken);
+          .multiTokenWithdrawal(amountPortfolioToken, {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          });
 
         const supplyAfter = await portfolio.totalSupply();
 
@@ -1397,7 +1494,17 @@ describe.only("Tests for Upgradeability", () => {
         );
 
         await portfolio.multiTokenWithdrawal(
-          BigNumber.from(amountPortfolioToken)
+          BigNumber.from(amountPortfolioToken),
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          }
         );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -1457,7 +1564,16 @@ describe.only("Tests for Upgradeability", () => {
 
         await portfolio
           .connect(nonOwner)
-          .multiTokenWithdrawal(amountPortfolioToken);
+          .multiTokenWithdrawal(amountPortfolioToken, {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          });
 
         const supplyAfter = await portfolio.totalSupply();
 
@@ -1505,7 +1621,11 @@ describe.only("Tests for Upgradeability", () => {
       });
 
       it("should upgrade portfolio contract to V3.4", async () => {
-        const PortfolioV3_4 = await ethers.getContractFactory("PortfolioV3_4");
+        const PortfolioV3_4 = await ethers.getContractFactory("PortfolioV3_4", {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        });
         const portfolioContractV3_4 = await PortfolioV3_4.deploy();
         await portfolioContractV3_4.deployed();
 
@@ -1570,7 +1690,11 @@ describe.only("Tests for Upgradeability", () => {
 
       it("owner should be able upgrade back to portfolio contract to V3.3 after wrong upgrade", async () => {
         // storage also includes the owner and the structure got messed up
-        const PortfolioV3_3 = await ethers.getContractFactory("PortfolioV3_3");
+        const PortfolioV3_3 = await ethers.getContractFactory("PortfolioV3_3", {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        });
         const portfolioContractV3_3 = await PortfolioV3_3.deploy();
         await portfolioContractV3_3.deployed();
 

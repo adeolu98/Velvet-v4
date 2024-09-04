@@ -3,13 +3,15 @@ pragma solidity 0.8.17;
 
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
+import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
+import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
 
 /**
  * @title Token Balance Library
  * @dev Library for managing token balances within a vault. Provides utility functions to fetch individual
  * and collective token balances from a specified vault address.
  */
-contract TokenBalanceLibrary {
+library TokenBalanceLibrary {
   /**
    * @notice Fetches the balances of multiple tokens from a single vault.
    * @dev Iterates through an array of token addresses to retrieve each token's balance in the vault.
@@ -21,12 +23,17 @@ contract TokenBalanceLibrary {
    */
   function getTokenBalancesOf(
     address[] memory portfolioTokens,
-    address _vault
+    address _vault,
+    IProtocolConfig _protocolConfig
   ) public view returns (uint256[] memory vaultBalances) {
     uint256 portfolioLength = portfolioTokens.length;
     vaultBalances = new uint256[](portfolioLength); // Initializes the array to hold fetched balances.
     for (uint256 i; i < portfolioLength; i++) {
-      vaultBalances[i] = _getTokenBalanceOf(portfolioTokens[i], _vault); // Fetches balance for each token.
+      vaultBalances[i] = _getTokenBalanceOf(
+        portfolioTokens[i],
+        _vault,
+        _protocolConfig
+      ); // Fetches balance for each token.
     }
   }
 
@@ -41,10 +48,19 @@ contract TokenBalanceLibrary {
    */
   function _getTokenBalanceOf(
     address _token,
-    address _vault
-  ) internal view returns (uint256 tokenBalance) {
+    address _vault,
+    IProtocolConfig _protocolConfig
+  ) public view returns (uint256 tokenBalance) {
     if (_token == address(0) || _vault == address(0))
       revert ErrorLibrary.InvalidAddress(); // Ensures neither the token nor the vault address is zero.
-    tokenBalance = IERC20Upgradeable(_token).balanceOf(_vault); // Actual balance fetch.
+    // Need to optimize it, so that, we don't have to getUserAccountData for all protocol tokens
+    tokenBalance = _protocolConfig.isProtocolToken(_token)
+      ? IAssetHandler(_protocolConfig.assetHandlers(_token))
+        .getInvestibleBalance(
+          _token,
+          _vault,
+          _protocolConfig.marketControllers(_token)
+        )
+      : IERC20Upgradeable(_token).balanceOf(_vault); // Actual balance fetch.
   }
 }

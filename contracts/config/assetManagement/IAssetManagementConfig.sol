@@ -117,5 +117,6 @@ interface IAssetManagementConfig {
   ) external;
 
   function isTokenWhitelisted(address _token) external returns (bool);
+
   function owner() external view returns (address);
 }

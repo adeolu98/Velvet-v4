@@ -28,6 +28,18 @@ abstract contract AccessModifiers is AccessRoles, Initializable {
   }
 
   /**
+   * @dev Modifier to restrict function access to only the portfolio manager contract.
+   * Reverts with CallerNotPortfolioManager error if the caller does not have the PORTFOLIO_MANAGER_ROLE role.
+   */
+  modifier onlyPortfolioManager() {
+    if (!_checkRole(PORTFOLIO_MANAGER_ROLE, msg.sender)) {
+      //Did this so that, I can use pullFromVault/VaultInteraction in abi.encode() and execute
+      revert ErrorLibrary.CallerNotPortfolioManager();
+    }
+    _;
+  }
+
+  /**
    * @dev Modifier to restrict function access to only the rebalancer contract.
    * Reverts with CallerNotRebalancerContract error if the caller does not have the REBALANCER_CONTRACT role.
    */

@@ -13,8 +13,6 @@ import { IPositionWrapper } from "../wrappers/abstract/IPositionWrapper.sol";
 import { WrapperFunctionParameters } from "../wrappers/WrapperFunctionParameters.sol";
 import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title DepositBatchExternalPositions
  * @notice A contract for performing multi-token swap and deposit operations.
@@ -40,7 +38,7 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
 
     _multiTokenSwapAndDeposit(data, _params, user);
 
-    (bool sent, ) = user.call{ value: address(this).balance }("");
+    (bool sent, ) = user.call{value: address(this).balance}("");
     if (!sent) revert ErrorLibrary.TransferFailed();
   }
 
@@ -231,11 +229,6 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
       _depositAmounts[_params._positionWrapperIndex[i]] =
         balanceAfter -
         balanceBefore;
-
-      console.log(
-        "depositAmount wrapper",
-        _depositAmounts[_params._positionWrapperIndex[i]]
-      );
     }
     return _depositAmounts;
   }
@@ -279,16 +272,6 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
       _swapResults[_params._index1[i]]
     );
 
-    uint256 balanceBefore0 = _getTokenBalance(
-      _params._swapTokens[_params._index0[i]],
-      address(this)
-    );
-
-    uint256 balanceBefore1 = _getTokenBalance(
-      _params._swapTokens[_params._index1[i]],
-      address(this)
-    );
-
     if (positionWrapper.totalSupply() == 0) {
       // Initial mint to external position
       positionManager.initializePositionAndDeposit(
@@ -317,19 +300,6 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
         })
       );
     }
-
-    uint256 balanceAfter0 = _getTokenBalance(
-      _params._swapTokens[_params._index0[i]],
-      address(this)
-    );
-
-    uint256 balanceAfter1 = _getTokenBalance(
-      _params._swapTokens[_params._index1[i]],
-      address(this)
-    );
-
-    console.log("token0DepositAmount", balanceBefore0 - balanceAfter0);
-    console.log("token1DepositAmount", balanceBefore1 - balanceAfter1);
   }
 
   /**

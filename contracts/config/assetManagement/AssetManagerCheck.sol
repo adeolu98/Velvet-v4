@@ -12,8 +12,7 @@ import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
  * access certain functions, enhancing the security and operational integrity of the system.
  */
 abstract contract AssetManagerCheck {
-
-   /**
+  /**
    * @notice Modifier to restrict function access to asset managers.
    * Uses the `_isAssetManager` function to determine the caller's authorization status.
    * @dev Reverts with a CallerNotAssetManager error if the caller does not have asset manager privileges.

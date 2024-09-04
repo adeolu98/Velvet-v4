@@ -17,6 +17,7 @@ import { IVelvetSafeModule } from "./vault/IVelvetSafeModule.sol";
 import { VelvetSafeModule } from "./vault/VelvetSafeModule.sol";
 import { GnosisDeployer } from "contracts/library/GnosisDeployer.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { IBorrowManager } from "./core/interfaces/IBorrowManager.sol";
 
 contract PortfolioFactory is
   Ownable2StepUpgradeable,
@@ -31,6 +32,7 @@ contract PortfolioFactory is
   address internal baseVelvetGnosisSafeModuleAddress;
   address internal baseTokenRemovalVaultAddress;
   address internal basePositionManager;
+  address internal baseBorrowManager;
 
   address public protocolConfig;
   bool internal portfolioCreationPause;
@@ -51,6 +53,7 @@ contract PortfolioFactory is
     address tokenExclusionManager;
     address rebalancing;
     address owner;
+    address borrowManager;
     address assetManagementConfig;
     address feeModule;
     address vaultAddress;
@@ -72,7 +75,7 @@ contract PortfolioFactory is
   event UpgradePortfolio(address indexed newImplementation);
   event UpgradeAssetManagerConfig(address indexed newImplementation);
   event UpgradeFeeModule(address indexed newImplementation);
-  event UpdataTokenRemovalVaultBaseAddress(address indexed newImplementation);
+  event UpgradeTokenRemovalVaultBaseAddress(address indexed newImplementation);
   event UpgradeRebalance(address indexed newImplementation);
   event UpdateGnosisAddresses(
     address indexed newGnosisSingleton,
@@ -81,6 +84,7 @@ contract PortfolioFactory is
     address newGnosisSafeProxyFactory
   );
   event UpgradeTokenExclusionManager(address indexed newImplementation);
+  event UpgradeBorrowManager(address indexed newImplementation);
 
   event TransferSuperAdminOwnership(address indexed newOwner);
 
@@ -113,7 +117,8 @@ contract PortfolioFactory is
       initData._gnosisMultisendLibrary == address(0) ||
       initData._gnosisSafeProxyFactory == address(0) ||
       initData._protocolConfig == address(0) ||
-      initData._baseTokenRemovalVaultImplementation == address(0)
+      initData._baseTokenRemovalVaultImplementation == address(0) ||
+      initData._baseBorrowManager == address(0)
     ) revert ErrorLibrary.InvalidAddress();
     _setBasePortfolioAddress(initData._basePortfolioAddress);
     _setBaseRebalancingAddress(initData._baseRebalancingAddres);
@@ -130,6 +135,7 @@ contract PortfolioFactory is
     setTokenRemovalVaultImplementationAddress(
       initData._baseTokenRemovalVaultImplementation
     );
+    _setBaseBorrowManager(initData._baseBorrowManager);
     setPositionManagerImplementationAddress(initData._basePositionManager);
     baseVelvetGnosisSafeModuleAddress = initData
       ._baseVelvetGnosisSafeModuleAddress;
@@ -253,6 +259,18 @@ contract PortfolioFactory is
       })
     );
 
+    //BorrowManager
+    ERC1967Proxy borrowManager = new ERC1967Proxy(
+      baseBorrowManager,
+      abi.encodeWithSelector(
+        IBorrowManager.init.selector,
+        vaultAddress,
+        protocolConfig,
+        address(portfolio),
+        address(accessController)
+      )
+    );
+
     IPortfolio(address(portfolio)).init(
       FunctionParameters.PortfolioInitData({
         _name: initData._name,
@@ -260,6 +278,7 @@ contract PortfolioFactory is
         _vault: vaultAddress,
         _module: module,
         _tokenExclusionManager: address(_tokenExclusionManager),
+        _borrowManager: address(borrowManager),
         _accessController: address(accessController),
         _protocolConfig: protocolConfig,
         _assetManagementConfig: address(_assetManagementConfig),
@@ -291,7 +310,8 @@ contract PortfolioFactory is
       abi.encodeWithSelector(
         IRebalancing.init.selector,
         IPortfolio(address(portfolio)),
-        address(accessController)
+        address(accessController),
+        address(borrowManager)
       )
     );
 
@@ -300,6 +320,7 @@ contract PortfolioFactory is
         address(portfolio),
         address(_tokenExclusionManager),
         address(rebalancing),
+        address(borrowManager),
         msg.sender,
         address(_assetManagementConfig),
         address(_feeModule),
@@ -313,7 +334,8 @@ contract PortfolioFactory is
         _portfolio: address(portfolio),
         _portfolioCreator: msg.sender,
         _rebalancing: address(rebalancing),
-        _feeModule: address(_feeModule)
+        _feeModule: address(_feeModule),
+        _borrowManager: address(borrowManager)
       })
     );
 
@@ -359,6 +381,28 @@ contract PortfolioFactory is
     _setBaseTokenExclusionManagerAddress(_newImpl);
     _upgrade(_proxy, _newImpl);
     emit UpgradeTokenExclusionManager(_newImpl);
+  }
+
+  /**
+   * @notice This function is used to set the base borrowManager address
+   * @param _baseManager Address of the borrowManager module to set as base
+   */
+  function _setBaseBorrowManager(address _baseManager) internal {
+    baseBorrowManager = _baseManager;
+  }
+
+  /**
+   * @notice This function is used to upgrade the Borrow Manager contract
+   * @param _proxy Proxy address
+   * @param _newImpl New implementation address
+   */
+  function upgradeBorrowManager(
+    address[] calldata _proxy,
+    address _newImpl
+  ) external virtual onlyOwner {
+    _setBaseBorrowManager(_newImpl);
+    _upgrade(_proxy, _newImpl);
+    emit UpgradeBorrowManager(_newImpl);
   }
 
   /**
@@ -533,7 +577,7 @@ contract PortfolioFactory is
     address _newImpl
   ) external virtual onlyOwner {
     setTokenRemovalVaultImplementationAddress(_newImpl);
-    emit UpdataTokenRemovalVaultBaseAddress(_newImpl);
+    emit UpgradeTokenRemovalVaultBaseAddress(_newImpl);
   }
 
   /**

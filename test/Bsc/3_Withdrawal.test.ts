@@ -27,6 +27,8 @@ import {
   UniswapV2Handler,
   VelvetSafeModule,
   FeeModule,
+  TokenBalanceLibrary,
+  BorrowManager,
   FeeModule__factory,
   AssetManagementConfig,
   AccessControl,
@@ -53,6 +55,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
+  let borrowManager: BorrowManager;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: any;
@@ -66,6 +70,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let addr1: SignerWithAddress;
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
+  let zeroAddress: any;
   let approve_amount = ethers.constants.MaxUint256; //(2^256 - 1 )
   let token;
 
@@ -95,6 +100,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary"
+      );
+
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      await tokenBalanceLibrary.deployed();
 
       iaddress = await tokenAddresses();
 
@@ -128,7 +140,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ]);
       registryEnable.wait();
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {});
+      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -144,7 +160,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
@@ -179,6 +203,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ];
 
       let whitelist = [owner.address];
+
+      zeroAddress = "0x0000000000000000000000000000000000000000";
 
       const PositionManagerThena = await ethers.getContractFactory(
         "PositionManagerThena"
@@ -219,6 +245,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
+            _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
@@ -282,9 +309,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         portfolioAddress
       );
       const PortfolioCalculations = await ethers.getContractFactory(
-        "PortfolioCalculations"
+        "PortfolioCalculations",
+        {
+          libraries: {
+            TokenBalanceLibrary: tokenBalanceLibrary.address,
+          },
+        }
       );
-      feeModule0 = await FeeModule.attach(await portfolio.feeModule());
+
+      feeModule0 = FeeModule.attach(await portfolio.feeModule());
       portfolioCalculations = await PortfolioCalculations.deploy();
       await portfolioCalculations.deployed();
 
@@ -767,9 +800,18 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let amountPortfolioToken = await portfolio.balanceOf(owner.address);
         console.log("amountPortfolioToken", amountPortfolioToken);
         amountPortfolioToken =
-          BigNumber.from(amountPortfolioToken).sub("1000000000000000");
+          BigNumber.from(amountPortfolioToken).sub("10000000");
         await expect(
-          portfolio.multiTokenWithdrawal(amountPortfolioToken)
+          portfolio.multiTokenWithdrawal(amountPortfolioToken, {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          })
         ).to.be.revertedWithCustomError(
           portfolio,
           "CallerNeedToMaintainMinTokenAmount"
@@ -839,7 +881,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         amountPortfolioToken =
           BigNumber.from(amountPortfolioToken).sub("100000");
         await expect(
-          portfolio.multiTokenWithdrawal(amountPortfolioToken)
+          portfolio.multiTokenWithdrawal(amountPortfolioToken, {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          })
         ).to.be.revertedWithCustomError(
           portfolio,
           "CallerNeedToMaintainMinTokenAmount"
@@ -864,7 +915,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const amountPortfolioToken = await portfolio.balanceOf(owner.address);
 
         await expect(
-          portfolio.multiTokenWithdrawal(BigNumber.from(amountPortfolioToken))
+          portfolio.multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          })
         ).to.be.revertedWithCustomError(portfolio, "ProtocolIsPaused");
       });
 
@@ -896,7 +956,17 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             .multiTokenWithdrawalFor(
               owner.address,
               owner.address,
-              BigNumber.from(amountPortfolioToken)
+              BigNumber.from(amountPortfolioToken),
+              {
+                _factory: zeroAddress,
+                _token0: zeroAddress, //USDT - Pool token
+                _token1: zeroAddress, //USDC - Pool token
+                _flashLoanToken: zeroAddress, //Token to take flashlaon
+                _solverHandler: zeroAddress, //Handler to swap
+                _flashLoanAmount: [0],
+                firstSwapData: ["0x"],
+                secondSwapData: ["0x"],
+              }
             )
         ).to.be.revertedWith("ERC20: insufficient allowance");
       });
@@ -929,7 +999,17 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           .multiTokenWithdrawalFor(
             owner.address,
             owner.address,
-            BigNumber.from(amountPortfolioToken)
+            BigNumber.from(amountPortfolioToken),
+            {
+              _factory: zeroAddress,
+              _token0: zeroAddress, //USDT - Pool token
+              _token1: zeroAddress, //USDC - Pool token
+              _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _solverHandler: zeroAddress, //Handler to swap
+              _flashLoanAmount: [0],
+              firstSwapData: ["0x"],
+              secondSwapData: ["0x"],
+            }
           );
 
         const supplyAfter = await portfolio.totalSupply();
@@ -995,7 +1075,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         await portfolio
           .connect(nonOwner)
-          .multiTokenWithdrawal(amountPortfolioToken);
+          .multiTokenWithdrawal(amountPortfolioToken, {
+            _factory: zeroAddress,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _solverHandler: zeroAddress, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          });
 
         const supplyAfter = await portfolio.totalSupply();
 

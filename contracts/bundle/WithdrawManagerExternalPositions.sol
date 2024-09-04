@@ -43,6 +43,7 @@ contract WithdrawManagerExternalPositions is
     address _tokenToWithdraw,
     uint256 _portfolioTokenAmount,
     bytes[] memory _callData,
+    FunctionParameters.withdrawRepayParams calldata repayData,
     FunctionParameters.ExternalPositionWithdrawParams memory _params
   ) external nonReentrant {
     validateTargetWhitelisting(_target);
@@ -52,7 +53,8 @@ contract WithdrawManagerExternalPositions is
     IPortfolio(_target).multiTokenWithdrawalFor(
       user,
       address(WITHDRAW_BATCH),
-      _portfolioTokenAmount
+      _portfolioTokenAmount,
+      repayData
     );
 
     WITHDRAW_BATCH.multiTokenSwapAndWithdraw(
