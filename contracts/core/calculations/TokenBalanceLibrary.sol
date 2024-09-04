@@ -54,7 +54,7 @@ library TokenBalanceLibrary {
     if (_token == address(0) || _vault == address(0))
       revert ErrorLibrary.InvalidAddress(); // Ensures neither the token nor the vault address is zero.
     // Need to optimize it, so that, we don't have to getUserAccountData for all protocol tokens
-    tokenBalance = _protocolConfig.isProtocolToken(_token)
+    tokenBalance = _protocolConfig.isBorrowableToken(_token)
       ? IAssetHandler(_protocolConfig.assetHandlers(_token))
         .getInvestibleBalance(
           _token,
