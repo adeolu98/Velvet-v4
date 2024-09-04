@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {IAccessController} from "../../access/IAccessController.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {IPositionManager} from "../../wrappers/abstract/IPositionManager.sol";
-import {PositionWrapper} from "../../wrappers/abstract/PositionWrapper.sol";
+import { IAccessController } from "../../access/IAccessController.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
+import { IPositionManager } from "../../wrappers/abstract/IPositionManager.sol";
+import { PositionWrapper } from "../../wrappers/abstract/PositionWrapper.sol";
 
-import {AccessRoles} from "../../access/AccessRoles.sol";
+import { AccessRoles } from "../../access/AccessRoles.sol";
 
-import {IAssetManagementConfig} from "../../config/assetManagement/IAssetManagementConfig.sol";
+import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManagementConfig.sol";
 
 /**
  * @title External Position Management

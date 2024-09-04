@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {IAllowanceTransfer} from "../core/interfaces/IAllowanceTransfer.sol";
-import {ErrorLibrary} from "../library/ErrorLibrary.sol";
-import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
-import {FunctionParameters} from "../FunctionParameters.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
-import {IPositionWrapper} from "../wrappers/abstract/IPositionWrapper.sol";
-import {WrapperFunctionParameters} from "../wrappers/WrapperFunctionParameters.sol";
-import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
-
-import "hardhat/console.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { IAllowanceTransfer } from "../core/interfaces/IAllowanceTransfer.sol";
+import { ErrorLibrary } from "../library/ErrorLibrary.sol";
+import { IPortfolio } from "../core/interfaces/IPortfolio.sol";
+import { FunctionParameters } from "../FunctionParameters.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
+import { IPositionWrapper } from "../wrappers/abstract/IPositionWrapper.sol";
+import { WrapperFunctionParameters } from "../wrappers/WrapperFunctionParameters.sol";
+import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
 
 /**
  * @title DepositBatchExternalPositions
@@ -231,11 +229,6 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
       _depositAmounts[_params._positionWrapperIndex[i]] =
         balanceAfter -
         balanceBefore;
-
-      console.log(
-        "depositAmount wrapper",
-        _depositAmounts[_params._positionWrapperIndex[i]]
-      );
     }
     return _depositAmounts;
   }
@@ -279,16 +272,6 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
       _swapResults[_params._index1[i]]
     );
 
-    uint256 balanceBefore0 = _getTokenBalance(
-      _params._swapTokens[_params._index0[i]],
-      address(this)
-    );
-
-    uint256 balanceBefore1 = _getTokenBalance(
-      _params._swapTokens[_params._index1[i]],
-      address(this)
-    );
-
     if (positionWrapper.totalSupply() == 0) {
       // Initial mint to external position
       positionManager.initializePositionAndDeposit(
@@ -317,19 +300,6 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
         })
       );
     }
-
-    uint256 balanceAfter0 = _getTokenBalance(
-      _params._swapTokens[_params._index0[i]],
-      address(this)
-    );
-
-    uint256 balanceAfter1 = _getTokenBalance(
-      _params._swapTokens[_params._index1[i]],
-      address(this)
-    );
-
-    console.log("token0DepositAmount", balanceBefore0 - balanceAfter0);
-    console.log("token1DepositAmount", balanceBefore1 - balanceAfter1);
   }
 
   /**

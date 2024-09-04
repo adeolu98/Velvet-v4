@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {OwnableCheck} from "./OwnableCheck.sol";
+import { OwnableCheck } from "./OwnableCheck.sol";
 
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
 
 abstract contract ExternalPositionManagement is OwnableCheck, Initializable {
   /// @notice Address of the base implementation used for creating new position wrapper instances via cloning.

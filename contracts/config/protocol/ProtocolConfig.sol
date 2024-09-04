@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/Ownable2StepUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/Ownable2StepUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
 
-import {OracleManagement, IPriceOracle, OwnableCheck, ErrorLibrary} from "./OracleManagement.sol";
-import {ProtocolTreasuryManagement} from "./ProtocolTreasuryManagement.sol";
-import {SystemSettings} from "./SystemSettings.sol";
-import {TokenManagement} from "./TokenManagement.sol";
-import {ProtocolFeeManagement} from "./ProtocolFeeManagement.sol";
-import {SolverManagement} from "./SolverManagement.sol";
-import {RewardTargetManagement} from "./RewardTargetManagement.sol";
-import {ExternalPositionManagement} from "./ExternalPositionManagement.sol";
+import { OracleManagement, IPriceOracle, OwnableCheck, ErrorLibrary } from "./OracleManagement.sol";
+import { ProtocolTreasuryManagement } from "./ProtocolTreasuryManagement.sol";
+import { SystemSettings } from "./SystemSettings.sol";
+import { TokenManagement } from "./TokenManagement.sol";
+import { ProtocolFeeManagement } from "./ProtocolFeeManagement.sol";
+import { SolverManagement } from "./SolverManagement.sol";
+import { RewardTargetManagement } from "./RewardTargetManagement.sol";
+import { ExternalPositionManagement } from "./ExternalPositionManagement.sol";
 
 /**
  * @title MainContract

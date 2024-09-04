@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
-import {AccessController} from "./access/AccessController.sol";
-import {IPortfolio} from "./core/interfaces/IPortfolio.sol";
-import {IAssetManagementConfig} from "./config/assetManagement/IAssetManagementConfig.sol";
-import {ITokenExclusionManager} from "./core/interfaces/ITokenExclusionManager.sol";
-import {IRebalancing} from "./rebalance/IRebalancing.sol";
-import {IAccessController} from "./access/IAccessController.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/Ownable2StepUpgradeable.sol";
-import {FunctionParameters} from "./FunctionParameters.sol";
-import {ErrorLibrary} from "./library/ErrorLibrary.sol";
-import {IProtocolConfig} from "./config/protocol/IProtocolConfig.sol";
-import {IFeeModule} from "./fee/IFeeModule.sol";
-import {IBorrowManager} from "./core/interfaces/IBorrowManager.sol";
-import {IVelvetSafeModule} from "./vault/IVelvetSafeModule.sol";
-import {VelvetSafeModule} from "./vault/VelvetSafeModule.sol";
-import {GnosisDeployer} from "contracts/library/GnosisDeployer.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { AccessController } from "./access/AccessController.sol";
+import { IPortfolio } from "./core/interfaces/IPortfolio.sol";
+import { IAssetManagementConfig } from "./config/assetManagement/IAssetManagementConfig.sol";
+import { ITokenExclusionManager } from "./core/interfaces/ITokenExclusionManager.sol";
+import { IRebalancing } from "./rebalance/IRebalancing.sol";
+import { IAccessController } from "./access/IAccessController.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/Ownable2StepUpgradeable.sol";
+import { FunctionParameters } from "./FunctionParameters.sol";
+import { ErrorLibrary } from "./library/ErrorLibrary.sol";
+import { IProtocolConfig } from "./config/protocol/IProtocolConfig.sol";
+import { IFeeModule } from "./fee/IFeeModule.sol";
+import { IVelvetSafeModule } from "./vault/IVelvetSafeModule.sol";
+import { VelvetSafeModule } from "./vault/VelvetSafeModule.sol";
+import { GnosisDeployer } from "contracts/library/GnosisDeployer.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { IBorrowManager } from "./core/interfaces/IBorrowManager.sol";
 
 contract PortfolioFactory is
   Ownable2StepUpgradeable,
