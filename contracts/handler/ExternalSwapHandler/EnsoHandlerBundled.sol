@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {SafeERC20Upgradeable, IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {IIntentHandler} from "../IIntentHandler.sol";
+import { SafeERC20Upgradeable, IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
+import { IIntentHandler } from "../IIntentHandler.sol";
+import { IPositionManager } from "../../wrappers/abstract/IPositionManager.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
 
 /**
  * @title EnsoHandlerBundled
@@ -60,6 +62,19 @@ contract EnsoHandlerBundled is IIntentHandler {
 
     return tokens;
   }
+
+  /**
+   * @notice Conducts a rebalance operation via the Solver platform and transfers the output tokens
+   * to a specified recipient address.
+   * @param _params Encoded bundle containing the rebalance operation data, structured as follows:
+   *        - positionManager: Address of the Enso Position Manager contract.
+   *        - to: Address of the recipient for the rebalance operation.
+   *        - calldata: Encoded call data for the rebalance operation.
+   * @return _swapReturns Array containing the actual amounts of tokens received from each swap operation.
+   */
+  function multiTokenSwapAndTransferRebalance(
+    FunctionParameters.EnsoRebalanceParams memory _params
+  ) external returns (address[] memory) {}
 
   // Function to receive Ether when msg.data is empty
   receive() external payable {}
