@@ -75,7 +75,75 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
    */
   function multiTokenSwapAndTransferRebalance(
     FunctionParameters.EnsoRebalanceParams memory _params
-  ) external returns (address[] memory) {}
+  ) external returns (address[] memory) {
+    (
+      bytes memory callDataEnso,
+      bytes[] memory callDataDecreaseLiquidity,
+      bytes[][] memory callDataIncreaseLiquidity,
+      address[][] memory increaseLiquidityTarget,
+      address[] memory tokensIn,
+      address[] memory tokens,
+      uint256[] memory minExpectedOutputAmounts
+    ) = abi.decode(
+        _params._calldata,
+        (
+          bytes,
+          bytes[],
+          bytes[][],
+          address[][],
+          address[],
+          address[],
+          uint256[]
+        )
+      );
+
+    // Ensure consistency in the lengths of input arrays.
+    uint256 tokensLength = tokens.length;
+    if (tokensLength != minExpectedOutputAmounts.length)
+      revert ErrorLibrary.InvalidLength();
+    if (_params._to == address(0)) revert ErrorLibrary.InvalidAddress();
+
+    for (uint256 i; i < tokensLength; i++) {
+      // Handle wrapped positions for input tokens: Decreases liquidity from wrapped positions
+      if (
+        address(_params._positionManager) != address(0) && // PositionManager has not been initialized
+        _params._positionManager.isWrappedPosition(tokensIn[i])
+      ) {
+        _handleWrappedPositionDecrease(
+          address(_params._positionManager),
+          callDataDecreaseLiquidity[i]
+        );
+      }
+    }
+
+    // Execute the bundled swap operation via delegatecall to the SWAP_TARGET.
+    (bool success, ) = SWAP_TARGET.delegatecall(callDataEnso);
+    if (!success) revert ErrorLibrary.CallFailed();
+
+    // Post-swap: verify output meets minimum expectations and transfer tokens to the recipient.
+    for (uint256 i; i < tokensLength; i++) {
+      address token = tokens[i]; // Cache the token address for gas optimization.
+
+      // Handle wrapped positions for output tokens: Approves position manager to spend underlying tokens + increases liquidity
+      if (
+        address(_params._positionManager) != address(0) && // PositionManager has not been initialized
+        _params._positionManager.isWrappedPosition(token)
+      ) {
+        _handleWrappedPositionIncrease(
+          increaseLiquidityTarget[i],
+          callDataIncreaseLiquidity[i]
+        );
+      }
+
+      uint256 swapReturn = IERC20Upgradeable(token).balanceOf(address(this));
+      if (swapReturn == 0 || swapReturn < minExpectedOutputAmounts[i])
+        revert ErrorLibrary.ReturnValueLessThenExpected();
+
+      TransferHelper.safeTransfer(token, _params._to, swapReturn);
+    }
+
+    return tokens;
+  }
 
   // Function to receive Ether when msg.data is empty
   receive() external payable {}

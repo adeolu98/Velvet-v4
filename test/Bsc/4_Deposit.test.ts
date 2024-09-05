@@ -1976,7 +1976,7 @@ describe.only("Tests for Deposit", () => {
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [[["0x", "0x"]], [], [[]], [[]], [sellToken], [buyToken], [0]]
+          [[["0x"], ["0x"]], [], [[]], [[]], [sellToken], [buyToken], [0]]
         );
 
         await expect(
@@ -2405,7 +2405,7 @@ describe.only("Tests for Deposit", () => {
             balance[i]
           );
           expectedAmounts.push(0);
-          postResponse.push(response.data.tx.data);
+          postResponse.push([response.data.tx.data]);
         }
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
@@ -2418,15 +2418,7 @@ describe.only("Tests for Deposit", () => {
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [
-            [postResponse],
-            [],
-            [[]],
-            [[]],
-            [sellToken],
-            [buyToken],
-            expectedAmounts,
-          ]
+          [postResponse, [], [[]], [[]], sellToken, buyToken, expectedAmounts]
         );
 
         let balanceBefore = [];

@@ -118,7 +118,9 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
 
     if (
       tokensLength != minExpectedOutputAmounts.length ||
-      tokensLength != callDataEnso.length
+      tokensLength != callDataEnso.length ||
+      callDataIncreaseLiquidity.length != increaseLiquidityTarget.length ||
+      tokensIn.length != tokensLength
     ) revert ErrorLibrary.InvalidLength();
 
     // Ensure the recipient address is valid.
@@ -130,8 +132,11 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
         address(this)
       );
 
-      // Handle wrapped positions for input tokens: Decreases liquidity from wrapped positions, no approval? Then no loop requireds
-      if (_params._positionManager.isWrappedPosition(tokensIn[i])) {
+      // Handle wrapped positions for input tokens: Decreases liquidity from wrapped positions
+      if (
+        address(_params._positionManager) != address(0) && // PositionManager has not been initialized
+        _params._positionManager.isWrappedPosition(tokensIn[i])
+      ) {
         _handleWrappedPositionDecrease(
           address(_params._positionManager),
           callDataDecreaseLiquidity[i]
@@ -142,8 +147,10 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
       _executeSwaps(callDataEnso[i]);
 
       // Handle wrapped positions for output tokens: Approves position manager to spend underlying tokens + increases liquidity
-      if (_params._positionManager.isWrappedPosition(token)) {
-        // @todo verification to avoid large dust?
+      if (
+        address(_params._positionManager) != address(0) && // PositionManager has not been initialized
+        _params._positionManager.isWrappedPosition(token)
+      ) {
         _handleWrappedPositionIncrease(
           increaseLiquidityTarget[i],
           callDataIncreaseLiquidity[i]

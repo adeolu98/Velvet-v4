@@ -809,6 +809,7 @@ describe.only("Tests for Deposit", () => {
             [0],
           ]
         );
+
         let encodedParameters1 = [];
         //Because repay(rebalance) is one borrow token at a time
         const amounToSell =
@@ -975,7 +976,7 @@ describe.only("Tests for Deposit", () => {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
                 [
-                  " bytes[][]", // callDataEnso
+                  "bytes[][]", // callDataEnso
                   "bytes[]", // callDataDecreaseLiquidity
                   "bytes[][]", // callDataIncreaseLiquidity
                   "address[][]", // increaseLiquidityTarget
@@ -1006,15 +1007,7 @@ describe.only("Tests for Deposit", () => {
                   "address[]", // tokens
                   " uint256[]", // minExpectedOutputAmounts
                 ],
-                [
-                  [["0x"]],
-                  [],
-                  [[]],
-                  [[]],
-                  [flashLoanToken],
-                  [underlyings[i]],
-                  [0],
-                ]
+                [[[]], [], [], [[]], [flashLoanToken], [underlyings[i]], [0]]
               )
             );
           }
@@ -1216,24 +1209,8 @@ describe.only("Tests for Deposit", () => {
           } else {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                [
-                  " bytes[][]", // callDataEnso
-                  "bytes[]", // callDataDecreaseLiquidity
-                  "bytes[][]", // callDataIncreaseLiquidity
-                  "address[][]", // increaseLiquidityTarget
-                  "address[]", // tokensIn
-                  "address[]", // tokens
-                  " uint256[]", // minExpectedOutputAmounts
-                ],
-                [
-                  [["0x"]],
-                  [],
-                  [[]],
-                  [[]],
-                  [flashLoanToken],
-                  [underlyings[i]],
-                  [0],
-                ]
+                ["bytes[]", "address[]", "uint256[]"],
+                [["0x"], [underlyings[i]], [0]]
               )
             );
           }
