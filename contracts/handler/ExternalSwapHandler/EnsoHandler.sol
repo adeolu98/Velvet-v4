@@ -7,6 +7,7 @@ import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
 import { IIntentHandler } from "../IIntentHandler.sol";
 import { IPositionManager } from "../../wrappers/abstract/IPositionManager.sol";
 import { FunctionParameters } from "../../FunctionParameters.sol";
+import { ExternalPositionManagement } from "./ExternalPositionManagement.sol";
 
 /**
  * @title EnsoHandler
@@ -17,7 +18,7 @@ import { FunctionParameters } from "../../FunctionParameters.sol";
  * the secure handling of token transfers, including adherence to minimum expected output
  * thresholds for swap operations.
  */
-contract EnsoHandler is IIntentHandler {
+contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
   // The address of Enso's swap execution logic; swaps are delegated to this target.
   address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52;
 
@@ -159,25 +160,6 @@ contract EnsoHandler is IIntentHandler {
     }
 
     return tokens;
-  }
-
-  function _handleWrappedPositionIncrease(
-    address[] memory _target,
-    bytes[] memory _callData
-  ) private {
-    uint256 callDataLength = _callData.length;
-    for (uint256 j; j < callDataLength; j++) {
-      (bool success, ) = _target[j].call(_callData[j]);
-      if (!success) revert ErrorLibrary.IncreaseLiquidityFailed();
-    }
-  }
-
-  function _handleWrappedPositionDecrease(
-    address _target,
-    bytes memory _callData
-  ) private {
-    (bool success, ) = _target.call(_callData);
-    if (!success) revert ErrorLibrary.DecreaseLiquidityFailed();
   }
 
   function _executeSwaps(bytes[] memory _swapCallData) private {

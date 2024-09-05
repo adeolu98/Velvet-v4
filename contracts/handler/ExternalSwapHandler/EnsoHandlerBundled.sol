@@ -7,6 +7,7 @@ import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
 import { IIntentHandler } from "../IIntentHandler.sol";
 import { IPositionManager } from "../../wrappers/abstract/IPositionManager.sol";
 import { FunctionParameters } from "../../FunctionParameters.sol";
+import { ExternalPositionManagement } from "./ExternalPositionManagement.sol";
 
 /**
  * @title EnsoHandlerBundled
@@ -16,7 +17,7 @@ import { FunctionParameters } from "../../FunctionParameters.sol";
  * transaction. This is particularly useful for optimizing gas costs and simplifying transaction management
  * for users. It includes functionalities for wrapping/unwrapping native tokens as part of these operations.
  */
-contract EnsoHandlerBundled is IIntentHandler {
+contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
   // Address pointing to Enso's logic for executing swap operations. This is a constant target used for delegatecalls.
   address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52;
 

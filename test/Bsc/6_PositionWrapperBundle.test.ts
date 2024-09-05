@@ -891,7 +891,6 @@ describe.only("Tests for Deposit", () => {
           sellTokenBalance
         );
 
-        console.log("sellTokenBalance", sellTokenBalance);
         let callDataEnso: any = [[]];
         if (sellToken != token0) {
           let swapAmount = depositAmounts.amount0;
@@ -917,8 +916,6 @@ describe.only("Tests for Deposit", () => {
           );
           callDataEnso[0].push(postResponse1.data.tx.data);
         }
-
-        console.log("calldata enso length", callDataEnso.length);
 
         const callDataIncreaseLiquidity: any = [[]];
         // Encode the function call

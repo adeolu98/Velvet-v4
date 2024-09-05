@@ -243,5 +243,5 @@ interface IProtocolConfig {
     address _controllers
   ) external view returns (bool);
 
-  function isProtocolToken(address _asset) external view returns (bool);
+  function isBorrowableToken(address _asset) external view returns (bool);
 }
