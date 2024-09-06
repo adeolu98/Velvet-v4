@@ -97,6 +97,7 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
       bytes[] memory callDataDecreaseLiquidity,
       bytes[][] memory callDataIncreaseLiquidity,
       address[][] memory increaseLiquidityTarget,
+      address[] memory underlyingTokensDecreaseLiquidity,
       address[] memory tokensIn,
       address[] memory tokens,
       uint256[] memory minExpectedOutputAmounts
@@ -107,6 +108,7 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
           bytes[],
           bytes[][],
           address[][],
+          address[],
           address[],
           address[],
           uint256[]
@@ -157,17 +159,24 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
         );
       }
 
-      uint256 swapReturn = IERC20Upgradeable(token).balanceOf(address(this)) -
-        buyBalanceBefore;
-
-      if (swapReturn == 0 || swapReturn < minExpectedOutputAmounts[i])
-        revert ErrorLibrary.ReturnValueLessThenExpected();
-
-      TransferHelper.safeTransfer(token, _params._to, swapReturn);
+      _transferTokensAndVerify(
+        token,
+        _params._to,
+        buyBalanceBefore,
+        minExpectedOutputAmounts[i]
+      );
     }
+
+    _returnDust(underlyingTokensDecreaseLiquidity, _params._to);
 
     return tokens;
   }
+
+  /// @notice Executes a series of swap operations
+  /// @dev This function iterates through the provided swap call data and executes each swap
+  /// @param _swapCallData An array of bytes containing the encoded swap instructions
+  /// @custom:security This function uses delegatecall, which can be dangerous if not properly secured
+  /// @custom:gas-optimization Uses cached array length to save gas in the loop
 
   function _executeSwaps(bytes[] memory _swapCallData) private {
     uint256 swapCallDataLength = _swapCallData.length;

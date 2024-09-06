@@ -1623,11 +1623,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [[["0x"]], [], [[]], [[]], [sellToken], [buyToken], [0]]
+          [[["0x"]], [], [[]], [[]], [], [sellToken], [buyToken], [0]]
         );
 
         await expect(
@@ -1668,11 +1669,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [[["0x"]], [], [[]], [[]], [sellToken], [buyToken], [0]]
+          [[["0x"]], [], [[]], [[]], [], [sellToken], [buyToken], [0]]
         );
 
         await expect(
@@ -1712,11 +1714,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [[["0x"]], [], [[]], [[]], [sellToken], [buyToken], [0]]
+          [[["0x"]], [], [[]], [[]], [], [sellToken], [buyToken], [0]]
         );
 
         await expect(
@@ -1763,6 +1766,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -1772,6 +1776,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             [],
             [[]],
             [[]],
+            [],
             [sellToken],
             [buyToken],
             [0],
@@ -1821,6 +1826,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -1830,6 +1836,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             [],
             [[]],
             [[]],
+            [],
             [sellToken],
             [buyTokenManipulated],
             [0],
@@ -1881,6 +1888,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -1890,6 +1898,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             [],
             [[]],
             [[]],
+            [],
             [sellToken],
             [buyToken],
             [0],
@@ -1932,11 +1941,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [[["0x"]], [], [[]], [[]], [sellToken], [buyToken], [0, 0]]
+          [[["0x"]], [], [[]], [[]], [], [sellToken], [buyToken], [0, 0]]
         );
 
         await expect(
@@ -1970,11 +1980,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [[["0x"], ["0x"]], [], [[]], [[]], [sellToken], [buyToken], [0]]
+          [[["0x"], ["0x"]], [], [[]], [[]], [], [sellToken], [buyToken], [0]]
         );
 
         await expect(
@@ -2008,11 +2019,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [[["0x"]], [], [[]], [[]], [sellToken], [buyToken], [0]]
+          [[["0x"]], [], [[]], [[]], [], [sellToken], [buyToken], [0]]
         );
 
         await expect(
@@ -2056,6 +2068,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -2065,6 +2078,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             [],
             [[]],
             [[]],
+            [],
             [sellToken],
             [buyToken],
             [0],
@@ -2107,11 +2121,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
           ],
-          [[["0x"]], [], [[]], [[]], [sellToken], [buyToken], [0]]
+          [[["0x"]], [], [[]], [[]], [], [sellToken], [buyToken], [0]]
         );
 
         await expect(
@@ -2153,6 +2168,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -2162,6 +2178,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             [],
             [[]],
             [[]],
+            [],
             [sellToken],
             [buyToken],
             [0],
@@ -2210,6 +2227,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -2219,6 +2237,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             [],
             [[]],
             [[]],
+            [],
             [sellToken],
             [buyToken],
             [0],

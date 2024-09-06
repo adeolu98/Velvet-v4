@@ -81,6 +81,7 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
       bytes[] memory callDataDecreaseLiquidity,
       bytes[][] memory callDataIncreaseLiquidity,
       address[][] memory increaseLiquidityTarget,
+      address[] memory underlyingTokensDecreaseLiquidity,
       address[] memory tokensIn,
       address[] memory tokens,
       uint256[] memory minExpectedOutputAmounts
@@ -93,12 +94,14 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
           address[][],
           address[],
           address[],
+          address[],
           uint256[]
         )
       );
 
     // Ensure consistency in the lengths of input arrays.
     uint256 tokensLength = tokens.length;
+    uint256[] memory buyTokenBalancesBefore = new uint256[](tokensLength);
     if (tokensLength != minExpectedOutputAmounts.length)
       revert ErrorLibrary.InvalidLength();
     if (_params._to == address(0)) revert ErrorLibrary.InvalidAddress();
@@ -114,11 +117,14 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
           callDataDecreaseLiquidity[i]
         );
       }
+
+      buyTokenBalancesBefore[i] = IERC20Upgradeable(tokens[i]).balanceOf(
+        address(this)
+      );
     }
 
     // Execute the bundled swap operation via delegatecall to the SWAP_TARGET.
-    (bool success, ) = SWAP_TARGET.delegatecall(callDataEnso);
-    if (!success) revert ErrorLibrary.CallFailed();
+    _executeSwaps(callDataEnso);
 
     // Post-swap: verify output meets minimum expectations and transfer tokens to the recipient.
     for (uint256 i; i < tokensLength; i++) {
@@ -135,14 +141,30 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
         );
       }
 
-      uint256 swapReturn = IERC20Upgradeable(token).balanceOf(address(this));
-      if (swapReturn == 0 || swapReturn < minExpectedOutputAmounts[i])
-        revert ErrorLibrary.ReturnValueLessThenExpected();
-
-      TransferHelper.safeTransfer(token, _params._to, swapReturn);
+      _transferTokensAndVerify(
+        token,
+        _params._to,
+        buyTokenBalancesBefore[i],
+        minExpectedOutputAmounts[i]
+      );
     }
 
+    _returnDust(underlyingTokensDecreaseLiquidity, _params._to);
+
     return tokens;
+  }
+
+  /**
+   * @notice Executes a bundled swap operation via delegatecall to the SWAP_TARGET
+   * @dev This function performs a single delegatecall with the bundled swap data
+   * @param _callDataEnso Encoded swap instructions for the entire bundled operation
+   * @custom:security Uses delegatecall, which can be dangerous if not properly secured
+   * @custom:gas-optimization Executes all swaps in a single delegatecall, potentially saving gas
+   */
+  function _executeSwaps(bytes memory _callDataEnso) private {
+    // Execute the bundled swap operation via delegatecall to the SWAP_TARGET.
+    (bool success, ) = SWAP_TARGET.delegatecall(_callDataEnso);
+    if (!success) revert ErrorLibrary.CallFailed();
   }
 
   // Function to receive Ether when msg.data is empty

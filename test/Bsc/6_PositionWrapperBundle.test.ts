@@ -811,6 +811,7 @@ describe.only("Tests for Deposit", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -820,6 +821,7 @@ describe.only("Tests for Deposit", () => {
             callDataDecreaseLiquidity,
             [[]],
             [],
+            [await removedPosition.token0(), await removedPosition.token1()],
             [sellToken],
             [buyToken],
             [0],
@@ -959,6 +961,7 @@ describe.only("Tests for Deposit", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -968,6 +971,7 @@ describe.only("Tests for Deposit", () => {
             [],
             callDataIncreaseLiquidity,
             [[token0, token1, positionManager.address]],
+            [],
             [sellToken],
             [buyToken],
             [0],

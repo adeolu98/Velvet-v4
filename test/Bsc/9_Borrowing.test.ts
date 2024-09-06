@@ -531,6 +531,7 @@ describe.only("Tests for Deposit", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -540,6 +541,7 @@ describe.only("Tests for Deposit", () => {
             [],
             [[]],
             [[]],
+            [],
             [sellToken],
             [buyToken],
             [0],
@@ -601,6 +603,7 @@ describe.only("Tests for Deposit", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -610,6 +613,7 @@ describe.only("Tests for Deposit", () => {
             [],
             [[]],
             [[]],
+            [],
             [sellToken],
             [buyToken],
             [0],
@@ -795,6 +799,7 @@ describe.only("Tests for Deposit", () => {
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
             " uint256[]", // minExpectedOutputAmounts
@@ -804,6 +809,7 @@ describe.only("Tests for Deposit", () => {
             [],
             [[]],
             [[]],
+            [],
             [addresses.USDT],
             [addresses.DAI_Address],
             [0],
@@ -834,8 +840,26 @@ describe.only("Tests for Deposit", () => {
 
           encodedParameters1.push(
             ethers.utils.defaultAbiCoder.encode(
-              ["bytes[]", "address[]", "uint256[]"],
-              [[postResponse1.data.tx.data], [addresses.USDT], [0]]
+              [
+                "bytes[][]", // callDataEnso
+                "bytes[]", // callDataDecreaseLiquidity
+                "bytes[][]", // callDataIncreaseLiquidity
+                "address[][]", // increaseLiquidityTarget
+                "address[]", // underlyingTokensDecreaseLiquidity
+                "address[]", // tokensIn
+                "address[]", // tokens
+                " uint256[]", // minExpectedOutputAmounts
+              ],
+              [
+                [[postResponse1.data.tx.data]],
+                [],
+                [[]],
+                [[]],
+                [],
+                [lendTokens[j]],
+                [addresses.USDT],
+                [0],
+              ]
             )
           );
         }
@@ -980,6 +1004,7 @@ describe.only("Tests for Deposit", () => {
                   "bytes[]", // callDataDecreaseLiquidity
                   "bytes[][]", // callDataIncreaseLiquidity
                   "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
                   "address[]", // tokensIn
                   "address[]", // tokens
                   " uint256[]", // minExpectedOutputAmounts
@@ -989,6 +1014,7 @@ describe.only("Tests for Deposit", () => {
                   [],
                   [[]],
                   [[]],
+                  [],
                   [flashLoanToken],
                   [underlyings[i]],
                   [0],
@@ -1003,11 +1029,21 @@ describe.only("Tests for Deposit", () => {
                   "bytes[]", // callDataDecreaseLiquidity
                   "bytes[][]", // callDataIncreaseLiquidity
                   "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
                   "address[]", // tokensIn
                   "address[]", // tokens
                   " uint256[]", // minExpectedOutputAmounts
                 ],
-                [[[]], [], [], [[]], [flashLoanToken], [underlyings[i]], [0]]
+                [
+                  [[]],
+                  [],
+                  [],
+                  [[]],
+                  [],
+                  [flashLoanToken],
+                  [underlyings[i]],
+                  [0],
+                ]
               )
             );
           }
@@ -1033,8 +1069,26 @@ describe.only("Tests for Deposit", () => {
 
             encodedParameters1.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
+                [
+                  "bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [[postResponse1.data.tx.data]],
+                  [],
+                  [[]],
+                  [[]],
+                  [],
+                  [lendTokens[j]],
+                  [flashLoanToken],
+                  [0],
+                ]
               )
             );
           }
@@ -1191,6 +1245,7 @@ describe.only("Tests for Deposit", () => {
                   "bytes[]", // callDataDecreaseLiquidity
                   "bytes[][]", // callDataIncreaseLiquidity
                   "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
                   "address[]", // tokensIn
                   "address[]", // tokens
                   " uint256[]", // minExpectedOutputAmounts
@@ -1200,6 +1255,7 @@ describe.only("Tests for Deposit", () => {
                   [],
                   [[]],
                   [[]],
+                  [],
                   [flashLoanToken],
                   [underlyings[i]],
                   [0],
@@ -1209,8 +1265,26 @@ describe.only("Tests for Deposit", () => {
           } else {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [["0x"], [underlyings[i]], [0]]
+                [
+                  "bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [["0x"]],
+                  [],
+                  [[]],
+                  [[]],
+                  [],
+                  [flashLoanToken],
+                  [underlyings[i]],
+                  [0],
+                ]
               )
             );
           }
@@ -1236,8 +1310,26 @@ describe.only("Tests for Deposit", () => {
 
             encodedParameters1.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
+                [
+                  "bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [[postResponse1.data.tx.data]],
+                  [],
+                  [[]],
+                  [[]],
+                  [],
+                  [lendTokens[j]],
+                  [flashLoanToken],
+                  [0],
+                ]
               )
             );
           }
