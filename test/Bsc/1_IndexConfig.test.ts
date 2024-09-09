@@ -275,6 +275,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -294,6 +295,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate3 =
@@ -312,6 +314,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: true,
           _transferableToPublic: false,
           _whitelistTokens: true,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
@@ -394,6 +397,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: false,
+              _externalPositionManagementWhitelisted: true,
             },
             [],
             1
@@ -419,6 +423,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: false,
+              _externalPositionManagementWhitelisted: true,
             },
             [owner.address],
             2
@@ -447,6 +452,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: true,
+              _externalPositionManagementWhitelisted: true,
             },
             [owner.address],
             1
@@ -516,6 +522,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: false,
+              _externalPositionManagementWhitelisted: true,
             },
             [owner.address],
             1
@@ -570,6 +577,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: false,
+              _externalPositionManagementWhitelisted: true,
             },
             [owner.address],
             1
@@ -675,6 +683,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: true,
+              _externalPositionManagementWhitelisted: true,
             },
             [owner.address],
             1
@@ -847,6 +856,7 @@ describe.only("Tests for Portfolio Config", () => {
             _transferable: false,
             _transferableToPublic: false,
             _whitelistTokens: false,
+            _externalPositionManagementWhitelisted: true,
           })
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
@@ -882,6 +892,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
       });
 

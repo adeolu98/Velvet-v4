@@ -238,6 +238,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -257,6 +258,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -627,6 +629,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _transferable: false,
             _transferableToPublic: false,
             _whitelistTokens: false,
+            _externalPositionManagementWhitelisted: true,
           })
         ).to.be.revertedWithCustomError(
           assetManagementConfig,

@@ -106,6 +106,7 @@ describe.only("Tests for Deposit", () => {
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
   let zeroAddress: any;
+  let assetManagementConfig1: AssetManagementConfig;
   const assetManagerHash = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
@@ -350,6 +351,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: true,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -369,6 +371,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: false,
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -418,8 +421,10 @@ describe.only("Tests for Deposit", () => {
       );
 
       const config = await portfolio.assetManagementConfig();
+      const config1 = await portfolio1.assetManagementConfig();
 
       assetManagementConfig = AssetManagementConfig.attach(config);
+      assetManagementConfig1 = AssetManagementConfig.attach(config1);
 
       await assetManagementConfig.enableUniSwapV3Manager();
 
@@ -449,6 +454,15 @@ describe.only("Tests for Deposit", () => {
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
           "UniSwapV3WrapperAlreadyEnabled"
+        );
+      });
+
+      it("owner should not be able to enable the uniswapV3 position manager if not enabled during portfolio creation", async () => {
+        await expect(
+          assetManagementConfig1.connect(nonOwner).enableUniSwapV3Manager()
+        ).to.be.revertedWithCustomError(
+          assetManagementConfig,
+          "ExternalPositionManagementNotWhitelisted"
         );
       });
 
