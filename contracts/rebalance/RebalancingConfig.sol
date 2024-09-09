@@ -103,15 +103,34 @@ contract RebalancingConfig is AccessRoles, Initializable {
      * @param _token The address of the token to check.
      * @return bool Returns true if the token is part of the portfolio, false otherwise.
      */
-    function _isPortfolioToken(address _token) internal view returns (bool) {
-        address[] memory currentTokens = _getCurrentTokens();
-        uint256 tokensLength = currentTokens.length;
-        for (uint256 i; i < tokensLength; i++) {
-            if (currentTokens[i] == _token) {
-                return true;
+    function _isPortfolioToken(
+        address _token,
+        address[] memory currentTokens
+    ) internal pure returns (bool) {
+        bool result;
+        assembly {
+            // Get the length of the currentTokens array
+            let len := mload(currentTokens)
+
+            // Get the pointer to the start of the array data
+            let dataPtr := add(currentTokens, 0x20)
+
+            // Loop through the array
+            for {
+                let i := 0
+            } lt(i, len) {
+                i := add(i, 1)
+            } {
+                // Check if the current token matches _token
+                if eq(mload(add(dataPtr, mul(i, 0x20))), _token) {
+                    // If found, set result to true
+                    result := 1
+                    // Break the loop
+                    i := len
+                }
             }
         }
-        return false;
+        return result;
     }
 
     function _getTokenBalanceOf(

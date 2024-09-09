@@ -529,6 +529,35 @@ contract PortfolioCalculations is ExponentialNoError {
         );
     }
 
+    function getExpectedFlashLoanAmount(
+        address _borrowProtocolToken,
+        address _flashLoanProtocolToken,
+        address _comptroller,
+        uint256 _borrowToRepay
+    ) external view returns (uint256 flashLoanAmount) {
+        // Get the oracle price for the borrowed token
+        uint256 oraclePrice = IVenusComptroller(_comptroller)
+            .oracle()
+            .getUnderlyingPrice(_borrowProtocolToken);
+
+        // Calculate the total price of the borrowed amount
+        uint256 borrowTokenPrice = oraclePrice * _borrowToRepay;
+
+        // Get the oracle price for the flash loan token
+        uint256 flashLoanTokenPrice = IVenusComptroller(_comptroller)
+            .oracle()
+            .getUnderlyingPrice(_flashLoanProtocolToken);
+
+        // Calculate the flash loan amount needed
+        flashLoanAmount =
+            (borrowTokenPrice * 10 ** 18) /
+            flashLoanTokenPrice /
+            10 ** 18;
+
+        // Add a 0.01% buffer to the flash loan amount
+        flashLoanAmount = flashLoanAmount + ((flashLoanAmount * 1) / 10_000);
+    }
+
     function getUserTokenClaimBalance(
         address _portfolio,
         address user,

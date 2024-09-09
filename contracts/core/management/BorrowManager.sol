@@ -71,13 +71,20 @@ contract BorrowManager is
     uint256 _totalSupply,
     FunctionParameters.withdrawRepayParams calldata repayData
   ) external onlyPortfolioManager {
-    address[] memory controllers = _protocolConfig.getSupportedControllers(); // Get all supported controllers
+    // Get all supported controllers from the protocol configuration
+    // There can be multiple controllers from Venus side, hence the loop
+    address[] memory controllers = _protocolConfig.getSupportedControllers();
+
+    // Iterate through all controllers to repay borrows for each
     for (uint j; j < controllers.length; j++) {
       address _controller = controllers[j];
+      
+      // Get the asset handler for the current controller
       IAssetHandler assetHandler = IAssetHandler(
         _protocolConfig.assetHandlers(_controller)
       );
 
+      // Prepare the data for the flash loan execution
       bytes memory data = abi.encodeWithSelector(
         IAssetHandler.executeUserFlashLoan.selector,
         _controller,
@@ -88,10 +95,12 @@ contract BorrowManager is
         repayData
       );
 
-      // Perform the delegatecall
+      // Perform the delegatecall to the asset handler
+      // This allows the asset handler to execute the flash loan in the context of this contract
       (bool success, ) = address(assetHandler).delegatecall(data);
 
       // Check if the delegatecall was successful
+      // If not, revert the transaction with a custom error
       if (!success) revert ErrorLibrary.CallFailed();
     }
   }
@@ -172,7 +181,6 @@ contract BorrowManager is
     }
 
     uint256 amountOwed = totalFlashAmount + fee0; // Calculate the amount owed including the fee
-
     TransferHelper.safeTransfer(
       flashData.flashLoanToken,
       msg.sender,
