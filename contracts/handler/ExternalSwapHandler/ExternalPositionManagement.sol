@@ -38,23 +38,6 @@ contract ExternalPositionManagement {
   }
 
   /**
-   * @notice Executes a series of swap operations
-   * @dev This function iterates through the provided swap call data and executes each swap
-   * @param _swapCallData An array of encoded swap function calls to be executed
-   * @param _swapTarget The address of the contract to delegate the swap calls to
-   */
-  function _executeSwaps(
-    bytes[] memory _swapCallData,
-    address _swapTarget
-  ) internal {
-    uint256 swapCallDataLength = _swapCallData.length;
-    for (uint256 j; j < swapCallDataLength; j++) {
-      (bool success, ) = _swapTarget.delegatecall(_swapCallData[j]);
-      if (!success) revert ErrorLibrary.CallFailed();
-    }
-  }
-
-  /**
    * @notice Transfers tokens to the vault and verifies the amount transferred meets minimum expectations
    * @dev This function calculates the swap return, verifies it against the minimum expected amount,
    *      and transfers the tokens to the vault

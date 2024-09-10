@@ -77,14 +77,19 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
     FunctionParameters.EnsoRebalanceParams memory _params
   ) external returns (address[] memory) {
     (
-      bytes memory callDataEnso,
-      bytes[] memory callDataDecreaseLiquidity,
-      bytes[][] memory callDataIncreaseLiquidity,
-      address[][] memory increaseLiquidityTarget,
-      address[] memory underlyingTokensDecreaseLiquidity,
-      address[] memory tokensIn,
-      address[] memory tokens,
-      uint256[] memory minExpectedOutputAmounts
+      bytes memory callDataEnso, // Array of arrays containing encoded swap data for Enso platform
+      // Two-dimensional because each external position might require multiple swaps
+      bytes[] memory callDataDecreaseLiquidity, // Array of encoded data for decreasing liquidity
+      // Includes token approval and liquidity removal for each position
+      bytes[][] memory callDataIncreaseLiquidity, // Array of arrays with encoded data for increasing liquidity
+      // Two-dimensional as each position may need multiple steps (approval, adding liquidity)
+      address[][] memory increaseLiquidityTarget, // Array of arrays with target addresses for increasing liquidity
+      // Two-dimensional to match the structure of callDataIncreaseLiquidity
+      address[] memory underlyingTokensDecreaseLiquidity, // Array of underlying tokens for decreasing liquidity
+      // One-dimensional as it's a flat list of tokens
+      address[] memory tokensIn, // Array of input token addresses
+      address[] memory tokensOut, // Array of output token addresses
+      uint256[] memory minExpectedOutputAmounts // Array of minimum expected output amounts
     ) = abi.decode(
         _params._calldata,
         (
@@ -100,7 +105,7 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
       );
 
     // Ensure consistency in the lengths of input arrays.
-    uint256 tokensLength = tokens.length;
+    uint256 tokensLength = tokensOut.length;
     uint256[] memory buyTokenBalancesBefore = new uint256[](tokensLength);
     if (tokensLength != minExpectedOutputAmounts.length)
       revert ErrorLibrary.InvalidLength();
@@ -118,7 +123,7 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
         );
       }
 
-      buyTokenBalancesBefore[i] = IERC20Upgradeable(tokens[i]).balanceOf(
+      buyTokenBalancesBefore[i] = IERC20Upgradeable(tokensOut[i]).balanceOf(
         address(this)
       );
     }
@@ -128,7 +133,7 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
 
     // Post-swap: verify output meets minimum expectations and transfer tokens to the recipient.
     for (uint256 i; i < tokensLength; i++) {
-      address token = tokens[i]; // Cache the token address for gas optimization.
+      address token = tokensOut[i]; // Cache the token address for gas optimization.
 
       // Handle wrapped positions for output tokens: Approves position manager to spend underlying tokens + increases liquidity
       if (
@@ -151,7 +156,7 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
 
     _returnDust(underlyingTokensDecreaseLiquidity, _params._to);
 
-    return tokens;
+    return tokensOut;
   }
 
   /**

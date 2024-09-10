@@ -92,15 +92,21 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
   function multiTokenSwapAndTransferRebalance(
     FunctionParameters.EnsoRebalanceParams memory _params
   ) external returns (address[] memory) {
+    // Decode the input parameters
     (
-      bytes[][] memory callDataEnso,
-      bytes[] memory callDataDecreaseLiquidity,
-      bytes[][] memory callDataIncreaseLiquidity,
-      address[][] memory increaseLiquidityTarget,
-      address[] memory underlyingTokensDecreaseLiquidity,
-      address[] memory tokensIn,
-      address[] memory tokens,
-      uint256[] memory minExpectedOutputAmounts
+      bytes[][] memory callDataEnso, // Array of arrays containing encoded swap data for Enso platform
+      // Two-dimensional because each external position might require multiple swaps
+      bytes[] memory callDataDecreaseLiquidity, // Array of encoded data for decreasing liquidity
+      // Includes token approval and liquidity removal for each position
+      bytes[][] memory callDataIncreaseLiquidity, // Array of arrays with encoded data for increasing liquidity
+      // Two-dimensional as each position may need multiple steps (approval, adding liquidity)
+      address[][] memory increaseLiquidityTarget, // Array of arrays with target addresses for increasing liquidity
+      // Two-dimensional to match the structure of callDataIncreaseLiquidity
+      address[] memory underlyingTokensDecreaseLiquidity, // Array of underlying tokens for decreasing liquidity
+      // One-dimensional as it's a flat list of tokens
+      address[] memory tokensIn, // Array of input token addresses
+      address[] memory tokensOut, // Array of output token addresses
+      uint256[] memory minExpectedOutputAmounts // Array of minimum expected output amounts
     ) = abi.decode(
         _params._calldata,
         (
@@ -116,7 +122,7 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
       );
 
     // Validate lengths of input arrays for consistency.
-    uint256 tokensLength = tokens.length;
+    uint256 tokensLength = tokensOut.length;
 
     if (
       tokensLength != minExpectedOutputAmounts.length ||
@@ -129,7 +135,7 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
     if (_params._to == address(0)) revert ErrorLibrary.InvalidAddress();
 
     for (uint256 i; i < tokensLength; i++) {
-      address token = tokens[i]; // Optimize gas by caching the token address.
+      address token = tokensOut[i]; // Optimize gas by caching the token address.
       uint256 buyBalanceBefore = IERC20Upgradeable(token).balanceOf(
         address(this)
       );
@@ -169,7 +175,7 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
 
     _returnDust(underlyingTokensDecreaseLiquidity, _params._to);
 
-    return tokens;
+    return tokensOut;
   }
 
   /// @notice Executes a series of swap operations
