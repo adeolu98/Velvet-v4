@@ -1047,7 +1047,7 @@ describe.only("Tests for Deposit", () => {
         expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
       });
 
-      it("should withdraw in multitoken by nonwOwner", async () => {
+      it("should withdraw in multitoken by nonOwner", async () => {
         await ethers.provider.send("evm_increaseTime", [70]);
 
         const supplyBefore = await portfolio.totalSupply();
@@ -1067,8 +1067,7 @@ describe.only("Tests for Deposit", () => {
 
         await portfolio
           .connect(nonOwner)
-          .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken)),
-          {
+          .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
             _factory: zeroAddress,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
@@ -1077,7 +1076,7 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
-          };
+          });
 
         const supplyAfter = await portfolio.totalSupply();
 
