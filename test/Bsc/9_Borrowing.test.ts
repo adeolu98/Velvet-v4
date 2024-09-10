@@ -798,7 +798,7 @@ describe.only("Tests for Deposit", () => {
 
         console.log("balanceToRepay", balanceToRepay);
 
-        await rebalancing.repayDirectly(
+        await rebalancing.directDebtRepayment(
           addresses.USDT,
           addresses.vUSDT_Address,
           balanceToRepay

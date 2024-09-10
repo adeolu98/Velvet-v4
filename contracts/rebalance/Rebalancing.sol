@@ -208,7 +208,15 @@ contract Rebalancing is
         emit TokenRepayed(repayData);
     }
 
-    function repayDirectly(
+    /**
+     * @notice Repays a debt directly by transferring the debt token and repaying the debt.
+     * @param _debtToken The address of the debt token to be repaid.
+     * @param _protocolToken The address of the protocol token used to repay the debt.
+     * @param _repayAmount The amount of the debt token to be repaid.
+     * @dev This function is used to repay a debt directly by transferring the debt token and repaying the debt.
+     * It is called by the asset manager to repay a debt directly.
+     */
+    function directDebtRepayment(
         address _debtToken,
         address _protocolToken,
         uint256 _repayAmount
