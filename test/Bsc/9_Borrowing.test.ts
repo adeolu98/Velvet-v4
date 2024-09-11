@@ -526,8 +526,26 @@ describe.only("Tests for Deposit", () => {
         );
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-          ["bytes[]", "address[]", "uint256[]"],
-          [[postResponse.data.tx.data], [buyToken], [0]]
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
         );
 
         await rebalancing.updateTokens({
@@ -580,8 +598,26 @@ describe.only("Tests for Deposit", () => {
         );
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-          ["bytes[]", "address[]", "uint256[]"],
-          [[postResponse.data.tx.data], [buyToken], [0]]
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
         );
 
         await rebalancing.updateTokens({
@@ -758,9 +794,28 @@ describe.only("Tests for Deposit", () => {
         );
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-          ["bytes[]", "address[]", "uint256[]"],
-          [["0x"], [addresses.DAI_Address], [0]]
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [["0x"]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [addresses.USDT],
+            [addresses.DAI_Address],
+            [0],
+          ]
         );
+
         let encodedParameters1 = [];
         //Because repay(rebalance) is one borrow token at a time
         const amounToSell =
@@ -785,8 +840,26 @@ describe.only("Tests for Deposit", () => {
 
           encodedParameters1.push(
             ethers.utils.defaultAbiCoder.encode(
-              ["bytes[]", "address[]", "uint256[]"],
-              [[postResponse1.data.tx.data], [addresses.USDT], [0]]
+              [
+                "bytes[][]", // callDataEnso
+                "bytes[]", // callDataDecreaseLiquidity
+                "bytes[][]", // callDataIncreaseLiquidity
+                "address[][]", // increaseLiquidityTarget
+                "address[]", // underlyingTokensDecreaseLiquidity
+                "address[]", // tokensIn
+                "address[]", // tokens
+                " uint256[]", // minExpectedOutputAmounts
+              ],
+              [
+                [[postResponse1.data.tx.data]],
+                [],
+                [[]],
+                [[]],
+                [],
+                [lendTokens[j]],
+                [addresses.USDT],
+                [0],
+              ]
             )
           );
         }
@@ -926,15 +999,51 @@ describe.only("Tests for Deposit", () => {
             );
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse.data.tx.data], [underlyings[i]], [0]]
+                [
+                  "bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [[postResponse.data.tx.data]],
+                  [],
+                  [[]],
+                  [[]],
+                  [],
+                  [flashLoanToken],
+                  [underlyings[i]],
+                  [0],
+                ]
               )
             );
           } else {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [["0x"], [underlyings[i]], [0]]
+                [
+                  " bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [[]],
+                  [],
+                  [],
+                  [[]],
+                  [],
+                  [flashLoanToken],
+                  [underlyings[i]],
+                  [0],
+                ]
               )
             );
           }
@@ -960,8 +1069,26 @@ describe.only("Tests for Deposit", () => {
 
             encodedParameters1.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
+                [
+                  "bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [[postResponse1.data.tx.data]],
+                  [],
+                  [[]],
+                  [[]],
+                  [],
+                  [lendTokens[j]],
+                  [flashLoanToken],
+                  [0],
+                ]
               )
             );
           }
@@ -1113,15 +1240,51 @@ describe.only("Tests for Deposit", () => {
             );
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse.data.tx.data], [underlyings[i]], [0]]
+                [
+                  " bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [[postResponse.data.tx.data]],
+                  [],
+                  [[]],
+                  [[]],
+                  [],
+                  [flashLoanToken],
+                  [underlyings[i]],
+                  [0],
+                ]
               )
             );
           } else {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [["0x"], [underlyings[i]], [0]]
+                [
+                  "bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [["0x"]],
+                  [],
+                  [[]],
+                  [[]],
+                  [],
+                  [flashLoanToken],
+                  [underlyings[i]],
+                  [0],
+                ]
               )
             );
           }
@@ -1147,8 +1310,26 @@ describe.only("Tests for Deposit", () => {
 
             encodedParameters1.push(
               ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
+                [
+                  "bytes[][]", // callDataEnso
+                  "bytes[]", // callDataDecreaseLiquidity
+                  "bytes[][]", // callDataIncreaseLiquidity
+                  "address[][]", // increaseLiquidityTarget
+                  "address[]", // underlyingTokensDecreaseLiquidity
+                  "address[]", // tokensIn
+                  "address[]", // tokens
+                  " uint256[]", // minExpectedOutputAmounts
+                ],
+                [
+                  [[postResponse1.data.tx.data]],
+                  [],
+                  [[]],
+                  [[]],
+                  [],
+                  [lendTokens[j]],
+                  [flashLoanToken],
+                  [0],
+                ]
               )
             );
           }
