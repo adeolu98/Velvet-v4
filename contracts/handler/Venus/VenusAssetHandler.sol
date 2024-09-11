@@ -9,6 +9,7 @@ import {FunctionParameters} from "../../FunctionParameters.sol";
 import {IThena} from "../../core/interfaces/IThena.sol";
 import {IAlgebraPool} from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import "./ExponentialNoError.sol";
+import "hardhat/console.sol";
 
 /**
  * @title VenusAssetHandler
@@ -713,6 +714,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
             uint256 totalFlashAmount
         )
     {
+        console.log("swapAndTransferTransactions");
         uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
         transactions = new MultiTransaction[](tokenLength * 2); // Initialize the transactions array
         uint count;
@@ -752,7 +754,13 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 );
                 count++;
             }
+            console.log(
+                "flashData.flashLoanAmount[i]",
+                flashData.flashLoanAmount[i]
+            );
+
             totalFlashAmount += flashData.flashLoanAmount[i]; // Update the total flash loan amount
+            console.log("totalFlashAmount", totalFlashAmount);
         }
         // Resize the transactions array to remove unused entries
         uint unusedLength = ((tokenLength * 2) - count);
@@ -771,10 +779,13 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         address executor,
         FunctionParameters.FlashLoanData memory flashData
     ) internal pure returns (MultiTransaction[] memory transactions) {
+        console.log("repayTransactions");
         uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
         transactions = new MultiTransaction[](tokenLength * 2); // Initialize the transactions array
         uint256 count;
-
+        uint256 amountToRepay = flashData.isMaxRepayment
+            ? type(uint256).max // If it's a max repayment, repay the max amount
+            : flashData.debtRepayAmount[0]; // Otherwise, repay the debt amount
         // Loop through the debt tokens to handle repayments
         for (uint i = 0; i < tokenLength; i++) {
             // Approve the debt token for the protocol
@@ -782,10 +793,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
             transactions[count].txData = abi.encodeWithSelector(
                 bytes4(keccak256("vaultInteraction(address,bytes)")),
                 flashData.debtToken[i],
-                approve(
-                    flashData.protocolTokens[i],
-                    flashData.debtRepayAmount[i]
-                )
+                approve(flashData.protocolTokens[i], amountToRepay)
             );
             count++;
 
@@ -794,7 +802,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
             transactions[count].txData = abi.encodeWithSelector(
                 bytes4(keccak256("vaultInteraction(address,bytes)")),
                 flashData.protocolTokens[i],
-                repay(flashData.debtRepayAmount[i])
+                repay(amountToRepay)
             );
             count++;
         }
@@ -822,6 +830,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         uint256 fee,
         FunctionParameters.FlashLoanData memory flashData
     ) internal view returns (MultiTransaction[] memory transactions) {
+        console.log("withdrawTransactions");
         uint256 amountLength = flashData.debtRepayAmount.length; // Get the number of repayment amounts
         transactions = new MultiTransaction[](
             amountLength * 2 * lendingTokens.length
@@ -830,6 +839,14 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
 
         // Loop through the repayment amounts to handle withdrawals
         for (uint i = 0; i < amountLength; i++) {
+            console.log(
+                "flashData.debtRepayAmount[i]",
+                flashData.debtRepayAmount[i]
+            );
+            console.log(
+                "flashData.protocolTokens[i]",
+                flashData.protocolTokens[i]
+            );
             // Get the amounts to sell based on the collateral
             uint256[] memory sellAmounts = getCollateralAmountToSell(
                 user,
@@ -843,6 +860,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
 
             // Loop through the lending tokens to process each one
             for (uint j = 0; j < lendingTokens.length; j++) {
+                console.log("sellAmounts[j]", sellAmounts[j]);
                 // Pull the token from the vault
                 transactions[count].to = executor;
                 transactions[count].txData = abi.encodeWithSelector(
@@ -852,7 +870,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                     flashData.solverHandler // The solver handler address
                 );
                 count++;
-
                 // Swap the token and transfer it to the receiver
                 transactions[count].to = flashData.solverHandler;
                 transactions[count].txData = abi.encodeWithSelector(
@@ -914,7 +931,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 flashLoanAmount: repayData._flashLoanAmount,
                 debtRepayAmount: tokenBalance,
                 firstSwapData: repayData.firstSwapData,
-                secondSwapData: repayData.secondSwapData
+                secondSwapData: repayData.secondSwapData,
+                isMaxRepayment: false
             });
         // Initiate the flash loan from the Algebra pool
         IAlgebraPool(_poolAddress).flash(
@@ -949,7 +967,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 flashLoanAmount: repayData._flashLoanAmount,
                 debtRepayAmount: repayData._debtRepayAmount,
                 firstSwapData: repayData.firstSwapData,
-                secondSwapData: repayData.secondSwapData
+                secondSwapData: repayData.secondSwapData,
+                isMaxRepayment: repayData.isMaxRepayment
             });
 
         // Initiate the flash loan from the Algebra pool

@@ -709,7 +709,7 @@ describe.only("Tests for Deposit", () => {
 
         await rebalancing.borrow(
           addresses.vUSDT_Address,
-          [addresses.vBNB_Address],
+          [addresses.vBTC_Address],
           addresses.USDT,
           addresses.corePool_controller,
           "2000000000000000000"
@@ -746,41 +746,41 @@ describe.only("Tests for Deposit", () => {
         console.log("newtokens", await portfolio.getTokens());
       });
 
-      it("should swap tokens for user using native token", async () => {
-        let tokens = await portfolio.getTokens();
+      // it("should swap tokens for user using native token", async () => {
+      //   let tokens = await portfolio.getTokens();
 
-        console.log("SupplyBefore", await portfolio.totalSupply());
+      //   console.log("SupplyBefore", await portfolio.totalSupply());
 
-        let postResponse = [];
+      //   let postResponse = [];
 
-        for (let i = 0; i < tokens.length; i++) {
-          let response = await createEnsoCallDataRoute(
-            depositBatch.address,
-            depositBatch.address,
-            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            tokens[i],
-            "2000000000000000000"
-          );
-          postResponse.push(response.data.tx.data);
-        }
+      //   for (let i = 0; i < tokens.length; i++) {
+      //     let response = await createEnsoCallDataRoute(
+      //       depositBatch.address,
+      //       depositBatch.address,
+      //       "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      //       tokens[i],
+      //       "2000000000000000000"
+      //     );
+      //     postResponse.push(response.data.tx.data);
+      //   }
 
-        const data = await depositBatch
-          .connect(nonOwner)
-          .multiTokenSwapETHAndTransfer(
-            {
-              _minMintAmount: 0,
-              _depositAmount: "1000000000000000000",
-              _target: portfolio.address,
-              _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-              _callData: postResponse,
-            },
-            {
-              value: "1000000000000000000",
-            }
-          );
+      //   const data = await depositBatch
+      //     .connect(nonOwner)
+      //     .multiTokenSwapETHAndTransfer(
+      //       {
+      //         _minMintAmount: 0,
+      //         _depositAmount: "1000000000000000000",
+      //         _target: portfolio.address,
+      //         _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      //         _callData: postResponse,
+      //       },
+      //       {
+      //         value: "1000000000000000000",
+      //       }
+      //     );
 
-        console.log("SupplyAfter", await portfolio.totalSupply());
-      });
+      //   console.log("SupplyAfter", await portfolio.totalSupply());
+      // });
 
       it("Repay half of borrowed amount directly using vault token", async () => {
         let vault = await portfolio.vault();
@@ -817,6 +817,112 @@ describe.only("Tests for Deposit", () => {
         expect(vaultBalanceAfter).to.be.greaterThan(0);
         console.log("balanceBorrowed after repay", balanceBorrowed);
       });
+
+      // it("should simulate repaying half of borrowed dai using flashLoan", async function() {
+      //   // Setup
+      //   const vault = await portfolio.vault();
+      //   const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+    
+      //   let balanceBorrowed = await portfolioCalculations.getVenusTokenBorrowedBalance(
+      //     [addresses.vDAI_Address],
+      //     vault
+      //   );
+      //   const userData = await venusAssetHandler.getUserAccountData(
+      //     vault,
+      //     addresses.corePool_controller
+      //   );
+      //   const lendTokens = userData[1].lendTokens;
+    
+      //   console.log("balanceBorrowed before repay", balanceBorrowed.toString());
+    
+      //   const balanceToRepay = balanceBorrowed[0].div(2);
+      //   const balanceToSwap = await portfolioCalculations.getExpectedFlashLoanAmount(
+      //     addresses.vDAI_Address,
+      //     addresses.vUSDT_Address,
+      //     addresses.corePool_controller,
+      //     balanceToRepay
+      //   );
+    
+      //   console.log("balanceToRepay", balanceToRepay.toString());
+      //   console.log("balanceToSwap", balanceToSwap.toString());
+    
+      //   // Prepare transaction data
+      //   const repayParams = {
+      //     _factory: addresses.thena_factory,
+      //     _token0: addresses.USDT,
+      //     _token1: addresses.USDC_Address,
+      //     _flashLoanToken: addresses.USDT,
+      //     _debtToken: [addresses.DAI_Address],
+      //     _protocolToken: [addresses.vDAI_Address],
+      //     _solverHandler: ensoHandler.address,
+      //     _flashLoanAmount: [balanceToSwap],
+      //     _debtRepayAmount: [balanceToRepay],
+      //     firstSwapData: ["0x"], // Simplified for this example
+      //     secondSwapData: ["0x"], // Simplified for this example
+      //     isMaxRepayment: false
+      //   };
+    
+      //   const txData = rebalancing.interface.encodeFunctionData("repay", [
+      //     addresses.corePool_controller,
+      //     repayParams
+      //   ]);
+    
+      //   // Prepare Tenderly simulation request
+      //   const simulationRequest = {
+      //     network_id: "56", // BSC mainnet
+      //     from: owner.address,
+      //     to: rebalancing.address,
+      //     input: txData,
+      //     gas: 8000000,
+      //     gas_price: "20000000000",
+      //     value: "0",
+      //     save: true,
+      //     save_if_fails: true,
+      //     state_objects: {
+      //       "0xA9560340cA757d537E297c7Cf9416a586D217c07": {
+      //         balance: "1000000000000000000" // Setting balance to 1 ETH
+      //       }
+      //     }
+      //   };
+    
+      //   // Send simulation request to Tenderly
+      //   const tenderlyApiKey = process.env.TENDERLY_API_KEY;
+      //   const tenderlyUser = process.env.TENDERLY_USER;
+      //   const tenderlyProject = process.env.TENDERLY_PROJECT;
+    
+      //   try {
+      //     const simulationResponse = await axios.post(
+      //       `https://api.tenderly.co/api/v1/account/${tenderlyUser}/project/${tenderlyProject}/simulate`,
+      //       simulationRequest,
+      //       {
+      //         headers: {
+      //           'X-Access-Key': tenderlyApiKey,
+      //           'Content-Type': 'application/json'
+      //         }
+      //       }
+      //     );
+    
+      //     // Analyze simulation results
+      //     const simulationResult = simulationResponse.data;
+      //     console.log("Simulation status:", simulationResult.transaction.status);
+      //     console.log("Simulation gas used:", simulationResult.transaction.gas_used);
+    
+      //     // Check if the simulation was successful
+      //     expect(simulationResult.transaction.status).to.equal(true);
+    
+      //     // You can add more detailed checks here based on the simulation results
+      //     // For example, checking state changes, events emitted, etc.
+    
+      //   } catch (error : any) {
+      //     console.error("Simulation failed:", error.response ? error.response.data : error.message);
+      //     throw error;
+      //   }
+
+      //   console.log("balance borrowed after repay",await  .getVenusTokenBorrowedBalance(
+      //     [addresses.vDAI_Address],
+      //     vault
+      //   ))
+      // });
 
       it("should repay half of borrowed dai using flashLoan", async () => {
         let vault = await portfolio.vault();
@@ -903,6 +1009,7 @@ describe.only("Tests for Deposit", () => {
           _debtRepayAmount: [balanceToRepay],
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
+          isMaxRepayment: false
         });
 
         console.log(

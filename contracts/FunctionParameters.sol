@@ -171,6 +171,7 @@ library FunctionParameters {
    * @param _debtRepayAmount The amounts of debt to be repaid for each corresponding `_debtToken`.
    * @param firstSwapData The encoded data for the first swap operation, used for repaying the debt.
    * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after repaying the debt.
+   * @param isMaxRepayment Boolean flag to determine if the maximum borrowed amount should be repaid.
    */
   struct RepayParams {
     address _factory;
@@ -184,6 +185,7 @@ library FunctionParameters {
     uint256[] _debtRepayAmount;
     bytes[] firstSwapData;
     bytes[] secondSwapData;
+    bool isMaxRepayment;
   }
 
   /**
@@ -220,6 +222,7 @@ library FunctionParameters {
    * @param debtRepayAmount The amounts of debt to be repaid for each corresponding `debtToken`.
    * @param firstSwapData The encoded data for the first swap operation, used for repaying the debt.
    * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after repaying the debt.
+   * @param isMaxRepayment Boolean flag to determine if the maximum borrowed amount should be repaid.
    */
   struct FlashLoanData {
     address flashLoanToken;
@@ -230,6 +233,7 @@ library FunctionParameters {
     uint256[] debtRepayAmount;
     bytes[] firstSwapData;
     bytes[] secondSwapData;
+    bool isMaxRepayment;
   }
 
   /**

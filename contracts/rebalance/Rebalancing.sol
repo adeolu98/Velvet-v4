@@ -217,18 +217,21 @@ contract Rebalancing is
      * It is called by the asset manager to repay a debt directly.
      */
     function directDebtRepayment(
-        address _debtToken,
-        address _protocolToken,
-        uint256 _repayAmount
+        address _debtToken, // Address of the debt token
+        address _protocolToken, // Address of the protocol token to which the debt token is to be transferred
+        uint256 _repayAmount // Amount of debt token to be repaid and type(uint256).max for full repayment
     ) external onlyAssetManager nonReentrant protocolNotPaused {
         if (_debtToken == address(0) || _protocolToken == address(0))
             revert ErrorLibrary.InvalidAddress();
-        uint256 vaultBalance = IERC20Upgradeable(_debtToken).balanceOf(_vault);
-        if (_repayAmount == 0 || vaultBalance <= _repayAmount)
-            revert ErrorLibrary.AmountCannotBeZero();
+        if (_repayAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
 
         IAssetHandler assetHandler = IAssetHandler(
             protocolConfig.assetHandlers(_protocolToken)
+        );
+
+        portfolio.vaultInteraction(
+            _debtToken,
+            assetHandler.approve(_protocolToken, 0)
         );
 
         // Approve the protocol token to spend the debt token
@@ -246,6 +249,12 @@ contract Rebalancing is
         //Check balance not zero
         if (_getTokenBalanceOf(_debtToken, _vault) == 0)
             revert ErrorLibrary.BalanceOfVaultCannotNotBeZero(_debtToken);
+
+        //Remove approval
+        portfolio.vaultInteraction(
+            _debtToken,
+            assetHandler.approve(_protocolToken, 0)
+        );
 
         //Events
         emit DirectTokenRepayed(_debtToken, _protocolToken, _repayAmount);
