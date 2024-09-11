@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
+import { IPositionManager } from "./wrappers/abstract/IPositionManager.sol";
+
 /**
  * @title FunctionParameters
  * @notice A library for defining structured data passed across functions in DeFi protocols.
@@ -364,5 +366,18 @@ library FunctionParameters {
     address _tokenIn;
     address _tokenOut;
     uint256 _amountIn;
+  }
+
+  /**
+   * @notice Struct for Enso Rebalance Params
+   * @dev Encapsulates the parameters required for performing a rebalance operation using the Enso protocol.
+   * @param _positionManager Address of the Enso Position Manager contract.
+   * @param _to Address of the recipient for the rebalance operation.
+   * @param _calldata Encoded call data for the rebalance operation.
+   */
+  struct EnsoRebalanceParams {
+    IPositionManager _positionManager;
+    address _to;
+    bytes _calldata;
   }
 }
