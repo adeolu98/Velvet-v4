@@ -26,6 +26,9 @@ abstract contract ExternalPositionManagement is AccessRoles {
 
   address private protocolConfig; // Address of the protocol config.
 
+  // Flag to indicate if external position management is whitelisted
+  bool externalPositionManagementWhitelisted;
+
   event UniswapV3ManagerEnabled();
 
   error UniSwapV3WrapperAlreadyEnabled(); // Custom error for preventing re-enabling the Uniswap V3 wrapper.
@@ -39,10 +42,13 @@ abstract contract ExternalPositionManagement is AccessRoles {
   function ExternalPositionManagement__init(
     address _protocolConfig,
     address _accessControllerAddress,
-    address _basePositionManager
+    address _basePositionManager,
+    bool _externalPositionManagementWhitelisted
   ) internal {
     accessControllerAddress = _accessControllerAddress;
     basePositionManager = _basePositionManager;
+
+    externalPositionManagementWhitelisted = _externalPositionManagementWhitelisted;
 
     protocolConfig = _protocolConfig;
   }
@@ -60,6 +66,10 @@ abstract contract ExternalPositionManagement is AccessRoles {
         msg.sender
       )
     ) revert ErrorLibrary.CallerNotAssetManager();
+
+    if (!externalPositionManagementWhitelisted) {
+      revert ErrorLibrary.ExternalPositionManagementNotWhitelisted();
+    }
 
     // Prevent re-enabling if the wrapper is already enabled.
     if (uniswapV3WrapperEnabled) {

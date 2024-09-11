@@ -101,6 +101,7 @@ library FunctionParameters {
     bool _transferable;
     bool _transferableToPublic;
     bool _whitelistTokens;
+    bool _externalPositionManagementWhitelisted;
     string _name;
     string _symbol;
   }
@@ -140,6 +141,7 @@ library FunctionParameters {
     bool _transferable;
     bool _transferableToPublic;
     bool _whitelistTokens;
+    bool _externalPositionManagementWhitelisted;
   }
 
   /**
