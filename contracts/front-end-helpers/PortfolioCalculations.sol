@@ -38,6 +38,16 @@ contract PortfolioCalculations is ExponentialNoError {
         address[] borrowTokens;
     }
 
+    struct CalculationParams {
+        address protocolToken;
+        address vault;
+        address comptroller;
+        uint256 afterFeeAmount;
+        uint256 totalSupplyPortfolio;
+        uint256 flashLoanTokenPrice;
+        uint256 flashLoanBufferUnit;
+    }
+
     function getTokenBalancesAndDecimals(
         address _portfolio
     ) public view returns (uint256[] memory, uint8[] memory) {
@@ -529,11 +539,12 @@ contract PortfolioCalculations is ExponentialNoError {
         );
     }
 
-    function getExpectedFlashLoanAmount(
+    function calculateFlashLoanAmountForRepayment(
         address _borrowProtocolToken,
         address _flashLoanProtocolToken,
         address _comptroller,
-        uint256 _borrowToRepay
+        uint256 _borrowToRepay,
+        uint256 bufferUnit //Buffer unit is the buffer percentage in terms of 1/10000
     ) external view returns (uint256 flashLoanAmount) {
         // Get the oracle price for the borrowed token
         uint256 oraclePrice = IVenusComptroller(_comptroller)
@@ -555,7 +566,9 @@ contract PortfolioCalculations is ExponentialNoError {
             10 ** 18;
 
         // Add a 0.01% buffer to the flash loan amount
-        flashLoanAmount = flashLoanAmount + ((flashLoanAmount * 1) / 10_000);
+        flashLoanAmount =
+            flashLoanAmount +
+            ((flashLoanAmount * bufferUnit) / 10_000);
     }
 
     function getUserTokenClaimBalance(
@@ -629,7 +642,8 @@ contract PortfolioCalculations is ExponentialNoError {
         address _venusAssetHandler,
         address _protocolToken,
         uint256 _debtRepayAmount,
-        uint256 feeUnit
+        uint256 feeUnit, //Flash loan fee unit
+        uint256 bufferUnit //Buffer unit is the buffer percentage in terms of 1/100000
     ) external view returns (uint256[] memory amounts) {
         // Use the new struct-based return for getUserAccountData
         (
@@ -659,9 +673,10 @@ contract PortfolioCalculations is ExponentialNoError {
             sumBorrowPlusEffects
         );
 
+        address _account = _user;
         sumBorrowPlusEffects = handleVAIController(
             _controller,
-            _user,
+            _account,
             sumBorrowPlusEffects
         );
 
@@ -673,12 +688,14 @@ contract PortfolioCalculations is ExponentialNoError {
             accountData.totalCollateral
         );
 
-        address _account = _user;
-
         for (uint256 i; i < tokenAddresses.lendTokens.length; i++) {
             uint256 balance = IERC20Upgradeable(tokenAddresses.lendTokens[i])
                 .balanceOf(_account);
-            amounts[i] = (balance * percentageToRemove) / 10 ** 18;
+            uint256 amountToSell = (balance * percentageToRemove);
+            amountToSell =
+                amountToSell +
+                ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
+            amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
         }
     }
 
@@ -692,19 +709,48 @@ contract PortfolioCalculations is ExponentialNoError {
         uint256 feeAmount = (_debtRepayAmount * 10 ** 18 * feeUnit) / 10 ** 22;
         uint256 debtAmountWithFee = _debtRepayAmount + feeAmount;
         debtValue = (debtAmountWithFee * totalDebt * 10 ** 18) / borrowBalance;
-        debtValue = debtValue + ((debtValue * 6) / 10_000); //This is to increase the value, by some percent (Need to make this slippage dynamic)
         percentageToRemove = debtValue / totalCollateral;
     }
 
-    function getBorrowedPortionAndFlashLoanAmountOfUser(
+    function calculateBorrowedPortionAndFlashLoanDetails(
         address _portfolio,
-        address _protocolToken, //Flashloan token in form of venusProtocoltoken
+        address _protocolToken,
         address _vault,
-        uint256 _portfolioTokenAmount,
         address _comptroller,
-        address _venusAssetHandler
+        address _venusAssetHandler,
+        uint256 _portfolioTokenAmount,
+        uint256 _flashLoanBufferUnit
     )
         external
+        view
+        returns (
+            uint256[] memory borrowedPortion,
+            uint256[] memory flashLoanAmount,
+            address[] memory underlyingTokens,
+            address[] memory borrowedTokens
+        )
+    {
+        return _calculateDetails(
+            _portfolio,
+            _protocolToken,
+            _vault,
+            _comptroller,
+            _venusAssetHandler,
+            _portfolioTokenAmount,
+            _flashLoanBufferUnit
+        );
+    }
+
+    function _calculateDetails(
+        address _portfolio,
+        address _protocolToken,
+        address _vault,
+        address _comptroller,
+        address _venusAssetHandler,
+        uint256 _portfolioTokenAmount,
+        uint256 _flashLoanBufferUnit
+    )
+        internal
         view
         returns (
             uint256[] memory borrowedPortion,
@@ -721,40 +767,67 @@ contract PortfolioCalculations is ExponentialNoError {
             _vault,
             _comptroller
         );
-        //flashloanToken price
-        uint256 flahLoanTokenPrice = IVenusComptroller(_comptroller) //Oracle Price is in 10 ** 18
-            .oracle()
-            .getUnderlyingPrice(_protocolToken);
-        borrowedPortion = new uint256[](borrowedTokens.length);
-        flashLoanAmount = new uint256[](borrowedTokens.length);
-        underlyingTokens = new address[](borrowedTokens.length);
-        address account = _vault;
         address protocolToken = _protocolToken;
-        for (uint i = 0; i < borrowedTokens.length; i++) {
-            //borrowedtoken price
-            address borrowedToken = borrowedTokens[i];
-            underlyingTokens[i] = IVenusPool(borrowedToken).underlying();
-            uint256 oraclePrice = IVenusComptroller(_comptroller)
-                .oracle()
-                .getUnderlyingPrice(borrowedToken);
-            uint256 borrowBalance = IVenusPool(borrowedToken)
-                .borrowBalanceStored(account);
-            borrowedPortion[i] =
-                (borrowBalance * afterFeeAmount) /
-                totalSupplyPortfolio;
+        uint256 tokenCount = borrowedTokens.length;
+        borrowedPortion = new uint256[](tokenCount);
+        flashLoanAmount = new uint256[](tokenCount);
+        underlyingTokens = new address[](tokenCount);
 
-            uint256 totalPrice = (borrowBalance *
-                afterFeeAmount *
-                oraclePrice) / totalSupplyPortfolio;
-            uint256 _amount = (totalPrice * 10 ** 18) /
-                flahLoanTokenPrice /
-                10 ** 18;
-            if (borrowedToken != protocolToken) {
-                flashLoanAmount[i] = _amount + ((_amount * 1) / 10_000); //Need to make it dynamic
-            } else {
-                flashLoanAmount[i] = _amount;
-            }
-            //borrwedToken amount
+        CalculationParams memory params = CalculationParams({
+            protocolToken: protocolToken,
+            vault: _vault,
+            comptroller: _comptroller,
+            afterFeeAmount: afterFeeAmount,
+            totalSupplyPortfolio: totalSupplyPortfolio,
+            flashLoanTokenPrice: IVenusComptroller(_comptroller).oracle().getUnderlyingPrice(protocolToken),
+            flashLoanBufferUnit: _flashLoanBufferUnit
+        });
+
+        for (uint i = 0; i < tokenCount; i++) {
+            (
+                borrowedPortion[i],
+                flashLoanAmount[i],
+                underlyingTokens[i]
+            ) = calculateTokenDetails(borrowedTokens[i], params);
+        }
+    }
+
+    function calculateTokenDetails(
+        address borrowedToken,
+        CalculationParams memory params
+    )
+        internal
+        view
+        returns (
+            uint256 borrowedPortion,
+            uint256 flashLoanAmount,
+            address underlyingToken
+        )
+    {
+        underlyingToken = IVenusPool(borrowedToken).underlying();
+        uint256 oraclePrice = IVenusComptroller(params.comptroller)
+            .oracle()
+            .getUnderlyingPrice(borrowedToken);
+        uint256 borrowBalance = IVenusPool(borrowedToken).borrowBalanceStored(
+            params.vault
+        );
+
+        borrowedPortion =
+            (borrowBalance * params.afterFeeAmount) /
+            params.totalSupplyPortfolio;
+
+        uint256 totalPrice = (borrowBalance * params.afterFeeAmount * oraclePrice) /
+            params.totalSupplyPortfolio;
+        uint256 _amount = (totalPrice * 10 ** 18) /
+            params.flashLoanTokenPrice /
+            10 ** 18;
+
+        if (borrowedToken != params.protocolToken) {
+            flashLoanAmount =
+                _amount +
+                ((_amount * params.flashLoanBufferUnit) / 10_000); //Building a buffer of 0.01%
+        } else {
+            flashLoanAmount = _amount;
         }
     }
 

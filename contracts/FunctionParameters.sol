@@ -167,6 +167,7 @@ library FunctionParameters {
    * @param _debtToken The addresses of the tokens representing the debt to be repaid.
    * @param _protocolToken The addresses of the protocol-specific tokens, such as lending tokens (e.g., vTokens for Venus protocol).
    * @param _solverHandler The address of the contract handling the execution of swaps and other logic.
+   * @param _bufferUnit Buffer unit for collateral amount
    * @param _flashLoanAmount The amounts of the flash loan to be taken for each corresponding `_flashLoanToken`.
    * @param _debtRepayAmount The amounts of debt to be repaid for each corresponding `_debtToken`.
    * @param firstSwapData The encoded data for the first swap operation, used for repaying the debt.
@@ -181,6 +182,7 @@ library FunctionParameters {
     address[] _debtToken;
     address[] _protocolToken; // lending token in case of venus
     address _solverHandler;
+    uint256 _bufferUnit;
     uint256[] _flashLoanAmount;
     uint256[] _debtRepayAmount;
     bytes[] firstSwapData;
@@ -196,6 +198,7 @@ library FunctionParameters {
    * @param _token1 The address of the second token in the swap pair.
    * @param _flashLoanToken The address of the token to be borrowed in the flash loan.
    * @param _solverHandler The address of the contract handling the execution of swaps and other logic.
+   * @param _bufferUnit Buffer unit for collateral amount
    * @param _flashLoanAmount The amounts of the flash loan to be taken for each corresponding `_flashLoanToken`.
    * @param firstSwapData The encoded data for the first swap operation, used in the process of repaying or withdrawing.
    * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after the first swap.
@@ -206,6 +209,7 @@ library FunctionParameters {
     address _token1;
     address _flashLoanToken;
     address _solverHandler;
+    uint256 _bufferUnit;
     uint256[] _flashLoanAmount;
     bytes[] firstSwapData;
     bytes[] secondSwapData;
@@ -218,6 +222,7 @@ library FunctionParameters {
    * @param debtToken The addresses of the tokens representing the debt to be repaid.
    * @param protocolTokens The addresses of the protocol-specific tokens, such as lending tokens (e.g., vTokens for Venus protocol).
    * @param solverHandler The address of the contract handling the execution of swaps and other logic.
+   * @param bufferUnit Buffer unit for collateral amount
    * @param flashLoanAmount The amounts of the flash loan to be taken for each corresponding `flashLoanToken`.
    * @param debtRepayAmount The amounts of debt to be repaid for each corresponding `debtToken`.
    * @param firstSwapData The encoded data for the first swap operation, used for repaying the debt.
@@ -229,6 +234,7 @@ library FunctionParameters {
     address[] debtToken;
     address[] protocolTokens;
     address solverHandler;
+    uint256 bufferUnit;
     uint256[] flashLoanAmount;
     uint256[] debtRepayAmount;
     bytes[] firstSwapData;

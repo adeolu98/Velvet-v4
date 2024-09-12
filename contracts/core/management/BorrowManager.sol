@@ -16,7 +16,6 @@ import {IAlgebraPool} from "@cryptoalgebra/integral-core/contracts/interfaces/IA
 import {AccessModifiers} from "../access/AccessModifiers.sol";
 import {IAlgebraFlashCallback} from "@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraFlashCallback.sol";
 import {IPortfolio} from "../../core/interfaces/IPortfolio.sol";
-import "hardhat/console.sol";
 
 /**
  * @title BorrowManager
@@ -144,7 +143,6 @@ contract BorrowManager is
         uint256 fee1,
         bytes calldata data
     ) external override {
-        console.log("flashCallback");
         FunctionParameters.FlashLoanData memory flashData = abi.decode(
             data,
             (FunctionParameters.FlashLoanData)
@@ -184,17 +182,11 @@ contract BorrowManager is
         }
 
         uint256 amountOwed = totalFlashAmount + fee0; // Calculate the amount owed including the fee
-        console.log("amountOwed", amountOwed);
-        console.log(
-            "contract flash token balance",
-            IERC20Upgradeable(flashData.flashLoanToken).balanceOf(address(this))
-        );
         TransferHelper.safeTransfer(
             flashData.flashLoanToken,
             msg.sender,
             amountOwed
         ); // Transfer the amount owed back to the lender
-
         //Need Dust Transfer
         TransferHelper.safeTransfer(
             flashData.flashLoanToken,

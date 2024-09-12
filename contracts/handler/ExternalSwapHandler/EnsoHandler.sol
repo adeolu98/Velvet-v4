@@ -5,7 +5,6 @@ import {SafeERC20Upgradeable, IERC20Upgradeable} from "@openzeppelin/contracts-u
 import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
 import {IIntentHandler} from "../IIntentHandler.sol";
-import "hardhat/console.sol";
 
 /**
  * @title EnsoHandler
@@ -52,16 +51,6 @@ contract EnsoHandler is IIntentHandler {
 
         // Ensure the recipient address is valid.
         if (_to == address(0)) revert ErrorLibrary.InvalidAddress();
-        console.log(
-            "vBNB handler balance",
-            IERC20Upgradeable(0xA07c5b74C9B40447a954e1466938b865b6BBea36)
-                .balanceOf(address(this))
-        );
-        console.log(
-            "vBTC handler balance",
-            IERC20Upgradeable(0x882C173bC7Ff3b7786CA16dfeD3DFFfb9Ee7847B)
-                .balanceOf(address(this))
-        );
         for (uint256 i; i < tokensLength; i++) {
             address token = tokens[i]; // Optimize gas by caching the token address.
             uint256 buyBalanceBefore = IERC20Upgradeable(token).balanceOf(
