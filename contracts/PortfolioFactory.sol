@@ -230,7 +230,9 @@ contract PortfolioFactory is
           _publicPortfolio: initData._public,
           _transferable: initData._transferable,
           _transferableToPublic: initData._transferableToPublic,
-          _whitelistTokens: initData._whitelistTokens
+          _whitelistTokens: initData._whitelistTokens,
+          _externalPositionManagementWhitelisted: initData
+            ._externalPositionManagementWhitelisted
         })
       )
     );

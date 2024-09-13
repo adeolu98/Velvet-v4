@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {AssetManagerCheck} from "./AssetManagerCheck.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
-import {ExternalPositionManagement, ErrorLibrary} from "./ExternalPositionManagement.sol";
+import { AssetManagerCheck } from "./AssetManagerCheck.sol";
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
+import { ExternalPositionManagement, ErrorLibrary } from "./ExternalPositionManagement.sol";
 
 /**
  * @title TokenWhitelistManagement
@@ -37,6 +37,7 @@ abstract contract TokenWhitelistManagement is
     address _accessControllerAddress,
     address _basePositionManager,
     bool _tokenWhitelistingEnabled,
+    bool _externalPositionManagementWhitelisted,
     address _protocolConfig
   ) internal onlyInitializing {
     if (_protocolConfig == address(0)) revert ErrorLibrary.InvalidAddress();
@@ -56,7 +57,8 @@ abstract contract TokenWhitelistManagement is
     ExternalPositionManagement__init(
       _protocolConfig,
       _accessControllerAddress,
-      _basePositionManager
+      _basePositionManager,
+      _externalPositionManagementWhitelisted
     );
   }
 

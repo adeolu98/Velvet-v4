@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IPortfolio} from "../../contracts/core/interfaces/IPortfolio.sol";
-import {IPortfolioFactory} from "../../contracts/core/interfaces/IPortfolioFactory.sol";
-import {IAllowanceTransfer} from "../../contracts/core/interfaces/IAllowanceTransfer.sol";
-import {IRebalancing} from "../../contracts/rebalance/IRebalancing.sol";
-import {Addresses} from "../foundry/utils/Addresses.sol";
-import {PortfolioDeployment} from "./utils/PortfolioDeployment.s.sol";
-import {FunctionParameters} from "../../contracts/FunctionParameters.sol";
-import {ErrorLibrary} from "../../contracts/library/ErrorLibrary.sol";
+import { IPortfolio } from "../../contracts/core/interfaces/IPortfolio.sol";
+import { IPortfolioFactory } from "../../contracts/core/interfaces/IPortfolioFactory.sol";
+import { IAllowanceTransfer } from "../../contracts/core/interfaces/IAllowanceTransfer.sol";
+import { IRebalancing } from "../../contracts/rebalance/IRebalancing.sol";
+import { Addresses } from "../foundry/utils/Addresses.sol";
+import { PortfolioDeployment } from "./utils/PortfolioDeployment.s.sol";
+import { FunctionParameters } from "../../contracts/FunctionParameters.sol";
+import { ErrorLibrary } from "../../contracts/library/ErrorLibrary.sol";
 import "./utils/AssetUtils.sol";
 
-import {IPermit2} from "./interfaces/IPermit2.sol";
+import { IPermit2 } from "./interfaces/IPermit2.sol";
 
-import {PortfolioOperations} from "./helpers/PortfolioOperations.sol";
+import { PortfolioOperations } from "./helpers/PortfolioOperations.sol";
 import "forge-std/console.sol";
 
 contract PortfolioFactory is PortfolioOperations, AssetUtils, Addresses {
@@ -60,7 +60,8 @@ contract PortfolioFactory is PortfolioOperations, AssetUtils, Addresses {
           _public: true,
           _transferable: true,
           _transferableToPublic: true,
-          _whitelistTokens: false
+          _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true
         })
       );
 
