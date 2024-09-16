@@ -42,11 +42,11 @@ contract Rebalancing is
     );
     event TokenRepayed(FunctionParameters.RepayParams);
     event DirectTokenRepayed(
-        address _debtToken,
-        address _protocolToken,
-        uint256 _repayAmount
+        address indexed _debtToken,
+        address indexed _protocolToken,
+        uint256 indexed _repayAmount
     );
-    event Borrowed(address _tokenToBorrow, uint256 _amountToBorrow);
+    event Borrowed(address indexed _tokenToBorrow, uint256 indexed _amountToBorrow);
 
   uint256 public constant TOTAL_WEIGHT = 10_000; // Represents 100% in basis points.
   IBorrowManager internal borrowManager;
