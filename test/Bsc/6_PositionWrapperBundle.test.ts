@@ -20,6 +20,7 @@ import {
   createEnsoCallData,
   createEnsoCallDataRoute,
   calculateOutputAmounts,
+  calculateDepositAmounts,
 } from "./IntentCalculations";
 
 import { tokenAddresses, IAddresses, priceOracle } from "./Deployments.test";
@@ -94,12 +95,15 @@ describe.only("Tests for Deposit", () => {
   let assetManagementConfig: AssetManagementConfig;
   let positionWrapper: any;
   let positionWrapper2: any;
+  let positionWrapper3: any;
   let nonOwner: SignerWithAddress;
   let depositor1: SignerWithAddress;
   let addr2: SignerWithAddress;
   let addr1: SignerWithAddress;
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
+
+  let zeroAddress: any;
 
   let amountCalculationsAlgebra: AmountCalculationsAlgebra;
 
@@ -120,11 +124,14 @@ describe.only("Tests for Deposit", () => {
 
   let position1: any;
   let position2: any;
+  let position3: any;
 
   /// @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
   const MIN_TICK = -887220;
   /// @dev The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
   const MAX_TICK = 887220;
+
+  zeroAddress = "0x0000000000000000000000000000000000000000";
 
   const provider = ethers.provider;
   const chainId: any = process.env.CHAIN_ID;
@@ -349,6 +356,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -368,6 +376,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -720,6 +729,303 @@ describe.only("Tests for Deposit", () => {
         await calculateOutputAmounts(position1, "10000");
       });
 
+      it("should rebalance from a position wrapper token to a ERC20 token", async () => {
+        // initialized tokens
+
+        let tokens = await portfolio.getTokens();
+        let sellToken = position1;
+        let buyToken = iaddress.usdtAddress;
+
+        let removedPosition = positionWrapper;
+
+        let token0 = await removedPosition.token0();
+        let token1 = await removedPosition.token1();
+
+        let newTokens = [
+          iaddress.usdcAddress,
+          position2,
+          iaddress.dogeAddress,
+          iaddress.btcAddress,
+          buyToken,
+        ];
+
+        positionWrappers = [position2];
+        swapTokens = [
+          iaddress.usdcAddress,
+          await positionWrapper2.token0(), // position2 - token0
+          await positionWrapper2.token1(), // position2 - token1
+          iaddress.dogeAddress,
+          iaddress.btcAddress,
+          iaddress.usdtAddress,
+        ];
+        positionWrapperIndex = [1];
+        portfolioTokenIndex = [0, 1, 1, 2, 3, 4];
+        isExternalPosition = [false, true, true, false, false, false];
+        isTokenExternalPosition = [false, true, false, false, false];
+        index0 = [1];
+        index1 = [2];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let sellTokenBalance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        // get underlying amounts of position
+        let percentage = await amountCalculationsAlgebra.getPercentage(
+          sellTokenBalance,
+          await removedPosition.totalSupply()
+        );
+
+        let withdrawAmounts = await calculateOutputAmounts(
+          sellToken,
+          percentage.toString()
+        );
+
+        let swapAmounts: any = [[]];
+        if (withdrawAmounts.token0Amount > 0) {
+          swapAmounts[0][0] = (
+            withdrawAmounts.token0Amount * 0.9999999
+          ).toFixed(0);
+        }
+
+        if (withdrawAmounts.token1Amount > 0) {
+          swapAmounts[0][1] = (
+            withdrawAmounts.token1Amount * 0.9999999
+          ).toFixed(0);
+        }
+
+        const postResponse0 = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          token0,
+          buyToken,
+          swapAmounts[0][0]
+        );
+
+        const postResponse1 = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          token1,
+          buyToken,
+          swapAmounts[0][1]
+        );
+
+        let callDataEnso: any = [[]];
+        callDataEnso[0][0] = postResponse0.data.tx.data;
+        callDataEnso[0][1] = postResponse1.data.tx.data;
+
+        const callDataDecreaseLiquidity: any = [];
+        // Encode the function call
+        let ABI = [
+          "function decreaseLiquidity(address _positionWrapper, uint256 _withdrawalAmount, uint256 _amount0Min, uint256 _amount1Min, address tokenIn, address tokenOut, uint256 amountIn)",
+        ];
+        let abiEncode = new ethers.utils.Interface(ABI);
+        callDataDecreaseLiquidity[0] = abiEncode.encodeFunctionData(
+          "decreaseLiquidity",
+          [sellToken, sellTokenBalance, 0, 0, token0, token1, 0]
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            callDataEnso,
+            callDataDecreaseLiquidity,
+            [[]],
+            [[]],
+            [await removedPosition.token0(), await removedPosition.token1()],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
+
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [sellTokenBalance],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
+        });
+      });
+
+      it("Create a new position wrapper", async () => {
+        // UniswapV3 position
+        const token0 = iaddress.usdcAddress;
+        const token1 = iaddress.usdtAddress;
+
+        await positionManager.createNewWrapperPosition(
+          token0,
+          token1,
+          "Test",
+          "t",
+          MIN_TICK,
+          MAX_TICK
+        );
+
+        position3 = await positionManager.deployedPositionWrappers(2);
+
+        const PositionWrapper = await ethers.getContractFactory(
+          "PositionWrapper"
+        );
+        positionWrapper3 = PositionWrapper.attach(position3);
+      });
+
+      it("should rebalance from a ERC20 token to a position wrapper token", async () => {
+        // initialized tokens
+
+        let tokens = await portfolio.getTokens();
+        let sellToken = iaddress.usdtAddress;
+        let buyToken = position3;
+
+        let addedPosition = positionWrapper3;
+
+        let token0 = await addedPosition.token0();
+        let token1 = await addedPosition.token1();
+
+        let newTokens = [
+          iaddress.usdcAddress,
+          position2,
+          iaddress.dogeAddress,
+          iaddress.btcAddress,
+          buyToken,
+        ];
+
+        positionWrappers = [position2, buyToken];
+        swapTokens = [
+          iaddress.usdcAddress,
+          await positionWrapper2.token0(), // position2 - token0
+          await positionWrapper2.token1(), // position2 - token1
+          iaddress.dogeAddress,
+          iaddress.btcAddress,
+          await addedPosition.token0(), // position1 - token0
+          await addedPosition.token1(), // position1 - token1
+        ];
+        positionWrapperIndex = [1, 4];
+        portfolioTokenIndex = [0, 1, 1, 2, 3, 4, 4];
+        isExternalPosition = [false, true, true, false, false, true, true];
+        isTokenExternalPosition = [false, true, false, false, true];
+        index0 = [1, 5];
+        index1 = [2, 6];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let sellTokenBalance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        let depositAmounts = await calculateDepositAmounts(
+          buyToken,
+          MIN_TICK,
+          MAX_TICK,
+          sellTokenBalance
+        );
+
+        let callDataEnso: any = [[]];
+        if (sellToken != token0) {
+          let swapAmount = depositAmounts.amount0;
+          const postResponse0 = await createEnsoCallDataRoute(
+            ensoHandler.address,
+            ensoHandler.address,
+            sellToken,
+            token0,
+            swapAmount
+          );
+          callDataEnso[0].push(postResponse0.data.tx.data);
+        }
+
+        if (sellToken != token1) {
+          let swapAmount = depositAmounts.amount1;
+
+          const postResponse1 = await createEnsoCallDataRoute(
+            ensoHandler.address,
+            ensoHandler.address,
+            sellToken,
+            token1,
+            swapAmount
+          );
+          callDataEnso[0].push(postResponse1.data.tx.data);
+        }
+
+        const callDataIncreaseLiquidity: any = [[]];
+        // Encode the function call
+        let ABIApprove = ["function approve(address spender, uint256 amount)"];
+        let abiEncodeApprove = new ethers.utils.Interface(ABIApprove);
+        callDataIncreaseLiquidity[0][0] = abiEncodeApprove.encodeFunctionData(
+          "approve",
+          [positionManager.address, sellTokenBalance]
+        );
+
+        callDataIncreaseLiquidity[0][1] = abiEncodeApprove.encodeFunctionData(
+          "approve",
+          [positionManager.address, sellTokenBalance]
+        );
+
+        // Define the ABI with the correct structure of WrapperDepositParams
+        let ABI = [
+          "function initializePositionAndDeposit(address _dustReceiver, address _positionWrapper, (uint256 _amount0Desired, uint256 _amount1Desired, uint256 _amount0Min, uint256 _amount1Min) params)",
+        ];
+
+        let abiEncode = new ethers.utils.Interface(ABI);
+
+        // Encode the initializePositionAndDeposit function call
+        callDataIncreaseLiquidity[0][2] = abiEncode.encodeFunctionData(
+          "initializePositionAndDeposit",
+          [
+            owner.address, // _dustReceiver
+            buyToken, // _positionWrapper
+            {
+              _amount0Desired: (depositAmounts.amount0 * 0.9995).toFixed(0),
+              _amount1Desired: (depositAmounts.amount1 * 0.9995).toFixed(0),
+              _amount0Min: 0,
+              _amount1Min: 0,
+            },
+          ]
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            callDataEnso,
+            [],
+            callDataIncreaseLiquidity,
+            [[token0, token1, positionManager.address]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
+
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [sellTokenBalance],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
+        });
+      });
+
       it("should withdraw in single token by user in native token", async () => {
         await ethers.provider.send("evm_increaseTime", [62]);
 
@@ -753,12 +1059,12 @@ describe.only("Tests for Deposit", () => {
             const PositionWrapper = await ethers.getContractFactory(
               "PositionWrapper"
             );
-            const positionWrapper = PositionWrapper.attach(
+            const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapper.totalSupply()
+              await positionWrapperCurrent.totalSupply()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -801,6 +1107,10 @@ describe.only("Tests for Deposit", () => {
 
         let balanceBeforeETH = await owner.getBalance();
 
+        /*
+    FunctionParameters.withdrawRepayParams calldata repayData,
+    FunctionParameters.ExternalPositionWithdrawParams memory _params*/
+
         await withdrawManager.withdraw(
           swapTokens,
           portfolio.address,
@@ -808,11 +1118,11 @@ describe.only("Tests for Deposit", () => {
           amountPortfolioToken,
           responses,
           {
-            _factory: ZERO_ADDRESS,
-            _token0: ZERO_ADDRESS, //USDT - Pool token
-            _token1: ZERO_ADDRESS, //USDC - Pool token
-            _flashLoanToken: ZERO_ADDRESS, //Token to take flashlaon
-            _solverHandler: ZERO_ADDRESS, //Handler to swap
+            _factory: zeroAddress,
+            _token0: zeroAddress,
+            _token1: zeroAddress,
+            _flashLoanToken: zeroAddress,
+            _solverHandler: zeroAddress,
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -870,12 +1180,12 @@ describe.only("Tests for Deposit", () => {
             const PositionWrapper = await ethers.getContractFactory(
               "PositionWrapper"
             );
-            const positionWrapper = PositionWrapper.attach(
+            const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapper.totalSupply()
+              await positionWrapperCurrent.totalSupply()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -925,11 +1235,11 @@ describe.only("Tests for Deposit", () => {
           amountPortfolioToken,
           responses,
           {
-            _factory: ZERO_ADDRESS,
-            _token0: ZERO_ADDRESS, //USDT - Pool token
-            _token1: ZERO_ADDRESS, //USDC - Pool token
-            _flashLoanToken: ZERO_ADDRESS, //Token to take flashlaon
-            _solverHandler: ZERO_ADDRESS, //Handler to swap
+            _factory: zeroAddress,
+            _token0: zeroAddress,
+            _token1: zeroAddress,
+            _flashLoanToken: zeroAddress,
+            _solverHandler: zeroAddress,
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -1175,12 +1485,12 @@ describe.only("Tests for Deposit", () => {
             const PositionWrapper = await ethers.getContractFactory(
               "PositionWrapper"
             );
-            const positionWrapper = PositionWrapper.attach(
+            const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapper.totalSupply()
+              await positionWrapperCurrent.totalSupply()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1230,11 +1540,11 @@ describe.only("Tests for Deposit", () => {
           amountPortfolioToken,
           responses,
           {
-            _factory: ZERO_ADDRESS,
-            _token0: ZERO_ADDRESS, //USDT - Pool token
-            _token1: ZERO_ADDRESS, //USDC - Pool token
-            _flashLoanToken: ZERO_ADDRESS, //Token to take flashlaon
-            _solverHandler: ZERO_ADDRESS, //Handler to swap
+            _factory: zeroAddress,
+            _token0: zeroAddress,
+            _token1: zeroAddress,
+            _flashLoanToken: zeroAddress,
+            _solverHandler: zeroAddress,
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],

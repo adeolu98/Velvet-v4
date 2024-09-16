@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
+import { FunctionParameters } from "../FunctionParameters.sol";
+import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
+
 /**
  * @title IIntentHandler
  * @dev Interface for IntentHandler contract to facilitate token swaps and transfers.
@@ -21,5 +24,18 @@ interface IIntentHandler {
   function multiTokenSwapAndTransfer(
     address _to,
     bytes memory _callData
+  ) external returns (address[] memory);
+
+  /**
+   * @notice Conducts a rebalance operation via the Solver platform and transfers the output tokens
+   * to a specified recipient address.
+   * @param _params Encoded bundle containing the rebalance operation data, structured as follows:
+   *        - positionManager: Address of the Enso Position Manager contract.
+   *        - to: Address of the recipient for the rebalance operation.
+   *        - calldata: Encoded call data for the rebalance operation.
+   * @return _swapReturns Array containing the actual amounts of tokens received from each swap operation.
+   */
+  function multiTokenSwapAndTransferRebalance(
+    FunctionParameters.EnsoRebalanceParams memory _params
   ) external returns (address[] memory);
 }

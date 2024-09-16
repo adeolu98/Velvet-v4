@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
 
-import {TreasuryManagement} from "./TreasuryManagement.sol";
-import {PortfolioSettings, AssetManagerCheck} from "./PortfolioSettings.sol";
-import {TokenWhitelistManagement} from "./TokenWhitelistManagement.sol";
-import {UserWhitelistManagement} from "./UserWhitelistManagement.sol";
-import {FeeManagement} from "./FeeManagement.sol";
+import { TreasuryManagement } from "./TreasuryManagement.sol";
+import { PortfolioSettings, AssetManagerCheck } from "./PortfolioSettings.sol";
+import { TokenWhitelistManagement } from "./TokenWhitelistManagement.sol";
+import { UserWhitelistManagement } from "./UserWhitelistManagement.sol";
+import { FeeManagement } from "./FeeManagement.sol";
 
-import {FunctionParameters} from "../../FunctionParameters.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
 
-import {AccessRoles} from "../../access/AccessRoles.sol";
+import { AccessRoles } from "../../access/AccessRoles.sol";
 
-import {IAccessController} from "../../access/IAccessController.sol";
+import { IAccessController } from "../../access/IAccessController.sol";
 
 /**
  * @title MainContract
@@ -62,6 +62,7 @@ contract AssetManagementConfig is
       address(accessController),
       initData._basePositionManager,
       initData._whitelistTokens,
+      initData._externalPositionManagementWhitelisted,
       initData._protocolConfig
     );
 

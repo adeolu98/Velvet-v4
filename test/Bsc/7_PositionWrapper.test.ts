@@ -106,6 +106,7 @@ describe.only("Tests for Deposit", () => {
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
   let zeroAddress: any;
+  let assetManagementConfig1: AssetManagementConfig;
   const assetManagerHash = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
@@ -350,6 +351,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: true,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -369,6 +371,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: false,
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -418,8 +421,10 @@ describe.only("Tests for Deposit", () => {
       );
 
       const config = await portfolio.assetManagementConfig();
+      const config1 = await portfolio1.assetManagementConfig();
 
       assetManagementConfig = AssetManagementConfig.attach(config);
+      assetManagementConfig1 = AssetManagementConfig.attach(config1);
 
       await assetManagementConfig.enableUniSwapV3Manager();
 
@@ -450,6 +455,38 @@ describe.only("Tests for Deposit", () => {
           assetManagementConfig,
           "UniSwapV3WrapperAlreadyEnabled"
         );
+      });
+
+      it("owner should not be able to enable the uniswapV3 position manager if not enabled during portfolio creation", async () => {
+        await expect(
+          assetManagementConfig1.connect(nonOwner).enableUniSwapV3Manager()
+        ).to.be.revertedWithCustomError(
+          assetManagementConfig,
+          "ExternalPositionManagementNotWhitelisted"
+        );
+      });
+
+      it("owner should not be able to create a new position when protocol is paused", async () => {
+        // UniswapV3 position
+        const token0 = iaddress.usdtAddress;
+        const token1 = iaddress.usdcAddress;
+
+        await protocolConfig.setProtocolPause(true);
+
+        await expect(
+          positionManager
+            .connect(nonOwner)
+            .createNewWrapperPosition(
+              token0,
+              token1,
+              "Test",
+              "t",
+              MIN_TICK,
+              MAX_TICK
+            )
+        ).to.be.revertedWithCustomError(positionManager, "ProtocolIsPaused");
+
+        await protocolConfig.setProtocolPause(false);
       });
 
       it("non owner should not be able to create a new position", async () => {
@@ -553,6 +590,117 @@ describe.only("Tests for Deposit", () => {
             .connect(nonOwner)
             .approve(PERMIT2_ADDRESS, MaxAllowanceTransferAmount);
         }
+      });
+
+      it("should not be able to create new wrapper position and deposit when protocol is paused", async () => {
+        await protocolConfig.setProtocolPause(true);
+
+        const token0 = iaddress.usdtAddress;
+        const token1 = iaddress.usdcAddress;
+
+        const params = {
+          _amount0Desired: 1000,
+          _amount1Desired: 1000,
+          _amount0Min: 0,
+          _amount1Min: 0,
+          _tickLower: MIN_TICK,
+          _tickUpper: MAX_TICK,
+        };
+
+        await expect(
+          positionManager.createNewWrapperPositionAndDeposit(
+            owner.address,
+            token0,
+            token1,
+            "Test",
+            "t",
+            params
+          )
+        ).to.be.revertedWithCustomError(positionManager, "ProtocolIsPaused");
+
+        await protocolConfig.setProtocolPause(false);
+      });
+
+      it("should not be able to initialize position and deposit when protocol is paused", async () => {
+        await protocolConfig.setProtocolPause(true);
+
+        await expect(
+          positionManager.initializePositionAndDeposit(
+            owner.address,
+            position1,
+            {
+              _amount0Desired: 1000,
+              _amount1Desired: 1000,
+              _amount0Min: 0,
+              _amount1Min: 0,
+            }
+          )
+        ).to.be.revertedWithCustomError(positionManager, "ProtocolIsPaused");
+
+        await protocolConfig.setProtocolPause(false);
+      });
+
+      it("increasing liquidity should fail if protocol is paused", async () => {
+        await protocolConfig.setProtocolPause(true);
+
+        await expect(
+          positionManager.increaseLiquidity({
+            _dustReceiver: owner.address,
+            _positionWrapper: position1,
+            _amount0Desired: 1000,
+            _amount1Desired: 1000,
+            _amount0Min: 0,
+            _amount1Min: 0,
+            _tokenIn: await positionWrapper.token0(),
+            _tokenOut: await positionWrapper.token1(),
+            _amountIn: 0,
+          })
+        ).to.be.revertedWithCustomError(positionManager, "ProtocolIsPaused");
+
+        await protocolConfig.setProtocolPause(true);
+      });
+
+      it("should not be able to decrease liquidity when protocol is paused", async () => {
+        await protocolConfig.setEmergencyPause(true, false);
+
+        await expect(
+          positionManager.decreaseLiquidity(
+            position1,
+            10000,
+            0,
+            0,
+            await positionWrapper.token0(),
+            await positionWrapper.token1(),
+            0
+          )
+        ).to.be.revertedWithCustomError(
+          positionManager,
+          "ProtocolEmergencyPaused"
+        );
+
+        await protocolConfig.setEmergencyPause(false, true);
+      });
+
+      it("should not be able to update range when protocol is paused", async () => {
+        await protocolConfig.setProtocolPause(true);
+
+        const token0 = await positionWrapper.token0();
+        const token1 = await positionWrapper.token1();
+
+        await expect(
+          positionManager.updateRange(
+            position1,
+            token0,
+            token1,
+            1000,
+            0,
+            0,
+            MIN_TICK,
+            MAX_TICK
+          )
+        ).to.be.revertedWithCustomError(positionManager, "ProtocolIsPaused");
+
+        await protocolConfig.setProtocolPause(false);
       });
 
       it("should deposit multi-token into fund (First Deposit)", async () => {
