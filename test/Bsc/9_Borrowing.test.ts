@@ -34,6 +34,7 @@ import {
   WithdrawManager,
   VenusAssetHandler,
   IAssetHandler,
+  IVenusComptroller,
 } from "../../typechain";
 
 import { chainIdToAddresses } from "../../scripts/networkVariables";
@@ -199,7 +200,7 @@ describe.only("Tests for Deposit", () => {
         addresses.vBNB_Address,
         addresses.vBTC_Address,
         addresses.vDAI_Address,
-        addresses.vUSDT_DeFi_Address,
+        addresses.vUSDT_Address,
       ]);
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing", {
@@ -452,14 +453,7 @@ describe.only("Tests for Deposit", () => {
 
     describe("Deposit Tests", function () {
       it("should init tokens", async () => {
-        await portfolio.initToken([
-          iaddress.wbnbAddress,
-          iaddress.btcAddress,
-          iaddress.ethAddress,
-          iaddress.dogeAddress,
-          iaddress.usdcAddress,
-          iaddress.cakeAddress,
-        ]);
+        await portfolio.initToken([iaddress.wbnbAddress]);
       });
 
       it("should swap tokens for user using native token", async () => {
@@ -475,7 +469,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "20000000000000000"
+            "1000000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -496,150 +490,6 @@ describe.only("Tests for Deposit", () => {
         console.log("SupplyAfter", await portfolio.totalSupply());
       });
 
-      it("should rebalance to lending token vBNB", async () => {
-        let tokens = await portfolio.getTokens();
-        let sellToken = tokens[0];
-        let buyToken = addresses.vBNB_Address;
-
-        let newTokens = [
-          buyToken,
-          tokens[1],
-          tokens[2],
-          tokens[3],
-          tokens[4],
-          tokens[5],
-        ];
-
-        let vault = await portfolio.vault();
-
-        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-        let balance = BigNumber.from(
-          await ERC20.attach(sellToken).balanceOf(vault)
-        ).toString();
-
-        console.log("Balance to rebalance", balance);
-
-        const postResponse = await createEnsoCallDataRoute(
-          ensoHandler.address,
-          ensoHandler.address,
-          sellToken,
-          buyToken,
-          balance
-        );
-
-        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-          [
-            " bytes[][]", // callDataEnso
-            "bytes[]", // callDataDecreaseLiquidity
-            "bytes[][]", // callDataIncreaseLiquidity
-            "address[][]", // increaseLiquidityTarget
-            "address[]", // underlyingTokensDecreaseLiquidity
-            "address[]", // tokensIn
-            "address[]", // tokens
-            " uint256[]", // minExpectedOutputAmounts
-          ],
-          [
-            [[postResponse.data.tx.data]],
-            [],
-            [[]],
-            [[]],
-            [],
-            [sellToken],
-            [buyToken],
-            [0],
-          ]
-        );
-
-        await rebalancing.updateTokens({
-          _newTokens: newTokens,
-          _sellTokens: [sellToken],
-          _sellAmounts: [balance],
-          _handler: ensoHandler.address,
-          _callData: encodedParameters,
-        });
-
-        console.log(
-          "balance after sell",
-          await ERC20.attach(sellToken).balanceOf(vault)
-        );
-        console.log(
-          "balance after buy",
-          await ERC20.attach(buyToken).balanceOf(vault)
-        );
-      });
-
-      it("should rebalance to lending token vBTC", async () => {
-        let tokens = await portfolio.getTokens();
-        let sellToken = tokens[1];
-        let buyToken = addresses.vBTC_Address;
-
-        let newTokens = [
-          tokens[0],
-          buyToken,
-          tokens[2],
-          tokens[3],
-          tokens[4],
-          tokens[5],
-        ];
-
-        let vault = await portfolio.vault();
-
-        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-        let balance = BigNumber.from(
-          await ERC20.attach(sellToken).balanceOf(vault)
-        ).toString();
-
-        console.log("Balance to rebalance", balance);
-
-        const postResponse = await createEnsoCallDataRoute(
-          ensoHandler.address,
-          ensoHandler.address,
-          sellToken,
-          buyToken,
-          balance
-        );
-
-        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-          [
-            " bytes[][]", // callDataEnso
-            "bytes[]", // callDataDecreaseLiquidity
-            "bytes[][]", // callDataIncreaseLiquidity
-            "address[][]", // increaseLiquidityTarget
-            "address[]", // underlyingTokensDecreaseLiquidity
-            "address[]", // tokensIn
-            "address[]", // tokens
-            " uint256[]", // minExpectedOutputAmounts
-          ],
-          [
-            [[postResponse.data.tx.data]],
-            [],
-            [[]],
-            [[]],
-            [],
-            [sellToken],
-            [buyToken],
-            [0],
-          ]
-        );
-
-        await rebalancing.updateTokens({
-          _newTokens: newTokens,
-          _sellTokens: [sellToken],
-          _sellAmounts: [balance],
-          _handler: ensoHandler.address,
-          _callData: encodedParameters,
-        });
-
-        console.log(
-          "balance after sell",
-          await ERC20.attach(sellToken).balanceOf(vault)
-        );
-        console.log(
-          "balance after buy",
-          await ERC20.attach(buyToken).balanceOf(vault)
-        );
-      });
-
       it("should swap tokens for user using native token", async () => {
         let tokens = await portfolio.getTokens();
 
@@ -653,91 +503,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "20000000000000000"
-          );
-          postResponse.push(response.data.tx.data);
-        }
-
-        const data = await depositBatch.multiTokenSwapETHAndTransfer(
-          {
-            _minMintAmount: 0,
-            _depositAmount: "1000000000000000000",
-            _target: portfolio.address,
-            _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            _callData: postResponse,
-          },
-          {
-            value: "1000000000000000000",
-          }
-        );
-
-        console.log("SupplyAfter", await portfolio.totalSupply());
-      });
-
-      it("should borrow USDT using vBNB as collateral", async () => {
-        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-        let vault = await portfolio.vault();
-        let tokens = await portfolio.getTokens();
-        console.log(
-          "DAI Balance before",
-          await ERC20.attach(addresses.USDT).balanceOf(vault)
-        );
-
-        const newTokens = [...tokens, addresses.USDT];
-        await rebalancing.borrow(
-          addresses.vUSDT_Address,
-          addresses.vBNB_Address,
-          addresses.USDT,
-          "1000000000000000000",
-          newTokens
-        );
-        console.log(
-          "DAI Balance after",
-          await ERC20.attach(addresses.USDT).balanceOf(vault)
-        );
-
-        console.log("newtokens", await portfolio.getTokens());
-      });
-
-      it("should borrow DAI using vBNB as collateral", async () => {
-        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-        let vault = await portfolio.vault();
-        let tokens = await portfolio.getTokens();
-        console.log(
-          "DAI Balance before",
-          await ERC20.attach(addresses.DAI_Address).balanceOf(vault)
-        );
-
-        const newTokens = [...tokens, addresses.DAI_Address];
-        await rebalancing.borrow(
-          addresses.vDAI_Address,
-          addresses.vBNB_Address,
-          addresses.DAI_Address,
-          "1000000000000000000",
-          newTokens
-        );
-        console.log(
-          "DAI Balance after",
-          await ERC20.attach(addresses.DAI_Address).balanceOf(vault)
-        );
-
-        console.log("newtokens", await portfolio.getTokens());
-      });
-
-      it("should swap tokens for user using native token", async () => {
-        let tokens = await portfolio.getTokens();
-
-        console.log("SupplyBefore", await portfolio.totalSupply());
-
-        let postResponse = [];
-
-        for (let i = 0; i < tokens.length; i++) {
-          let response = await createEnsoCallDataRoute(
-            depositBatch.address,
-            depositBatch.address,
-            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            tokens[i],
-            "20000000000000000"
+            "1000000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -760,7 +526,301 @@ describe.only("Tests for Deposit", () => {
         console.log("SupplyAfter", await portfolio.totalSupply());
       });
 
-      it("Repay half of borrowed amount", async () => {
+      it("should rebalance to lending token vBNB", async () => {
+        let tokens = await portfolio.getTokens();
+        let sellToken = tokens[0];
+        let buyToken = addresses.vBNB_Address;
+
+        let newTokens = [tokens[0], buyToken];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let balance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        let balanceToSwap = BigNumber.from(balance).div(10).toString();
+        console.log("Balance to rebalance", balanceToSwap);
+
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          sellToken,
+          buyToken,
+          balanceToSwap
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
+
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [balanceToSwap],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
+        });
+
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
+        );
+        console.log(
+          "balance after buy",
+          await ERC20.attach(buyToken).balanceOf(vault)
+        );
+      });
+
+      it("should rebalance to lending token vBTC", async () => {
+        let tokens = await portfolio.getTokens();
+        let sellToken = tokens[0];
+        let buyToken = addresses.vBTC_Address;
+
+        let newTokens = [tokens[0], tokens[1], buyToken];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let balance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        let balanceToSwap = BigNumber.from(balance).div(10).toString();
+
+        console.log("Balance to rebalance", balanceToSwap);
+
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          sellToken,
+          buyToken,
+          balanceToSwap
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
+
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [balanceToSwap],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
+        });
+
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
+        );
+        console.log(
+          "balance after buy",
+          await ERC20.attach(buyToken).balanceOf(vault)
+        );
+      });
+
+      it("should swap tokens for user using native token", async () => {
+        let tokens = await portfolio.getTokens();
+
+        console.log("SupplyBefore", await portfolio.totalSupply());
+
+        let postResponse = [];
+
+        for (let i = 0; i < tokens.length; i++) {
+          let response = await createEnsoCallDataRoute(
+            depositBatch.address,
+            depositBatch.address,
+            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            tokens[i],
+            "333333333333333333"
+          );
+          postResponse.push(response.data.tx.data);
+        }
+
+        const data = await depositBatch.multiTokenSwapETHAndTransfer(
+          {
+            _minMintAmount: 0,
+            _depositAmount: "1000000000000000000",
+            _target: portfolio.address,
+            _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            _callData: postResponse,
+          },
+          {
+            value: "1000000000000000000",
+          }
+        );
+
+        console.log("SupplyAfter", await portfolio.totalSupply());
+      });
+
+      it("should set tokens as collateral", async () => {
+        let tokens = [addresses.vBNB_Address];
+        let vault = await portfolio.vault();
+        await rebalancing.enableCollateralTokens(
+          tokens,
+          addresses.corePool_controller
+        );
+        const comptroller: IVenusComptroller = await ethers.getContractAt(
+          "IVenusComptroller",
+          addresses.corePool_controller
+        );
+
+        let assets = await comptroller.getAssetsIn(vault);
+        expect(assets).to.include(addresses.vBNB_Address);
+      });
+
+      it("should remove tokens as collateral", async () => {
+        let tokens = [addresses.vBNB_Address];
+        let vault = await portfolio.vault();
+        await rebalancing.disableCollateralTokens(
+          tokens,
+          addresses.corePool_controller
+        );
+        const comptroller: IVenusComptroller = await ethers.getContractAt(
+          "IVenusComptroller",
+          addresses.corePool_controller
+        );
+
+        let assets = await comptroller.getAssetsIn(vault);
+        expect(assets).to.not.include(addresses.vBNB_Address);
+      });
+
+      it("borrow should revert if pool is not supported", async () => {
+        await expect(
+          rebalancing.borrow(
+            addresses.vUSDT_DeFi_Address,
+            [addresses.vBNB_Address],
+            addresses.USDT,
+            addresses.corePool_controller,
+            "2000000000000000000"
+          )
+        ).to.be.revertedWithCustomError(rebalancing, "InvalidAddress");
+      });
+
+      it("should borrow USDT using vBNB as collateral", async () => {
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let vault = await portfolio.vault();
+        console.log(
+          "DAI Balance before",
+          await ERC20.attach(addresses.USDT).balanceOf(vault)
+        );
+
+        await rebalancing.borrow(
+          addresses.vUSDT_Address,
+          [addresses.vBNB_Address],
+          addresses.USDT,
+          addresses.corePool_controller,
+          "2000000000000000000"
+        );
+        console.log(
+          "DAI Balance after",
+          await ERC20.attach(addresses.USDT).balanceOf(vault)
+        );
+
+        console.log("newtokens", await portfolio.getTokens());
+      });
+
+      it("should borrow DAI using vBNB as collateral", async () => {
+        console.log("tokens", await portfolio.getTokens());
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let vault = await portfolio.vault();
+        console.log(
+          "DAI Balance before",
+          await ERC20.attach(addresses.DAI_Address).balanceOf(vault)
+        );
+
+        await rebalancing.borrow(
+          addresses.vDAI_Address,
+          [addresses.vBNB_Address],
+          addresses.DAI_Address,
+          addresses.corePool_controller,
+          "2000000000000000000"
+        );
+        console.log(
+          "DAI Balance after",
+          await ERC20.attach(addresses.DAI_Address).balanceOf(vault)
+        );
+
+        console.log("newtokens", await portfolio.getTokens());
+      });
+
+      it("should swap tokens for user using native token", async () => {
+        let tokens = await portfolio.getTokens();
+
+        console.log("SupplyBefore", await portfolio.totalSupply());
+
+        let postResponse = [];
+
+        for (let i = 0; i < tokens.length; i++) {
+          let response = await createEnsoCallDataRoute(
+            depositBatch.address,
+            depositBatch.address,
+            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            tokens[i],
+            "2000000000000000000"
+          );
+          postResponse.push(response.data.tx.data);
+        }
+
+        const data = await depositBatch
+          .connect(nonOwner)
+          .multiTokenSwapETHAndTransfer(
+            {
+              _minMintAmount: 0,
+              _depositAmount: "1000000000000000000",
+              _target: portfolio.address,
+              _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              _callData: postResponse,
+            },
+            {
+              value: "1000000000000000000",
+            }
+          );
+
+        console.log("SupplyAfter", await portfolio.totalSupply());
+      });
+
+      it("Repay half of borrowed amount directly using vault token", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
@@ -769,23 +829,61 @@ describe.only("Tests for Deposit", () => {
             [addresses.vUSDT_Address],
             vault
           );
+
+        console.log("balanceBorrowed before repay", balanceBorrowed);
+
+        const balanceToRepay = (balanceBorrowed[0] / 2).toString();
+
+        console.log("balanceToRepay", balanceToRepay);
+
+        await rebalancing.directDebtRepayment(
+          addresses.USDT,
+          addresses.vUSDT_Address,
+          balanceToRepay
+        );
+
+        let vaultBalanceAfter = await ERC20.attach(addresses.USDT).balanceOf(
+          vault
+        );
+
+        balanceBorrowed =
+          await portfolioCalculations.getVenusTokenBorrowedBalance(
+            [addresses.vUSDT_Address],
+            vault
+          );
+
+        expect(vaultBalanceAfter).to.be.greaterThan(0);
+        console.log("balanceBorrowed after repay", balanceBorrowed);
+      });
+
+      it("should repay half of borrowed dai using flashLoan", async () => {
+        let vault = await portfolio.vault();
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
+        let balanceBorrowed =
+          await portfolioCalculations.getVenusTokenBorrowedBalance(
+            [addresses.vDAI_Address],
+            vault
+          );
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
           addresses.corePool_controller
         );
         const lendTokens = userData[1].lendTokens;
+
         console.log("balanceBorrowed before repay", balanceBorrowed);
 
-        console.log(
-          "Balance of vToken before",
-          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
-        );
-
         const balanceToRepay = (balanceBorrowed[0] / 2).toString();
-        const balanceToSwap = balanceToRepay;
 
-        console.log("flashlaonAmount", balanceToSwap);
+        const balanceToSwap = (await portfolioCalculations.getExpectedFlashLoanAmount(
+          addresses.vDAI_Address,
+          addresses.vUSDT_Address,
+          addresses.corePool_controller,
+          balanceToRepay
+        )).toString();
+
         console.log("balanceToRepay", balanceToRepay);
+        console.log("balanceToSwap", balanceToSwap);
 
         const postResponse = await createEnsoCallDataRoute(
           ensoHandler.address,
@@ -825,13 +923,14 @@ describe.only("Tests for Deposit", () => {
             vault,
             addresses.corePool_controller,
             venusAssetHandler.address,
-            addresses.vUSDT_Address,
+            addresses.vDAI_Address,
             balanceToRepay,
             "10"
           );
-        for (let j = 0; j < lendTokens.length; j++) {
-          console.log("amountToSell", amounToSell[j].toString());
+        console.log("amounToSell", amounToSell);
+        console.log("lendTokens", lendTokens);
 
+        for (let j = 0; j < lendTokens.length; j++) {
           const postResponse1 = await createEnsoCallDataRoute(
             ensoHandler.address,
             ensoHandler.address,
@@ -871,8 +970,8 @@ describe.only("Tests for Deposit", () => {
           _token0: addresses.USDT, //USDT - Pool token
           _token1: addresses.USDC_Address, //USDC - Pool token
           _flashLoanToken: addresses.USDT, //Token to take flashlaon
-          _debtToken: [addresses.USDT], //Token to pay debt of
-          _protocolToken: [addresses.vUSDT_Address], // lending token in case of venus
+          _debtToken: [addresses.DAI_Address], //Token to pay debt of
+          _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
           _solverHandler: ensoHandler.address, //Handler to swap
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
@@ -964,8 +1063,6 @@ describe.only("Tests for Deposit", () => {
           addresses.corePool_controller
         );
         const lendTokens = userData[1].lendTokens;
-
-        // console.log("values", values);
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(

@@ -189,4 +189,6 @@ library ErrorLibrary {
   error IncreaseLiquidityFailed();
   // @notice Thrown when the decrease liquidity call fails
   error DecreaseLiquidityFailed();
+  // @notice Thrown when borrow failed
+  error BorrowFailed();
 }

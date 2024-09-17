@@ -16,7 +16,11 @@ interface IAssetHandler {
 
   function getDecimals() external pure returns (uint256 decimals);
 
-  function enterMarket(address asset) external pure returns (bytes memory data);
+  function enterMarket(
+    address[] memory assets
+  ) external pure returns (bytes memory data);
+
+  function exitMarket(address asset) external pure returns (bytes memory data);
 
   function borrow(
     address pool,

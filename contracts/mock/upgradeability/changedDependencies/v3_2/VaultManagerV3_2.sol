@@ -19,6 +19,7 @@ import {IProtocolConfig} from "../../../../config/protocol/IProtocolConfig.sol";
 import {IAllowanceTransfer} from "../../../../core/interfaces/IAllowanceTransfer.sol";
 import {TokenBalanceLibrary} from "../../../../core/calculations/TokenBalanceLibrary.sol";
 import {IBorrowManager} from "../../../../core/interfaces/IBorrowManager.sol";
+import {FunctionParameters} from "../../../../FunctionParameters.sol";
 
 /**
  * @title VaultManager
@@ -177,7 +178,8 @@ abstract contract VaultManagerV3_2 is
      *      tokens back to the user.
      */
     function multiTokenWithdrawal(
-        uint256 _portfolioTokenAmount
+        uint256 _portfolioTokenAmount,
+        FunctionParameters.withdrawRepayParams calldata repayData
     ) external virtual nonReentrant {
         // Retrieve the list of tokens currently in the portfolio.
         address[] memory portfolioTokens = tokens;

@@ -79,17 +79,29 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
 
     /**
      * @notice Encodes the data needed to enter the market for the specified asset.
-     * @param asset The address of the asset to enter the market for.
+     * @param assets The address of the assets to enter the market for.
      * @return data The encoded data for entering the market.
      */
     function enterMarket(
-        address asset
+        address[] memory assets
     ) external pure returns (bytes memory data) {
-        address[] memory assets = new address[](1); // Create an array of one asset
-        assets[0] = asset; // Add the asset to the array
         data = abi.encodeWithSelector(
             bytes4(keccak256("enterMarkets(address[])")),
             assets // Encode the data to enter the market
+        );
+    }
+
+    /**
+     * @notice Encodes the data needed to exit the market for the specified asset.
+     * @param asset The address of the asset to exit the market for.
+     * @return data The encoded data for exiting the market.
+     */
+    function exitMarket(
+        address asset
+    ) external pure returns (bytes memory data) {
+        data = abi.encodeWithSelector(
+            bytes4(keccak256("exitMarket(address)")),
+            asset // Encode the data to exit the market
         );
     }
 
@@ -740,12 +752,10 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 );
                 count++;
             }
-
             totalFlashAmount += flashData.flashLoanAmount[i]; // Update the total flash loan amount
         }
-
         // Resize the transactions array to remove unused entries
-        uint unusedLength = ((tokenLength ** 2) - count);
+        uint unusedLength = ((tokenLength * 2) - count);
         assembly {
             mstore(transactions, sub(mload(transactions), unusedLength))
         }

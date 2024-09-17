@@ -89,6 +89,8 @@ abstract contract TokenWhitelistManagement is
    */
   function isTokenWhitelisted(address _token) external returns (bool) {
     return
-      whitelistedTokens[_token] || positionManager.isWrappedPosition(_token);
+      whitelistedTokens[_token] ||
+      (address(positionManager) != address(0) &&
+        positionManager.isWrappedPosition(_token));
   }
 }
