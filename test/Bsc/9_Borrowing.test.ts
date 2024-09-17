@@ -703,7 +703,7 @@ describe.only("Tests for Deposit", () => {
       it("should set tokens as collateral", async () => {
         let tokens = [addresses.vBNB_Address];
         let vault = await portfolio.vault();
-        await rebalancing.setTokensAsCollateral(
+        await rebalancing.enableCollateralTokens(
           tokens,
           addresses.corePool_controller
         );
@@ -719,7 +719,7 @@ describe.only("Tests for Deposit", () => {
       it("should remove tokens as collateral", async () => {
         let tokens = [addresses.vBNB_Address];
         let vault = await portfolio.vault();
-        await rebalancing.removeTokensAsCollateral(
+        await rebalancing.disableCollateralTokens(
           tokens,
           addresses.corePool_controller
         );

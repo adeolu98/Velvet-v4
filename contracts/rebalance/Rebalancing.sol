@@ -42,11 +42,11 @@ contract Rebalancing is
     );
     event TokenRepayed(FunctionParameters.RepayParams);
     event DirectTokenRepayed(
-        address _debtToken,
-        address _protocolToken,
-        uint256 _repayAmount
+        address indexed _debtToken,
+        address indexed _protocolToken,
+        uint256 indexed _repayAmount
     );
-    event Borrowed(address _tokenToBorrow, uint256 _amountToBorrow);
+    event Borrowed(address indexed _tokenToBorrow, uint256 indexed _amountToBorrow);
 
   uint256 public constant TOTAL_WEIGHT = 10_000; // Represents 100% in basis points.
   IBorrowManager internal borrowManager;
@@ -353,10 +353,14 @@ contract Rebalancing is
     }
 
     /**
-     * @notice Sets tokens as collateral. Can only be called by the asset manager.
-     * @param _tokens The addresses of the tokens to be set as collateral.
+     * @notice Enables specified tokens as collateral in the lending protocol.
+     * @dev This function allows the asset manager to designate certain tokens as collateral,
+     *      which can then be used to borrow other assets or increase borrowing capacity.
+     *      It interacts with the lending protocol through the AssetHandler contract.
+     * @param _tokens An array of token addresses to be enabled as collateral.
+     * @param _controller The address of the lending protocol's controller contract.
      */
-    function setTokensAsCollateral(
+    function enableCollateralTokens(
         address[] memory _tokens,
         address _controller
     ) external onlyAssetManager {
@@ -372,10 +376,13 @@ contract Rebalancing is
     }
 
     /**
-     * @notice Removes tokens as collateral. Can only be called by the asset manager.
-     * @param _tokens The addresses of the tokens to be removed as collateral.
+     * @notice Disables specified tokens as collateral in the lending protocol.
+     * @dev This function allows the asset manager to remove certain tokens from being used as collateral.
+     *      It interacts with the lending protocol through the AssetHandler contract for each token.
+     * @param _tokens An array of token addresses to be disabled as collateral.
+     *@param _controller The address of the lending protocol's controller contract.
      */
-    function removeTokensAsCollateral(
+    function disableCollateralTokens(
         address[] memory _tokens,
         address _controller
     ) external onlyAssetManager {
@@ -436,10 +443,15 @@ contract Rebalancing is
             assetHandler.borrow(_pool, _tokenToBorrow, _amountToBorrow)
         );
 
+        // Get the current list of tokens in the portfolio
         address[] memory currentTokens = _getCurrentTokens();
+        // Check if the borrowed token is not already in the portfolio
         if (!_isPortfolioToken(_tokenToBorrow, currentTokens)) {
             uint256 length = currentTokens.length;
+            // Create a new array with space for one additional token
             address[] memory newTokens = new address[](length + 1);
+            // Use unchecked block to save gas by skipping overflow/underflow checks
+           // This is safe here because we're only incrementing by small amounts
             unchecked {
                 assembly {
                     // Set the length of newTokens to currentTokens.length + 1

@@ -585,6 +585,7 @@ describe.only("Tests for Deposit", () => {
               _token0: zeroAddress, //USDT - Pool token
               _token1: zeroAddress, //USDC - Pool token
               _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _bufferUnit: "0",
               _solverHandler: zeroAddress, //Handler to swap
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
@@ -649,6 +650,7 @@ describe.only("Tests for Deposit", () => {
               _token0: zeroAddress, //USDT - Pool token
               _token1: zeroAddress, //USDC - Pool token
               _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _bufferUnit: "0",
               _solverHandler: zeroAddress, //Handler to swap
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
@@ -676,6 +678,7 @@ describe.only("Tests for Deposit", () => {
               _token0: zeroAddress, //USDT - Pool token
               _token1: zeroAddress, //USDC - Pool token
               _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _bufferUnit: "0",
               _solverHandler: zeroAddress, //Handler to swap
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
@@ -744,6 +747,7 @@ describe.only("Tests for Deposit", () => {
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _bufferUnit: "0",
             _solverHandler: zeroAddress, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
@@ -822,6 +826,7 @@ describe.only("Tests for Deposit", () => {
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _bufferUnit: "0",
             _solverHandler: zeroAddress, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],

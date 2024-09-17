@@ -103,6 +103,8 @@ describe.only("Tests for Deposit", () => {
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
 
+  let zeroAddress: any;
+
   let amountCalculationsAlgebra: AmountCalculationsAlgebra;
 
   const assetManagerHash = ethers.utils.keccak256(
@@ -128,6 +130,8 @@ describe.only("Tests for Deposit", () => {
   const MIN_TICK = -887220;
   /// @dev The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
   const MAX_TICK = 887220;
+
+  zeroAddress = "0x0000000000000000000000000000000000000000";
 
   const provider = ethers.provider;
   const chainId: any = process.env.CHAIN_ID;
@@ -745,6 +749,22 @@ describe.only("Tests for Deposit", () => {
           buyToken,
         ];
 
+        positionWrappers = [position2];
+        swapTokens = [
+          iaddress.usdcAddress,
+          await positionWrapper2.token0(), // position2 - token0
+          await positionWrapper2.token1(), // position2 - token1
+          iaddress.dogeAddress,
+          iaddress.btcAddress,
+          iaddress.usdtAddress,
+        ];
+        positionWrapperIndex = [1];
+        portfolioTokenIndex = [0, 1, 1, 2, 3, 4];
+        isExternalPosition = [false, true, true, false, false, false];
+        isTokenExternalPosition = [false, true, false, false, false];
+        index0 = [1];
+        index1 = [2];
+
         let vault = await portfolio.vault();
 
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
@@ -881,6 +901,23 @@ describe.only("Tests for Deposit", () => {
           buyToken,
         ];
 
+        positionWrappers = [position2, buyToken];
+        swapTokens = [
+          iaddress.usdcAddress,
+          await positionWrapper2.token0(), // position2 - token0
+          await positionWrapper2.token1(), // position2 - token1
+          iaddress.dogeAddress,
+          iaddress.btcAddress,
+          await addedPosition.token0(), // position1 - token0
+          await addedPosition.token1(), // position1 - token1
+        ];
+        positionWrapperIndex = [1, 4];
+        portfolioTokenIndex = [0, 1, 1, 2, 3, 4, 4];
+        isExternalPosition = [false, true, true, false, false, true, true];
+        isTokenExternalPosition = [false, true, false, false, true];
+        index0 = [1, 5];
+        index1 = [2, 6];
+
         let vault = await portfolio.vault();
 
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
@@ -989,7 +1026,7 @@ describe.only("Tests for Deposit", () => {
         });
       });
 
-      /* it("should withdraw in single token by user in native token", async () => {
+      it("should withdraw in single token by user in native token", async () => {
         await ethers.provider.send("evm_increaseTime", [62]);
 
         const supplyBefore = await portfolio.totalSupply();
@@ -1022,12 +1059,12 @@ describe.only("Tests for Deposit", () => {
             const PositionWrapper = await ethers.getContractFactory(
               "PositionWrapper"
             );
-            const positionWrapper = PositionWrapper.attach(
+            const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapper.totalSupply()
+              await positionWrapperCurrent.totalSupply()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1070,12 +1107,27 @@ describe.only("Tests for Deposit", () => {
 
         let balanceBeforeETH = await owner.getBalance();
 
+        /*
+    FunctionParameters.withdrawRepayParams calldata repayData,
+    FunctionParameters.ExternalPositionWithdrawParams memory _params*/
+
         await withdrawManager.withdraw(
           swapTokens,
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
           responses,
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress,
+            _token1: zeroAddress,
+            _flashLoanToken: zeroAddress,
+            _bufferUnit: "0",
+            _solverHandler: zeroAddress,
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
           {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
@@ -1129,12 +1181,12 @@ describe.only("Tests for Deposit", () => {
             const PositionWrapper = await ethers.getContractFactory(
               "PositionWrapper"
             );
-            const positionWrapper = PositionWrapper.attach(
+            const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapper.totalSupply()
+              await positionWrapperCurrent.totalSupply()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1183,6 +1235,17 @@ describe.only("Tests for Deposit", () => {
           tokenToSwapInto,
           amountPortfolioToken,
           responses,
+          {
+            _factory: zeroAddress,
+            _token0: zeroAddress,
+            _token1: zeroAddress,
+            _flashLoanToken: zeroAddress,
+            _bufferUnit: "0",
+            _solverHandler: zeroAddress,
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
           {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
@@ -1424,12 +1487,12 @@ describe.only("Tests for Deposit", () => {
             const PositionWrapper = await ethers.getContractFactory(
               "PositionWrapper"
             );
-            const positionWrapper = PositionWrapper.attach(
+            const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapper.totalSupply()
+              await positionWrapperCurrent.totalSupply()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1479,6 +1542,17 @@ describe.only("Tests for Deposit", () => {
           amountPortfolioToken,
           responses,
           {
+            _factory: zeroAddress,
+            _token0: zeroAddress,
+            _token1: zeroAddress,
+            _flashLoanToken: zeroAddress,
+            _bufferUnit: "0",
+            _solverHandler: zeroAddress,
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
+          {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
@@ -1502,7 +1576,7 @@ describe.only("Tests for Deposit", () => {
         const supplyAfter = await portfolio.totalSupply();
 
         expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
-      });*/
+      });
     });
   });
 });
