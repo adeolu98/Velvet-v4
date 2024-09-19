@@ -9,8 +9,6 @@ import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "hardhat/console.sol";
-
 contract UniswapV3HelperBNB {
   INonfungiblePositionManager internal uniswapV3PositionManager =
     INonfungiblePositionManager(0xa51ADb08Cbe6Ae398046A23bec013979816B77Ab);
@@ -40,15 +38,6 @@ contract UniswapV3HelperBNB {
       uint128 tokensOwed0,
       uint128 tokensOwed1
     ) = uniswapV3PositionManager.positions(_tokenId);
-
-    console.log("existingLiquidity", existingLiquidity);
-    console.log("pool.liquidity()", pool.liquidity());
-
-    console.log("withdrawAmount", _withdrawAmount);
-    console.log("position.totalSupply()", position.totalSupply());
-
-    console.log("token0Balance", IERC20(_token0).balanceOf(address(pool)));
-    console.log("token1Balance", IERC20(_token1).balanceOf(address(pool)));
 
     /* tokenBalance0 =
       (IERC20(_token0).balanceOf(address(pool)) *

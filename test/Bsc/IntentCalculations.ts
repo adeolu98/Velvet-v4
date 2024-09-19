@@ -60,6 +60,10 @@ export async function createEnsoCallDataRoute(
     Authorization: process.env.ENSO_KEY,
   };
 
+  // console.log("URL", postUrl + `${qs.stringify(params)}`, {
+  //   headers,
+  // });
+
   return await axios.get(postUrl + `${qs.stringify(params)}`, {
     headers,
   });

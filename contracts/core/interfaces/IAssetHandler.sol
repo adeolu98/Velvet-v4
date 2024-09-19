@@ -102,6 +102,7 @@ interface IAssetHandler {
     address[] memory lendTokens,
     uint256 _debtRepayAmount,
     uint256 feeUnit,
-    uint256 totalCollateral
+    uint256 totalCollateral,
+    uint256 bufferUnit
   ) external view returns (uint256[] memory amounts);
 }

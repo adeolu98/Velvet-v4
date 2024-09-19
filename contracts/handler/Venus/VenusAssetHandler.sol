@@ -591,7 +591,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         uint256 feeAmount = (_debtRepayAmount * 10 ** 18 * feeUnit) / 10 ** 22; // Calculate the fee amount
         uint256 debtAmountWithFee = _debtRepayAmount + feeAmount; // Add the fee to the debt repayment amount
         debtValue = (debtAmountWithFee * totalDebt * 10 ** 18) / borrowBalance; // Calculate the debt value
-        debtValue = debtValue + ((debtValue * 6) / 10_000); // Increase the debt value by a small percentage
         percentageToRemove = debtValue / totalCollateral; // Calculate the percentage to remove from collateral
     }
 
@@ -605,14 +604,18 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     function calculateAmountsToSell(
         address _user,
         address[] memory lendTokens,
-        uint256 percentageToRemove
+        uint256 percentageToRemove,
+        uint256 bufferUnit
     ) internal view returns (uint256[] memory amounts) {
         amounts = new uint256[](lendTokens.length); // Initialize the amounts array
 
         // Loop through the lent tokens to calculate the amount to sell
         for (uint256 i; i < lendTokens.length; i++) {
             uint256 balance = IERC20Upgradeable(lendTokens[i]).balanceOf(_user); // Get the balance of the token
-            amounts[i] = (balance * percentageToRemove) / 10 ** 18; // Calculate the amount to sell
+
+            uint256 amountToSell = (balance * percentageToRemove);
+            amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
+            amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
         }
     }
 
@@ -752,6 +755,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 );
                 count++;
             }
+
             totalFlashAmount += flashData.flashLoanAmount[i]; // Update the total flash loan amount
         }
         // Resize the transactions array to remove unused entries
@@ -774,7 +778,9 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
         transactions = new MultiTransaction[](tokenLength * 2); // Initialize the transactions array
         uint256 count;
-
+        uint256 amountToRepay = flashData.isMaxRepayment
+            ? type(uint256).max // If it's a max repayment, repay the max amount
+            : flashData.debtRepayAmount[0]; // Otherwise, repay the debt amount
         // Loop through the debt tokens to handle repayments
         for (uint i = 0; i < tokenLength; i++) {
             // Approve the debt token for the protocol
@@ -782,10 +788,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
             transactions[count].txData = abi.encodeWithSelector(
                 bytes4(keccak256("vaultInteraction(address,bytes)")),
                 flashData.debtToken[i],
-                approve(
-                    flashData.protocolTokens[i],
-                    flashData.debtRepayAmount[i]
-                )
+                approve(flashData.protocolTokens[i], amountToRepay)
             );
             count++;
 
@@ -794,7 +797,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
             transactions[count].txData = abi.encodeWithSelector(
                 bytes4(keccak256("vaultInteraction(address,bytes)")),
                 flashData.protocolTokens[i],
-                repay(flashData.debtRepayAmount[i])
+                repay(amountToRepay)
             );
             count++;
         }
@@ -826,8 +829,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         transactions = new MultiTransaction[](
             amountLength * 2 * lendingTokens.length
         ); // Initialize the transactions array
-        uint256 count;
-
+        uint256 count; // Count for the transactions
+        uint256 swapDataCount; // Count for the swap data
         // Loop through the repayment amounts to handle withdrawals
         for (uint i = 0; i < amountLength; i++) {
             // Get the amounts to sell based on the collateral
@@ -838,7 +841,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 lendingTokens,
                 flashData.debtRepayAmount[i],
                 fee,
-                totalCollateral
+                totalCollateral,
+                flashData.bufferUnit
             );
 
             // Loop through the lending tokens to process each one
@@ -852,7 +856,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                     flashData.solverHandler // The solver handler address
                 );
                 count++;
-
                 // Swap the token and transfer it to the receiver
                 transactions[count].to = flashData.solverHandler;
                 transactions[count].txData = abi.encodeWithSelector(
@@ -860,9 +863,10 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                         keccak256("multiTokenSwapAndTransfer(address,bytes)")
                     ),
                     receiver,
-                    flashData.secondSwapData[i]
+                    flashData.secondSwapData[swapDataCount]
                 );
                 count++;
+                swapDataCount++;
             }
         }
     }
@@ -910,11 +914,13 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 flashLoanToken: repayData._flashLoanToken,
                 debtToken: underlying,
                 protocolTokens: borrowedTokens,
+                bufferUnit: repayData._bufferUnit,
                 solverHandler: repayData._solverHandler,
                 flashLoanAmount: repayData._flashLoanAmount,
                 debtRepayAmount: tokenBalance,
                 firstSwapData: repayData.firstSwapData,
-                secondSwapData: repayData.secondSwapData
+                secondSwapData: repayData.secondSwapData,
+                isMaxRepayment: false
             });
         // Initiate the flash loan from the Algebra pool
         IAlgebraPool(_poolAddress).flash(
@@ -945,11 +951,13 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 flashLoanToken: repayData._flashLoanToken,
                 debtToken: repayData._debtToken,
                 protocolTokens: repayData._protocolToken,
+                bufferUnit: repayData._bufferUnit,
                 solverHandler: repayData._solverHandler,
                 flashLoanAmount: repayData._flashLoanAmount,
                 debtRepayAmount: repayData._debtRepayAmount,
                 firstSwapData: repayData.firstSwapData,
-                secondSwapData: repayData.secondSwapData
+                secondSwapData: repayData.secondSwapData,
+                isMaxRepayment: repayData.isMaxRepayment
             });
 
         // Initiate the flash loan from the Algebra pool
@@ -982,8 +990,9 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         address _protocolToken,
         address[] memory lendTokens,
         uint256 _debtRepayAmount,
-        uint256 feeUnit,
-        uint256 totalCollateral
+        uint256 feeUnit,//flash loan fee unit
+        uint256 totalCollateral,
+        uint256 bufferUnit//buffer unit for collateral amount
     ) public view returns (uint256[] memory amounts) {
         uint256 borrowBalance = IVenusPool(_protocolToken).borrowBalanceStored(
             _user
@@ -1020,6 +1029,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         );
 
         // Calculate the amounts to sell for each lending token
-        amounts = calculateAmountsToSell(_user, lendTokens, percentageToRemove);
+        amounts = calculateAmountsToSell(_user, lendTokens, percentageToRemove, bufferUnit);
     }
 }

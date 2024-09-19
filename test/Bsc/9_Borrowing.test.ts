@@ -453,7 +453,14 @@ describe.only("Tests for Deposit", () => {
 
     describe("Deposit Tests", function () {
       it("should init tokens", async () => {
-        await portfolio.initToken([iaddress.wbnbAddress]);
+        await portfolio.initToken([
+          iaddress.wbnbAddress,
+          iaddress.btcAddress,
+          iaddress.ethAddress,
+          iaddress.dogeAddress,
+          iaddress.usdcAddress,
+          iaddress.cakeAddress,
+        ]);
       });
 
       it("should swap tokens for user using native token", async () => {
@@ -469,7 +476,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "1000000000000000000"
+            "100000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -503,7 +510,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "1000000000000000000"
+            "100000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -528,10 +535,10 @@ describe.only("Tests for Deposit", () => {
 
       it("should rebalance to lending token vBNB", async () => {
         let tokens = await portfolio.getTokens();
-        let sellToken = tokens[0];
+        let sellToken = tokens[1];
         let buyToken = addresses.vBNB_Address;
 
-        let newTokens = [tokens[0], buyToken];
+        let newTokens = [tokens[0], buyToken, tokens[2], tokens[3], tokens[4], tokens[5]];
 
         let vault = await portfolio.vault();
 
@@ -540,7 +547,7 @@ describe.only("Tests for Deposit", () => {
           await ERC20.attach(sellToken).balanceOf(vault)
         ).toString();
 
-        let balanceToSwap = BigNumber.from(balance).div(10).toString();
+        let balanceToSwap = BigNumber.from(balance).toString();
         console.log("Balance to rebalance", balanceToSwap);
 
         const postResponse = await createEnsoCallDataRoute(
@@ -594,10 +601,10 @@ describe.only("Tests for Deposit", () => {
 
       it("should rebalance to lending token vBTC", async () => {
         let tokens = await portfolio.getTokens();
-        let sellToken = tokens[0];
+        let sellToken = tokens[2];
         let buyToken = addresses.vBTC_Address;
 
-        let newTokens = [tokens[0], tokens[1], buyToken];
+        let newTokens = [tokens[0], tokens[1], buyToken,tokens[3], tokens[4], tokens[5]];
 
         let vault = await portfolio.vault();
 
@@ -606,7 +613,7 @@ describe.only("Tests for Deposit", () => {
           await ERC20.attach(sellToken).balanceOf(vault)
         ).toString();
 
-        let balanceToSwap = BigNumber.from(balance).div(10).toString();
+        let balanceToSwap = BigNumber.from(balance).toString();
 
         console.log("Balance to rebalance", balanceToSwap);
 
@@ -672,7 +679,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "333333333333333333"
+            "100000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -737,7 +744,7 @@ describe.only("Tests for Deposit", () => {
         ).to.be.revertedWithCustomError(rebalancing, "InvalidAddress");
       });
 
-      it("should borrow USDT using vBNB as collateral", async () => {
+      it("should borrow USDT using vBTC as collateral", async () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let vault = await portfolio.vault();
         console.log(
@@ -747,7 +754,7 @@ describe.only("Tests for Deposit", () => {
 
         await rebalancing.borrow(
           addresses.vUSDT_Address,
-          [addresses.vBNB_Address],
+          [addresses.vBTC_Address],
           addresses.USDT,
           addresses.corePool_controller,
           "2000000000000000000"
@@ -761,7 +768,6 @@ describe.only("Tests for Deposit", () => {
       });
 
       it("should borrow DAI using vBNB as collateral", async () => {
-        console.log("tokens", await portfolio.getTokens());
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let vault = await portfolio.vault();
         console.log(
@@ -797,7 +803,7 @@ describe.only("Tests for Deposit", () => {
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             tokens[i],
-            "2000000000000000000"
+            "100000000000000000"
           );
           postResponse.push(response.data.tx.data);
         }
@@ -856,9 +862,146 @@ describe.only("Tests for Deposit", () => {
         console.log("balanceBorrowed after repay", balanceBorrowed);
       });
 
+      it("should rebalance borrowed DAI", async () => {
+        let tokens = await portfolio.getTokens();
+        let sellToken = tokens[7];
+        let buyToken = iaddress.usdcAddress;
+
+        let newTokens = [tokens[0], tokens[1], tokens[2] ,tokens[3], tokens[4], tokens[5], tokens[6]];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let balance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        let balanceToSwap = BigNumber.from(balance).toString();
+
+        console.log("Balance to rebalance", balanceToSwap);
+
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          sellToken,
+          buyToken,
+          balanceToSwap
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
+
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [balanceToSwap],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
+        });
+
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
+        );
+        console.log(
+          "balance after buy",
+          await ERC20.attach(buyToken).balanceOf(vault)
+        );
+      })
+
+      it("should rebalance borrowed USDT", async () => {
+        let tokens = await portfolio.getTokens();
+        let sellToken = tokens[6];
+        let buyToken = iaddress.usdcAddress;
+
+        let newTokens = [tokens[0], tokens[1], tokens[2] ,tokens[3], tokens[4], tokens[5]];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let balance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        let balanceToSwap = BigNumber.from(balance).toString();
+
+        console.log("Balance to rebalance", balanceToSwap);
+
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          sellToken,
+          buyToken,
+          balanceToSwap
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
+
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [balanceToSwap],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
+        });
+
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
+        );
+        console.log(
+          "balance after buy",
+          await ERC20.attach(buyToken).balanceOf(vault)
+        );
+      })
+
       it("should repay half of borrowed dai using flashLoan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
+        let flashloanBufferUnit = 20;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 140;//Buffer unit for collateral amount in 1/100000
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
@@ -875,11 +1018,12 @@ describe.only("Tests for Deposit", () => {
 
         const balanceToRepay = (balanceBorrowed[0] / 2).toString();
 
-        const balanceToSwap = (await portfolioCalculations.getExpectedFlashLoanAmount(
+        const balanceToSwap = (await portfolioCalculations.calculateFlashLoanAmountForRepayment(
           addresses.vDAI_Address,
           addresses.vUSDT_Address,
           addresses.corePool_controller,
-          balanceToRepay
+          balanceToRepay,
+          flashloanBufferUnit
         )).toString();
 
         console.log("balanceToRepay", balanceToRepay);
@@ -894,26 +1038,8 @@ describe.only("Tests for Deposit", () => {
         );
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-          [
-            " bytes[][]", // callDataEnso
-            "bytes[]", // callDataDecreaseLiquidity
-            "bytes[][]", // callDataIncreaseLiquidity
-            "address[][]", // increaseLiquidityTarget
-            "address[]", // underlyingTokensDecreaseLiquidity
-            "address[]", // tokensIn
-            "address[]", // tokens
-            " uint256[]", // minExpectedOutputAmounts
-          ],
-          [
-            [["0x"]],
-            [],
-            [[]],
-            [[]],
-            [],
-            [addresses.USDT],
-            [addresses.DAI_Address],
-            [0],
-          ]
+          ["bytes[]", "address[]", "uint256[]"],
+          [[postResponse.data.tx.data], [addresses.DAI_Address], [0]]
         );
 
         let encodedParameters1 = [];
@@ -925,7 +1051,8 @@ describe.only("Tests for Deposit", () => {
             venusAssetHandler.address,
             addresses.vDAI_Address,
             balanceToRepay,
-            "10"
+            "10", //Flash loan fee
+            bufferUnit //Buffer unit for collateral amount
           );
         console.log("amounToSell", amounToSell);
         console.log("lendTokens", lendTokens);
@@ -941,26 +1068,8 @@ describe.only("Tests for Deposit", () => {
 
           encodedParameters1.push(
             ethers.utils.defaultAbiCoder.encode(
-              [
-                "bytes[][]", // callDataEnso
-                "bytes[]", // callDataDecreaseLiquidity
-                "bytes[][]", // callDataIncreaseLiquidity
-                "address[][]", // increaseLiquidityTarget
-                "address[]", // underlyingTokensDecreaseLiquidity
-                "address[]", // tokensIn
-                "address[]", // tokens
-                " uint256[]", // minExpectedOutputAmounts
-              ],
-              [
-                [[postResponse1.data.tx.data]],
-                [],
-                [[]],
-                [[]],
-                [],
-                [lendTokens[j]],
-                [addresses.USDT],
-                [0],
-              ]
+              ["bytes[]", "address[]", "uint256[]"],
+              [[postResponse1.data.tx.data], [addresses.USDT], [0]]
             )
           );
         }
@@ -972,11 +1081,13 @@ describe.only("Tests for Deposit", () => {
           _flashLoanToken: addresses.USDT, //Token to take flashlaon
           _debtToken: [addresses.DAI_Address], //Token to pay debt of
           _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
+          _bufferUnit: bufferUnit, //Buffer unit for collateral amount
           _solverHandler: ensoHandler.address, //Handler to swap
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
+          isMaxRepayment: false
         });
 
         console.log(
@@ -1005,6 +1116,9 @@ describe.only("Tests for Deposit", () => {
         const tokens = await portfolio.getTokens();
 
         let vault = await portfolio.vault();
+
+        let flashloanBufferUnit = 5;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 100;//Buffer unit for collateral amount in 1/100000
 
         let flashLoanToken = addresses.USDT;
         let flashLoanProtocolToken = addresses.vUSDT_Address;
@@ -1044,13 +1158,14 @@ describe.only("Tests for Deposit", () => {
         }
 
         const values =
-          await portfolioCalculations.getBorrowedPortionAndFlashLoanAmountOfUser(
+          await portfolioCalculations.calculateBorrowedPortionAndFlashLoanDetails(
             portfolio.address,
             flashLoanProtocolToken,
             vault,
-            amountPortfolioToken,
             addresses.corePool_controller,
-            venusAssetHandler.address
+            venusAssetHandler.address,
+            amountPortfolioToken,
+            flashloanBufferUnit
           );
 
         const borrowedPortion = values[0];
@@ -1086,7 +1201,7 @@ describe.only("Tests for Deposit", () => {
 
         let encodedParameters = [];
         let encodedParameters1 = [];
-        for (let i = 0; i < flashLoanAmount.length; i++) {
+          for (let i = 0; i < flashLoanAmount.length; i++) {
           console.log("underlyings token", underlyings[i]);
           if (flashLoanToken != underlyings[i]) {
             const postResponse = await createEnsoCallDataRoute(
@@ -1098,51 +1213,15 @@ describe.only("Tests for Deposit", () => {
             );
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                [
-                  "bytes[][]", // callDataEnso
-                  "bytes[]", // callDataDecreaseLiquidity
-                  "bytes[][]", // callDataIncreaseLiquidity
-                  "address[][]", // increaseLiquidityTarget
-                  "address[]", // underlyingTokensDecreaseLiquidity
-                  "address[]", // tokensIn
-                  "address[]", // tokens
-                  " uint256[]", // minExpectedOutputAmounts
-                ],
-                [
-                  [[postResponse.data.tx.data]],
-                  [],
-                  [[]],
-                  [[]],
-                  [],
-                  [flashLoanToken],
-                  [underlyings[i]],
-                  [0],
-                ]
+                ["bytes[]", "address[]", "uint256[]"],
+                [[postResponse.data.tx.data], [underlyings[i]], [0]]
               )
             );
           } else {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                [
-                  " bytes[][]", // callDataEnso
-                  "bytes[]", // callDataDecreaseLiquidity
-                  "bytes[][]", // callDataIncreaseLiquidity
-                  "address[][]", // increaseLiquidityTarget
-                  "address[]", // underlyingTokensDecreaseLiquidity
-                  "address[]", // tokensIn
-                  "address[]", // tokens
-                  " uint256[]", // minExpectedOutputAmounts
-                ],
-                [
-                  [[]],
-                  [],
-                  [],
-                  [[]],
-                  [],
-                  [flashLoanToken],
-                  [underlyings[i]],
-                  [0],
-                ]
+                ["bytes[]", "address[]", "uint256[]"],
+                [["0x"], [underlyings[i]], [0]]
               )
             );
           }
@@ -1154,7 +1233,8 @@ describe.only("Tests for Deposit", () => {
               venusAssetHandler.address,
               borrowedTokens[i],
               borrowedPortion[i],
-              "10"
+              "10",//Flash loan fee
+              bufferUnit,//Buffer unit for collateral amount
             );
 
           for (let j = 0; j < lendTokens.length; j++) {
@@ -1168,26 +1248,8 @@ describe.only("Tests for Deposit", () => {
 
             encodedParameters1.push(
               ethers.utils.defaultAbiCoder.encode(
-                [
-                  "bytes[][]", // callDataEnso
-                  "bytes[]", // callDataDecreaseLiquidity
-                  "bytes[][]", // callDataIncreaseLiquidity
-                  "address[][]", // increaseLiquidityTarget
-                  "address[]", // underlyingTokensDecreaseLiquidity
-                  "address[]", // tokensIn
-                  "address[]", // tokens
-                  " uint256[]", // minExpectedOutputAmounts
-                ],
-                [
-                  [[postResponse1.data.tx.data]],
-                  [],
-                  [[]],
-                  [[]],
-                  [],
-                  [lendTokens[j]],
-                  [flashLoanToken],
-                  [0],
-                ]
+                ["bytes[]", "address[]", "uint256[]"],
+                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
               )
             );
           }
@@ -1202,6 +1264,7 @@ describe.only("Tests for Deposit", () => {
             _token0: addresses.USDT, //USDT - Pool token
             _token1: addresses.USDC_Address, //USDC - Pool token
             _flashLoanToken: flashLoanToken, //Token to take flashlaon
+            _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: encodedParameters,
@@ -1238,6 +1301,9 @@ describe.only("Tests for Deposit", () => {
 
         const user = nonOwner;
 
+        let flashloanBufferUnit = 4;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 100;//Buffer unit for collateral amount in 1/100000
+
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
 
@@ -1273,7 +1339,7 @@ describe.only("Tests for Deposit", () => {
               user.address,
               tokens[i],
               tokenToSwapInto,
-              (withdrawalAmounts[i] * 0.993).toFixed(0)
+              (withdrawalAmounts[i] * 0.99).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
@@ -1283,13 +1349,14 @@ describe.only("Tests for Deposit", () => {
         }
 
         const values =
-          await portfolioCalculations.getBorrowedPortionAndFlashLoanAmountOfUser(
+          await portfolioCalculations.calculateBorrowedPortionAndFlashLoanDetails(
             portfolio.address,
             flashLoanProtocolToken,
             vault,
-            amountPortfolioToken,
             addresses.corePool_controller,
-            venusAssetHandler.address
+            venusAssetHandler.address,
+            amountPortfolioToken,
+            flashloanBufferUnit
           );
 
         const borrowedPortion = values[0];
@@ -1302,8 +1369,6 @@ describe.only("Tests for Deposit", () => {
           addresses.corePool_controller
         );
         const lendTokens = userData[1].lendTokens;
-
-        // console.log("values", values);
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
@@ -1327,7 +1392,7 @@ describe.only("Tests for Deposit", () => {
 
         let encodedParameters = [];
         let encodedParameters1 = [];
-        for (let i = 0; i < flashLoanAmount.length; i++) {
+           for (let i = 0; i < flashLoanAmount.length; i++) {
           console.log("underlyings token", underlyings[i]);
           if (flashLoanToken != underlyings[i]) {
             const postResponse = await createEnsoCallDataRoute(
@@ -1339,51 +1404,15 @@ describe.only("Tests for Deposit", () => {
             );
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                [
-                  " bytes[][]", // callDataEnso
-                  "bytes[]", // callDataDecreaseLiquidity
-                  "bytes[][]", // callDataIncreaseLiquidity
-                  "address[][]", // increaseLiquidityTarget
-                  "address[]", // underlyingTokensDecreaseLiquidity
-                  "address[]", // tokensIn
-                  "address[]", // tokens
-                  " uint256[]", // minExpectedOutputAmounts
-                ],
-                [
-                  [[postResponse.data.tx.data]],
-                  [],
-                  [[]],
-                  [[]],
-                  [],
-                  [flashLoanToken],
-                  [underlyings[i]],
-                  [0],
-                ]
+                ["bytes[]", "address[]", "uint256[]"],
+                [[postResponse.data.tx.data], [underlyings[i]], [0]]
               )
             );
           } else {
             encodedParameters.push(
               ethers.utils.defaultAbiCoder.encode(
-                [
-                  "bytes[][]", // callDataEnso
-                  "bytes[]", // callDataDecreaseLiquidity
-                  "bytes[][]", // callDataIncreaseLiquidity
-                  "address[][]", // increaseLiquidityTarget
-                  "address[]", // underlyingTokensDecreaseLiquidity
-                  "address[]", // tokensIn
-                  "address[]", // tokens
-                  " uint256[]", // minExpectedOutputAmounts
-                ],
-                [
-                  [["0x"]],
-                  [],
-                  [[]],
-                  [[]],
-                  [],
-                  [flashLoanToken],
-                  [underlyings[i]],
-                  [0],
-                ]
+                ["bytes[]", "address[]", "uint256[]"],
+                [["0x"], [underlyings[i]], [0]]
               )
             );
           }
@@ -1395,7 +1424,8 @@ describe.only("Tests for Deposit", () => {
               venusAssetHandler.address,
               borrowedTokens[i],
               borrowedPortion[i],
-              "10"
+              "10",//Flash loan fee
+              bufferUnit,//Buffer unit for collateral amount
             );
 
           for (let j = 0; j < lendTokens.length; j++) {
@@ -1409,26 +1439,8 @@ describe.only("Tests for Deposit", () => {
 
             encodedParameters1.push(
               ethers.utils.defaultAbiCoder.encode(
-                [
-                  "bytes[][]", // callDataEnso
-                  "bytes[]", // callDataDecreaseLiquidity
-                  "bytes[][]", // callDataIncreaseLiquidity
-                  "address[][]", // increaseLiquidityTarget
-                  "address[]", // underlyingTokensDecreaseLiquidity
-                  "address[]", // tokensIn
-                  "address[]", // tokens
-                  " uint256[]", // minExpectedOutputAmounts
-                ],
-                [
-                  [[postResponse1.data.tx.data]],
-                  [],
-                  [[]],
-                  [[]],
-                  [],
-                  [lendTokens[j]],
-                  [flashLoanToken],
-                  [0],
-                ]
+                ["bytes[]", "address[]", "uint256[]"],
+                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
               )
             );
           }
@@ -1443,6 +1455,7 @@ describe.only("Tests for Deposit", () => {
             _token0: addresses.USDT, //USDT - Pool token
             _token1: addresses.USDC_Address, //USDC - Pool token
             _flashLoanToken: flashLoanToken, //Token to take flashlaon
+            _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: encodedParameters,
