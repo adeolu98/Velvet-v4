@@ -825,6 +825,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         uint256 fee,
         FunctionParameters.FlashLoanData memory flashData
     ) internal view returns (MultiTransaction[] memory transactions) {
+
         uint256 amountLength = flashData.debtRepayAmount.length; // Get the number of repayment amounts
         transactions = new MultiTransaction[](
             amountLength * 2 * lendingTokens.length
@@ -916,6 +917,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 protocolTokens: borrowedTokens,
                 bufferUnit: repayData._bufferUnit,
                 solverHandler: repayData._solverHandler,
+                poolAddress : _poolAddress,
                 flashLoanAmount: repayData._flashLoanAmount,
                 debtRepayAmount: tokenBalance,
                 firstSwapData: repayData.firstSwapData,
@@ -953,6 +955,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
                 protocolTokens: repayData._protocolToken,
                 bufferUnit: repayData._bufferUnit,
                 solverHandler: repayData._solverHandler,
+                poolAddress : _poolAddress,
                 flashLoanAmount: repayData._flashLoanAmount,
                 debtRepayAmount: repayData._debtRepayAmount,
                 firstSwapData: repayData.firstSwapData,
@@ -982,6 +985,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
      * @param _debtRepayAmount The amount of debt to repay.
      * @param feeUnit The fee unit used for calculations.
      * @param totalCollateral The total collateral value.
+     * @param bufferUnit The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%) 
      * @return amounts The calculated amounts of tokens to sell.
      */
     function getCollateralAmountToSell(

@@ -169,6 +169,12 @@ interface IProtocolConfig {
    */
   function protocolStreamingFee() external view returns (uint256);
 
+  /**
+   * @notice Maximum allowed buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
+   * @return Max collateral buffer unit
+   */
+  function MAX_COLLATERAL_BUFFER_UNIT() external view returns (uint256);
+
   // ----- SolverManagement Functions -----
 
   /**
@@ -244,4 +250,6 @@ interface IProtocolConfig {
   ) external view returns (bool);
 
   function isBorrowableToken(address _asset) external view returns (bool);
+
+  function isSupportedFactory(address _factoryAddress) external view returns (bool);
 }

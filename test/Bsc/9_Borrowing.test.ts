@@ -196,13 +196,6 @@ describe.only("Tests for Deposit", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
-      await protocolConfig.enableBorrowableTokens([
-        addresses.vBNB_Address,
-        addresses.vBTC_Address,
-        addresses.vDAI_Address,
-        addresses.vUSDT_Address,
-      ]);
-
       const Rebalancing = await ethers.getContractFactory("Rebalancing", {
         libraries: {
           TokenBalanceLibrary: tokenBalanceLibrary.address,
@@ -264,20 +257,20 @@ describe.only("Tests for Deposit", () => {
         addresses.corePool_controller,
       ]);
 
-      await protocolConfig.setMarketControllers(
+      await protocolConfig.setSupportedFactory(addresses.thena_factory);
+
+      await protocolConfig.setAssetAndMarketControllers(
         [
           addresses.vBNB_Address,
           addresses.vBTC_Address,
           addresses.vDAI_Address,
-          addresses.vUSDT_Address,
-          addresses.vUSDT_DeFi_Address,
+          addresses.vUSDT_Address
         ],
         [
           addresses.corePool_controller,
           addresses.corePool_controller,
           addresses.corePool_controller,
-          addresses.corePool_controller,
-          addresses.defi_controller,
+          addresses.corePool_controller
         ]
       );
 
