@@ -76,11 +76,11 @@ contract BorrowManager is
         address[] memory controllers = _protocolConfig
             .getSupportedControllers();
 
-        if (!_protocolConfig.isSupportedFactory(repayData._factory))
-            revert ErrorLibrary.InvalidFactoryAddress();
-
-        if (!_protocolConfig.isSolver(repayData._solverHandler))
-            revert ErrorLibrary.InvalidSolver();
+        beforeRepayVerification(
+            repayData._factory,
+            repayData._solverHandler,
+            repayData._bufferUnit
+        );
 
         // Iterate through all controllers to repay borrows for each
         for (uint j; j < controllers.length; j++) {
@@ -124,11 +124,11 @@ contract BorrowManager is
             _protocolConfig.assetHandlers(_controller)
         );
 
-        if (!_protocolConfig.isSupportedFactory(repayData._factory))
-            revert ErrorLibrary.InvalidFactoryAddress();
-
-        if (!_protocolConfig.isSolver(repayData._solverHandler))
-            revert ErrorLibrary.InvalidSolver();
+        beforeRepayVerification(
+            repayData._factory,
+            repayData._solverHandler,
+            repayData._bufferUnit
+        );
 
         bytes memory data = abi.encodeWithSelector(
             IAssetHandler.executeVaultFlashLoan.selector,
@@ -162,9 +162,6 @@ contract BorrowManager is
 
         if (msg.sender != flashData.poolAddress)
             revert ErrorLibrary.InvalidAddress();
-
-        if (_protocolConfig.MAX_COLLATERAL_BUFFER_UNIT() < flashData.bufferUnit)
-            revert ErrorLibrary.InvalidBufferUnit();
 
         IAssetHandler assetHandler = IAssetHandler(
             _protocolConfig.assetHandlers(flashData.protocolTokens[0])
@@ -222,6 +219,21 @@ contract BorrowManager is
             _vault,
             IERC20Upgradeable(flashData.flashLoanToken).balanceOf(address(this))
         );
+    }
+
+    function beforeRepayVerification(
+        address _factory,
+        address _solverHandler,
+        uint256 _bufferUnit
+    ) internal view {
+        if (!_protocolConfig.isSupportedFactory(_factory))
+            revert ErrorLibrary.InvalidFactoryAddress();
+
+        if (!_protocolConfig.isSolver(_solverHandler))
+            revert ErrorLibrary.InvalidSolver();
+
+        if (_protocolConfig.MAX_COLLATERAL_BUFFER_UNIT() < _bufferUnit)
+            revert ErrorLibrary.InvalidBufferUnit();
     }
 
     /**

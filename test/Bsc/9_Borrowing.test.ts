@@ -989,6 +989,132 @@ describe.only("Tests for Deposit", () => {
         );
       })
 
+      it("repay should revert if wrong flashloan provider factory if provided" ,async () => {
+
+        let flashloanBufferUnit = 20;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 140;//Buffer unit for collateral amount in 1/100000
+
+        await expect(rebalancing.repay(addresses.corePool_controller, {
+          _factory: addresses.USDT,
+          _token0: addresses.USDT, //USDT - Pool token
+          _token1: addresses.USDC_Address, //USDC - Pool token
+          _flashLoanToken: addresses.USDT, //Token to take flashlaon
+          _debtToken: [addresses.DAI_Address], //Token to pay debt of
+          _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
+          _bufferUnit: bufferUnit, //Buffer unit for collateral amount
+          _solverHandler: ensoHandler.address, //Handler to swap
+          _flashLoanAmount: [],
+          _debtRepayAmount: [],
+          firstSwapData: [],
+          secondSwapData: [],
+          isMaxRepayment: false
+        })).to.be.revertedWithCustomError(borrowManager,"InvalidFactoryAddress");
+      })
+
+      it("repay should revert if wrong solver handler is incorrect" ,async () => {
+
+        let flashloanBufferUnit = 20;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 140;//Buffer unit for collateral amount in 1/100000
+
+        await expect(rebalancing.repay(addresses.corePool_controller, {
+          _factory: addresses.thena_factory,
+          _token0: addresses.USDT, //USDT - Pool token
+          _token1: addresses.USDC_Address, //USDC - Pool token
+          _flashLoanToken: addresses.USDT, //Token to take flashlaon
+          _debtToken: [addresses.DAI_Address], //Token to pay debt of
+          _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
+          _bufferUnit: bufferUnit, //Buffer unit for collateral amount
+          _solverHandler: addresses.USDT, //Handler to swap
+          _flashLoanAmount: [],
+          _debtRepayAmount: [],
+          firstSwapData: [],
+          secondSwapData: [],
+          isMaxRepayment: false
+        })).to.be.revertedWithCustomError(borrowManager,"InvalidSolver");
+      })
+
+      it("repay should revert if wrong solver handler is incorrect" ,async () => {
+
+        let bufferUnit = 140;//Buffer unit for collateral amount in 1/100000
+
+        await expect(rebalancing.repay(addresses.corePool_controller, {
+          _factory: addresses.thena_factory,
+          _token0: addresses.USDT, //USDT - Pool token
+          _token1: addresses.USDC_Address, //USDC - Pool token
+          _flashLoanToken: addresses.USDT, //Token to take flashlaon
+          _debtToken: [addresses.DAI_Address], //Token to pay debt of
+          _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
+          _bufferUnit: bufferUnit, //Buffer unit for collateral amount
+          _solverHandler: addresses.USDT, //Handler to swap
+          _flashLoanAmount: [],
+          _debtRepayAmount: [],
+          firstSwapData: [],
+          secondSwapData: [],
+          isMaxRepayment: false
+        })).to.be.revertedWithCustomError(borrowManager,"InvalidSolver");
+      })
+
+      it("repay should revert if buffer unit execeeds acceptable buffer unit" ,async () => {
+
+        let bufferUnit = 190;//Buffer unit for collateral amount in 1/100000
+
+        await expect(rebalancing.repay(addresses.corePool_controller, {
+          _factory: addresses.thena_factory,
+          _token0: addresses.USDT, //USDT - Pool token
+          _token1: addresses.USDC_Address, //USDC - Pool token
+          _flashLoanToken: addresses.USDT, //Token to take flashlaon
+          _debtToken: [addresses.DAI_Address], //Token to pay debt of
+          _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
+          _bufferUnit: bufferUnit, //Buffer unit for collateral amount
+          _solverHandler: ensoHandler.address, //Handler to swap
+          _flashLoanAmount: [],
+          _debtRepayAmount: [],
+          firstSwapData: [],
+          secondSwapData: [],
+          isMaxRepayment: false
+        })).to.be.revertedWithCustomError(borrowManager,"InvalidBufferUnit");
+      })
+
+      it("repay should revert if caller of clalback function is not poolAddress" ,async () => {
+
+        let bufferUnit = 100;//Buffer unit for collateral amount in 1/100000
+
+        const types = [
+          'address',                // flashLoanToken
+          'address[]',              // debtToken
+          'address[]',              // protocolToken
+          'uint256',                // bufferUnit
+          'address',                // solverHandler
+          'address',                // poolAddress
+          'uint256[]',              // flashLoanAmount
+          'uint256[]',              // debtRepayAmount
+          'bytes[]',                // firstSwapData
+          'bytes[]',                // secondSwapData
+          'bool'                    // isMaxRepayment
+        ];
+
+        const values = [
+          addresses.USDT,
+          [addresses.DAI_Address],
+          [addresses.vDAI_Address],
+          bufferUnit,
+          ensoHandler.address,
+          ensoHandler.address,
+          [],
+          [],
+          [],
+          [],
+          false
+        ];
+
+        const calldata =  ethers.utils.defaultAbiCoder.encode(
+            types,
+            values
+          )
+
+        await expect( borrowManager.algebraFlashCallback("100","100", calldata)).to.be.reverted;
+      })
+
       it("should repay half of borrowed dai using flashLoan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
