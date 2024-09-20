@@ -206,14 +206,14 @@ contract BorrowManager is
         // Calculate the amount owed including the fee
         uint256 amountOwed = totalFlashAmount + fee;
 
-        // Transfer the amount owed back to the lender
+        // Transfer the amount owed back to the flashLoan provider
         TransferHelper.safeTransfer(
             flashData.flashLoanToken,
             msg.sender,
             amountOwed
         );
 
-        // Transfer any remaining dust balance back to the lender
+        // Transfer any remaining dust balance back to the vault
         TransferHelper.safeTransfer(
             flashData.flashLoanToken,
             _vault,

@@ -195,4 +195,6 @@ library ErrorLibrary {
   error InvalidFactoryAddress();
   // @notice Thrown when buffer unit is more then max valid collateral buffer unit
   error InvalidBufferUnit();
+  // @notice Thrown when new buffer unit is more then max accetable buffer unit
+  error InvalidNewBufferUnit();
 }

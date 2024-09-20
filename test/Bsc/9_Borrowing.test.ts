@@ -989,6 +989,10 @@ describe.only("Tests for Deposit", () => {
         );
       })
 
+      it("should revert, if new buffer unit is more 3%", async () => {
+        await expect(protocolConfig.updateMaxCollateralBufferUnit(4000)).to.be.revertedWithCustomError(protocolConfig,"InvalidNewBufferUnit")
+      })
+
       it("repay should revert if wrong flashloan provider factory if provided" ,async () => {
 
         let flashloanBufferUnit = 20;//Flashloan buffer unit in 1/10000
@@ -1119,8 +1123,8 @@ describe.only("Tests for Deposit", () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
-        let flashloanBufferUnit = 20;//Flashloan buffer unit in 1/10000
-        let bufferUnit = 140;//Buffer unit for collateral amount in 1/100000
+        let flashloanBufferUnit = 23;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
@@ -1237,7 +1241,7 @@ describe.only("Tests for Deposit", () => {
         let vault = await portfolio.vault();
 
         let flashloanBufferUnit = 5;//Flashloan buffer unit in 1/10000
-        let bufferUnit = 100;//Buffer unit for collateral amount in 1/100000
+        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
 
         let flashLoanToken = addresses.USDT;
         let flashLoanProtocolToken = addresses.vUSDT_Address;
@@ -1420,8 +1424,8 @@ describe.only("Tests for Deposit", () => {
 
         const user = nonOwner;
 
-        let flashloanBufferUnit = 4;//Flashloan buffer unit in 1/10000
-        let bufferUnit = 100;//Buffer unit for collateral amount in 1/100000
+        let flashloanBufferUnit = 5;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
