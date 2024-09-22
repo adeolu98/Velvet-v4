@@ -340,12 +340,12 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   }
 
   /**
- * @notice Updates the maximum allowed buffer unit for collateral calculations not more then 3%
+ * @notice Updates the maximum allowed buffer unit for collateral calculations not more then 10%
  * @dev This function can only be called by the protocol owner
  * @param _newBufferUnit The new maximum buffer unit value to set
  */
   function updateMaxCollateralBufferUnit(uint256 _newBufferUnit) external onlyProtocolOwner {
-    if(_newBufferUnit > 3000) revert ErrorLibrary.InvalidNewBufferUnit();
+    if(_newBufferUnit > 10000) revert ErrorLibrary.InvalidNewBufferUnit();
     MAX_COLLATERAL_BUFFER_UNIT = _newBufferUnit;
   }
 }
