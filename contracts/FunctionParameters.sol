@@ -238,6 +238,7 @@ library FunctionParameters {
     address[] debtToken;
     address[] protocolTokens;
     address solverHandler;
+    address poolAddress;
     uint256 bufferUnit;
     uint256[] flashLoanAmount;
     uint256[] debtRepayAmount;

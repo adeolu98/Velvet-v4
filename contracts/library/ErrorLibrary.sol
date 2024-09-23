@@ -191,4 +191,10 @@ library ErrorLibrary {
   error DecreaseLiquidityFailed();
   // @notice Thrown when borrow failed
   error BorrowFailed();
+  // @notice Thrown when invalid flashloan provider factory address is provided
+  error InvalidFactoryAddress();
+  // @notice Thrown when buffer unit is more then max valid collateral buffer unit
+  error InvalidBufferUnit();
+  // @notice Thrown when new buffer unit is more then max accetable buffer unit
+  error InvalidNewBufferUnit();
 }

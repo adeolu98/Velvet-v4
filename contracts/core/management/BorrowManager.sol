@@ -76,6 +76,12 @@ contract BorrowManager is
         address[] memory controllers = _protocolConfig
             .getSupportedControllers();
 
+        beforeRepayVerification(
+            repayData._factory,
+            repayData._solverHandler,
+            repayData._bufferUnit
+        );
+
         // Iterate through all controllers to repay borrows for each
         for (uint j; j < controllers.length; j++) {
             address _controller = controllers[j];
@@ -118,6 +124,12 @@ contract BorrowManager is
             _protocolConfig.assetHandlers(_controller)
         );
 
+        beforeRepayVerification(
+            repayData._factory,
+            repayData._solverHandler,
+            repayData._bufferUnit
+        );
+
         bytes memory data = abi.encodeWithSelector(
             IAssetHandler.executeVaultFlashLoan.selector,
             address(this),
@@ -147,6 +159,10 @@ contract BorrowManager is
             data,
             (FunctionParameters.FlashLoanData)
         ); // Decode the flash loan data
+
+        if (msg.sender != flashData.poolAddress)
+            revert ErrorLibrary.InvalidAddress();
+
         IAssetHandler assetHandler = IAssetHandler(
             _protocolConfig.assetHandlers(flashData.protocolTokens[0])
         ); // Get the asset handler for the protocol tokens
@@ -181,18 +197,43 @@ contract BorrowManager is
             if (!success) revert ErrorLibrary.CallFailed(); // Revert if the call fails
         }
 
-        uint256 amountOwed = totalFlashAmount + fee0; // Calculate the amount owed including the fee
+        // Calculate the fee based on the token0 and fee0/fee1,using the Algebra Pool
+        uint256 fee = IAlgebraPool(msg.sender).token0() ==
+            flashData.flashLoanToken
+            ? fee0
+            : fee1;
+
+        // Calculate the amount owed including the fee
+        uint256 amountOwed = totalFlashAmount + fee;
+
+        // Transfer the amount owed back to the flashLoan provider
         TransferHelper.safeTransfer(
             flashData.flashLoanToken,
             msg.sender,
             amountOwed
-        ); // Transfer the amount owed back to the lender
-        //Need Dust Transfer
+        );
+
+        // Transfer any remaining dust balance back to the vault
         TransferHelper.safeTransfer(
             flashData.flashLoanToken,
             _vault,
             IERC20Upgradeable(flashData.flashLoanToken).balanceOf(address(this))
         );
+    }
+
+    function beforeRepayVerification(
+        address _factory,
+        address _solverHandler,
+        uint256 _bufferUnit
+    ) internal view {
+        if (!_protocolConfig.isSupportedFactory(_factory))
+            revert ErrorLibrary.InvalidFactoryAddress();
+
+        if (!_protocolConfig.isSolver(_solverHandler))
+            revert ErrorLibrary.InvalidSolver();
+
+        if (_protocolConfig.MAX_COLLATERAL_BUFFER_UNIT() < _bufferUnit)
+            revert ErrorLibrary.InvalidBufferUnit();
     }
 
     /**

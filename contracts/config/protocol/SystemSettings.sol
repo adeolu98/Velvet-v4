@@ -21,14 +21,28 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   uint256 public lastUnpausedByUser;
   uint256 public lastEmergencyPaused;
 
+  //Maximum allowed buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
+  uint256 public MAX_COLLATERAL_BUFFER_UNIT;
+
   address[] public supportedControllers;
 
   bool public isProtocolPaused;
   bool public isProtocolEmergencyPaused;
 
+  // Mapping to track the token with their respective controller address
   mapping(address => address) public marketControllers;
+
+  // Mapping to track the token/controller address and their respective handler address
   mapping(address => address) public assetHandlers;
+
+  // Mapping to track the supported controllers of lending protocol
   mapping(address => bool) public isSupportedControllers;
+
+  // Mapping to track the borrowed tokens that are enabled for interaction on the platform.
+  mapping(address => bool) public isBorrowableToken;
+
+  // Mapping to track the supported factories of flashLoan provider protocol
+  mapping(address => bool) public isSupportedFactory;
 
   event ProtocolPaused(bool indexed paused);
   event MinPortfolioTokenHoldingAmountUpdated(uint256 indexed newAmount);
@@ -40,7 +54,7 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   event AssetHandlersAdded(address[] _assets, address[] _handlers);
   event AssetHandlersRemoved(address[] _assets);
   event SupportedControllersAdded(address[] _controllers);
-  event SupportedControllersRemoved(address _controller);
+  event SupportedControllersRemoved(address indexed _controller);
 
   /**
    * @dev Sets default fee percentages and system limits.
@@ -52,6 +66,7 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     assetLimit = 15;
     whitelistLimit = 300;
     allowedDustTolerance = 10; // equivalent to 0.01%
+    MAX_COLLATERAL_BUFFER_UNIT = 160; // equivalent to 0.016%
   }
 
   /**
@@ -176,31 +191,36 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   }
 
   /**
-   * @notice Sets the market controllers for specified assets.
+   * @notice Sets the market controllers for specified assets and enable them to be borrowed.
    * @param _assets An array of asset addresses.
    * @param _controllers An array of controller addresses corresponding to the assets.
    */
-  function setMarketControllers(
+  function setAssetAndMarketControllers(
     address[] memory _assets, //Lending Token Address
     address[] memory _controllers // Their respective controllers(comptrollers)
   ) external onlyProtocolOwner {
     uint256 assetLength = _assets.length;
     if (assetLength != _controllers.length) revert ErrorLibrary.InvalidLength();
     for (uint256 i; i < assetLength; i++) {
-      marketControllers[_assets[i]] = _controllers[i];
+      address token = _assets[i];
+      if(token == address(0)) revert ErrorLibrary.InvalidAddress();
+      marketControllers[token] = _controllers[i];
+      isBorrowableToken[token] = true;
     }
     emit MarketControllersAdded(_assets, _controllers);
   }
 
   /**
-   * @notice Removes the market controllers for specified assets.
+   * @notice Removes the market controllers for specified assets and disable them to be borrowed.
    * @param _assets An array of asset addresses to remove controllers for.
    */
-  function removeMarketControllers(
+  function removeAssetAndMarketControllers(
     address[] memory _assets
   ) external onlyProtocolOwner {
     for (uint256 i; i < _assets.length; i++) {
-      delete marketControllers[_assets[i]];
+      address token = _assets[i];
+      delete marketControllers[token];
+      delete isBorrowableToken[token];
     }
     emit MarketControllersRemoved(_assets);
   }
@@ -215,7 +235,9 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     address[] memory _handlers // Their respective handlers
   ) external onlyProtocolOwner {
     for (uint256 i; i < _assets.length; i++) {
-      assetHandlers[_assets[i]] = _handlers[i];
+      address token = _assets[i];
+      if(token == address(0)) revert ErrorLibrary.InvalidAddress();
+      assetHandlers[token] = _handlers[i];
     }
     emit AssetHandlersAdded(_assets, _handlers);
   }
@@ -243,6 +265,7 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     for (uint256 i; i < _controllers.length; i++) {
       address controller = _controllers[i];
       if (!isSupportedControllers[controller]) {
+        if(controller == address(0)) revert ErrorLibrary.InvalidAddress();
         supportedControllers.push(controller);
         isSupportedControllers[controller] = true;
       }
@@ -297,5 +320,32 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
    */
   function getSupportedControllers() external view returns (address[] memory) {
     return supportedControllers;
+  }
+
+  /**
+   * @notice Sets Supported FlashLoan Provider Factory Contract
+   * @param _factoryAddress Address of factory contract address
+   */
+  function setSupportedFactory(address _factoryAddress) external onlyProtocolOwner {
+    if(_factoryAddress == address(0)) revert ErrorLibrary.InvalidAddress();
+    isSupportedFactory[_factoryAddress] = true;
+  }
+
+  /**
+   * @notice Removes Supported FlashLoan Provider Factory Contract
+   * @param _factoryAddress Address of factory contract address
+   */
+  function removeSupportedFactory(address _factoryAddress) external onlyProtocolOwner {
+    isSupportedFactory[_factoryAddress] = false;
+  }
+
+  /**
+ * @notice Updates the maximum allowed buffer unit for collateral calculations not more then 10%
+ * @dev This function can only be called by the protocol owner
+ * @param _newBufferUnit The new maximum buffer unit value to set
+ */
+  function updateMaxCollateralBufferUnit(uint256 _newBufferUnit) external onlyProtocolOwner {
+    if(_newBufferUnit > 10000) revert ErrorLibrary.InvalidNewBufferUnit();
+    MAX_COLLATERAL_BUFFER_UNIT = _newBufferUnit;
   }
 }
