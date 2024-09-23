@@ -176,6 +176,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       swapHandler.init(addresses.SushiSwapRouterAddress);
 
+      await protocolConfig.setSupportedFactory(ensoHandler.address);
+
       let whitelistedTokens = [
         addresses.ARB,
         addresses.WBTC,
@@ -2347,11 +2349,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],

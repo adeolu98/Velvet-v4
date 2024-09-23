@@ -34,6 +34,7 @@ import {
   BorrowManager,
   AssetManagementConfig,
   AccessControl,
+  EnsoHandler,
 } from "../../typechain";
 
 import { chainIdToAddresses } from "../../scripts/networkVariables";
@@ -60,6 +61,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
   let borrowManager: BorrowManager;
+  let ensoHandler : EnsoHandler;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let txObject;
   let owner: SignerWithAddress;
@@ -152,6 +154,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await swapHandler.deployed();
 
       swapHandler.init(addresses.SushiSwapRouterAddress);
+
+      const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
+      ensoHandler = await EnsoHandler.deploy();
+      await ensoHandler.deployed();
+
+      await protocolConfig.enableSolverHandler(ensoHandler.address);
+      await protocolConfig.setSupportedFactory(ensoHandler.address); 
 
       let whitelistedTokens = [
         addresses.ARB,
@@ -740,11 +749,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           BigNumber.from(amountPortfolioToken).sub("10000000000");
         await expect(
           portfolio.multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -819,11 +829,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           BigNumber.from(amountPortfolioToken).sub("100000");
         await expect(
           portfolio.multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -857,11 +868,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         await expect(
           portfolio.multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -899,14 +911,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               owner.address,
               BigNumber.from(amountPortfolioToken),
               {
-                _factory: zeroAddress,
+                _factory: ensoHandler.address,
                 _token0: zeroAddress, //USDT - Pool token
-                _token1: zeroAddress, //USDC - Pool token
-                _flashLoanToken: zeroAddress, //Token to take flashlaon
-                _solverHandler: zeroAddress, //Handler to swap
-                _flashLoanAmount: [0],
-                firstSwapData: ["0x"],
-                secondSwapData: ["0x"],
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
               }
             )
         ).to.be.revertedWith("ERC20: insufficient allowance");
@@ -942,14 +955,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             owner.address,
             BigNumber.from(amountPortfolioToken),
             {
-              _factory: zeroAddress,
+              _factory: ensoHandler.address,
               _token0: zeroAddress, //USDT - Pool token
-              _token1: zeroAddress, //USDC - Pool token
-              _flashLoanToken: zeroAddress, //Token to take flashlaon
-              _solverHandler: zeroAddress, //Handler to swap
-              _flashLoanAmount: [0],
-              firstSwapData: ["0x"],
-              secondSwapData: ["0x"],
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
             }
           );
 
@@ -1021,11 +1035,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           amountPortfolioToken,
           [tokens[0], tokens[1]],
           {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -1094,14 +1109,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           portfolio
             .connect(treasury)
             .emergencyWithdrawal(amountPortfolioTreasury, exemptionTokens, {
-              _factory: zeroAddress,
+              _factory: ensoHandler.address,
               _token0: zeroAddress, //USDT - Pool token
-              _token1: zeroAddress, //USDC - Pool token
-              _flashLoanToken: zeroAddress, //Token to take flashlaon
-              _solverHandler: zeroAddress, //Handler to swap
-              _flashLoanAmount: [0],
-              firstSwapData: ["0x"],
-              secondSwapData: ["0x"],
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
             })
         ).to.be.revertedWithCustomError(
           portfolio,
@@ -1132,11 +1148,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await portfolio
           .connect(treasury)
           .emergencyWithdrawal(amountPortfolioTreasury, exemptionTokens, {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
