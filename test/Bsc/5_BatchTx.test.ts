@@ -206,6 +206,8 @@ describe.only("Tests for Deposit", () => {
 
       swapHandler.init(addresses.PancakeSwapRouterAddress);
 
+      await protocolConfig.setSupportedFactory(addresses.thena_factory);
+
       let whitelistedTokens = [
         iaddress.usdcAddress,
         iaddress.btcAddress,
