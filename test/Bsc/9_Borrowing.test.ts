@@ -989,8 +989,8 @@ describe.only("Tests for Deposit", () => {
         );
       })
 
-      it("should revert, if new buffer unit is more 3%", async () => {
-        await expect(protocolConfig.updateMaxCollateralBufferUnit(4000)).to.be.revertedWithCustomError(protocolConfig,"InvalidNewBufferUnit")
+      it("should revert, if new buffer unit is more 10%", async () => {
+        await expect(protocolConfig.updateMaxCollateralBufferUnit(11000)).to.be.revertedWithCustomError(protocolConfig,"InvalidNewBufferUnit")
       })
 
       it("repay should revert if wrong flashloan provider factory if provided" ,async () => {
@@ -1424,7 +1424,7 @@ describe.only("Tests for Deposit", () => {
 
         const user = nonOwner;
 
-        let flashloanBufferUnit = 5;//Flashloan buffer unit in 1/10000.This value is used slightly increase the amount of flashLoanAmount, for any priceImpact (10000 = 100%)
+        let flashloanBufferUnit = 4;//Flashloan buffer unit in 1/10000.This value is used slightly increase the amount of flashLoanAmount, for any priceImpact (10000 = 100%)
         let bufferUnit = 160;//The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%) 
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");

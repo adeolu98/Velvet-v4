@@ -32,6 +32,7 @@ import {
   FeeModule__factory,
   AssetManagementConfig,
   AccessControl,
+  EnsoHandler,
 } from "../../typechain";
 
 import { chainIdToAddresses } from "../../scripts/networkVariables";
@@ -65,6 +66,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let treasury: SignerWithAddress;
   let assetManagerTreasury: SignerWithAddress;
   let nonOwner: SignerWithAddress;
+  let ensoHandler: EnsoHandler;
   let depositor1: SignerWithAddress;
   let addr2: SignerWithAddress;
   let addr1: SignerWithAddress;
@@ -130,6 +132,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
 
+      const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
+      ensoHandler = await EnsoHandler.deploy();
+      await ensoHandler.deployed();
+
       let registryEnable = await protocolConfig.enableTokens([
         iaddress.busdAddress,
         iaddress.btcAddress,
@@ -181,6 +187,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       // Grant owner asset manager role
       await accessController.setupRole(assetManagerHash, owner.address);
+
+      await protocolConfig.setSupportedFactory(addresses.thena_factory);
+
+      await protocolConfig.enableSolverHandler(ensoHandler.address);
 
       let whitelistedTokens = [
         iaddress.busdAddress,
@@ -806,12 +816,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           BigNumber.from(amountPortfolioToken).sub("10000000");
         await expect(
           portfolio.multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
             _bufferUnit: "0",
-            _solverHandler: zeroAddress, //Handler to swap
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -886,12 +896,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           BigNumber.from(amountPortfolioToken).sub("100000");
         await expect(
           portfolio.multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
             _bufferUnit: "0",
-            _solverHandler: zeroAddress, //Handler to swap
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -921,12 +931,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         await expect(
           portfolio.multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
             _bufferUnit: "0",
-            _solverHandler: zeroAddress, //Handler to swap
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -964,12 +974,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               owner.address,
               BigNumber.from(amountPortfolioToken),
               {
-                _factory: zeroAddress,
+                _factory: addresses.thena_factory,
                 _token0: zeroAddress, //USDT - Pool token
                 _token1: zeroAddress, //USDC - Pool token
                 _flashLoanToken: zeroAddress, //Token to take flashlaon
                 _bufferUnit: "0",
-                _solverHandler: zeroAddress, //Handler to swap
+                _solverHandler: ensoHandler.address, //Handler to swap
                 _flashLoanAmount: [0],
                 firstSwapData: ["0x"],
                 secondSwapData: ["0x"],
@@ -1008,12 +1018,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             owner.address,
             BigNumber.from(amountPortfolioToken),
             {
-              _factory: zeroAddress,
+              _factory: addresses.thena_factory,
               _token0: zeroAddress, //USDT - Pool token
               _token1: zeroAddress, //USDC - Pool token
               _flashLoanToken: zeroAddress, //Token to take flashlaon
               _bufferUnit: "0",
-              _solverHandler: zeroAddress, //Handler to swap
+              _solverHandler: ensoHandler.address, //Handler to swap
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
@@ -1084,12 +1094,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
             _bufferUnit: "0",
-            _solverHandler: zeroAddress, //Handler to swap
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
