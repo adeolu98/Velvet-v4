@@ -36,6 +36,7 @@ import {
   AssetManagementConfig,
   AccessControl,
   TokenExclusionManager__factory,
+  EnsoHandler,
 } from "../../typechain";
 
 import { chainIdToAddresses } from "../../scripts/networkVariables";
@@ -62,6 +63,7 @@ describe.only("Tests for Upgradeability", () => {
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
   let borrowManager: BorrowManager;
+  let ensoHandler: EnsoHandler;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let txObject;
   let owner: SignerWithAddress;
@@ -168,7 +170,14 @@ describe.only("Tests for Upgradeability", () => {
       swapHandler = await PancakeSwapHandler.deploy();
       await swapHandler.deployed();
 
+      const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
+      ensoHandler = await EnsoHandler.deploy();
+      await ensoHandler.deployed();
+
       swapHandler.init(addresses.SushiSwapRouterAddress);
+
+      await protocolConfig.enableSolverHandler(ensoHandler.address);
+      await protocolConfig.setSupportedFactory(ensoHandler.address);
 
       let whitelistedTokens = [
         addresses.ARB,
@@ -507,11 +516,12 @@ describe.only("Tests for Upgradeability", () => {
         await portfolio.multiTokenWithdrawal(
           BigNumber.from(amountPortfolioToken),
           {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -576,11 +586,12 @@ describe.only("Tests for Upgradeability", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -842,11 +853,12 @@ describe.only("Tests for Upgradeability", () => {
         await portfolio.multiTokenWithdrawal(
           BigNumber.from(amountPortfolioToken),
           {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -913,11 +925,12 @@ describe.only("Tests for Upgradeability", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -1176,11 +1189,12 @@ describe.only("Tests for Upgradeability", () => {
         await portfolio.multiTokenWithdrawal(
           BigNumber.from(amountPortfolioToken),
           {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -1245,11 +1259,12 @@ describe.only("Tests for Upgradeability", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -1498,11 +1513,12 @@ describe.only("Tests for Upgradeability", () => {
         await portfolio.multiTokenWithdrawal(
           BigNumber.from(amountPortfolioToken),
           {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -1567,11 +1583,12 @@ describe.only("Tests for Upgradeability", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(amountPortfolioToken, {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
