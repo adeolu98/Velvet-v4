@@ -1098,6 +1098,181 @@ describe.only("Tests for Deposit", () => {
           _callData: encodedParameters,
         });
       });
+
+       it("should rebalance dai to vBNB", async () => {
+        let tokens = await portfolio.getTokens();
+        let sellToken = tokens[6];
+        let buyToken = addresses.vBNB_Address;
+
+        let newTokens = [tokens[0], tokens[1], tokens[2] ,tokens[3], tokens[4], tokens[5]];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let balance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        let balanceToSwap = BigNumber.from(balance).toString();
+
+        console.log("Balance to rebalance", balanceToSwap);
+
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          sellToken,
+          buyToken,
+          balanceToSwap
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
+
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [balanceToSwap],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
+        });
+
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
+        );
+        console.log(
+          "balance after buy",
+          await ERC20.attach(buyToken).balanceOf(vault)
+        );
+       })
+
+       it("should repay borrowed dai using flashloan", async () => {
+        let vault = await portfolio.vault();
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
+        let flashloanBufferUnit = 23;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
+
+        let balanceBorrowed =
+          await portfolioCalculations.getVenusTokenBorrowedBalance(
+            [addresses.vDAI_Address],
+            vault
+          );
+        const userData = await venusAssetHandler.getUserAccountData(
+          vault,
+          addresses.corePool_controller
+        );
+        const lendTokens = userData[1].lendTokens;
+
+        console.log("balanceBorrowed before repay", balanceBorrowed);
+
+        const balanceToRepay = (balanceBorrowed[0]).toString();
+
+        const balanceToSwap = (await portfolioCalculations.calculateFlashLoanAmountForRepayment(
+          addresses.vDAI_Address,
+          addresses.vUSDT_Address,
+          addresses.corePool_controller,
+          balanceToRepay,
+          flashloanBufferUnit
+        )).toString();
+
+        console.log("balanceToRepay", balanceToRepay);
+        console.log("balanceToSwap", balanceToSwap);
+
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          addresses.USDT,
+          addresses.DAI_Address,
+          balanceToSwap
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          ["bytes[]", "address[]", "uint256[]"],
+          [[postResponse.data.tx.data], [addresses.DAI_Address], [0]]
+        );
+
+        let encodedParameters1 = [];
+        //Because repay(rebalance) is one borrow token at a time
+        const amounToSell =
+          await portfolioCalculations.getCollateralAmountToSell(
+            vault,
+            addresses.corePool_controller,
+            venusAssetHandler.address,
+            addresses.vDAI_Address,
+            balanceToRepay,
+            "10", //Flash loan fee
+            bufferUnit //Buffer unit for collateral amount
+          );
+        console.log("amounToSell", amounToSell);
+        console.log("lendTokens", lendTokens);
+
+        for (let j = 0; j < lendTokens.length; j++) {
+          const postResponse1 = await createEnsoCallDataRoute(
+            ensoHandler.address,
+            ensoHandler.address,
+            lendTokens[j],
+            addresses.USDT,
+            amounToSell[j].toString() //Need calculation here
+          );
+
+          encodedParameters1.push(
+            ethers.utils.defaultAbiCoder.encode(
+              ["bytes[]", "address[]", "uint256[]"],
+              [[postResponse1.data.tx.data], [addresses.USDT], [0]]
+            )
+          );
+        }
+
+        await rebalancing.repay(addresses.corePool_controller, {
+          _factory: addresses.thena_factory,
+          _token0: addresses.USDT, //USDT - Pool token
+          _token1: addresses.USDC_Address, //USDC - Pool token
+          _flashLoanToken: addresses.USDT, //Token to take flashlaon
+          _debtToken: [addresses.DAI_Address], //Token to pay debt of
+          _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
+          _bufferUnit: bufferUnit, //Buffer unit for collateral amount
+          _solverHandler: ensoHandler.address, //Handler to swap
+          _flashLoanAmount: [balanceToSwap],
+          _debtRepayAmount: [balanceToRepay],
+          firstSwapData: [encodedParameters],
+          secondSwapData: encodedParameters1,
+          isMaxRepayment: false
+        });
+
+        console.log(
+          "Balance of vToken After",
+          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
+        );
+
+        balanceBorrowed =
+          await portfolioCalculations.getVenusTokenBorrowedBalance(
+            [addresses.vUSDT_Address],
+            vault
+          );
+
+        console.log("balanceBorrowed after repay", balanceBorrowed);
+       })
     });
   });
 });
