@@ -245,6 +245,8 @@ describe.only("Tests for Deposit", () => {
 
       swapHandler.init(addresses.PancakeSwapRouterAddress);
 
+      await protocolConfig.setSupportedFactory(addresses.thena_factory);
+
       let whitelistedTokens = [
         iaddress.usdcAddress,
         iaddress.btcAddress,
@@ -1070,12 +1072,12 @@ describe.only("Tests for Deposit", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
             _bufferUnit: "0",
-            _solverHandler: zeroAddress, //Handler to swap
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -1115,12 +1117,12 @@ describe.only("Tests for Deposit", () => {
         await portfolio
           .connect(owner)
           .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
             _bufferUnit: "0",
-            _solverHandler: zeroAddress, //Handler to swap
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],

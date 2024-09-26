@@ -142,6 +142,8 @@ describe.only("Tests for Deposit", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
+      await protocolConfig.setSupportedFactory(addresses.thena_factory);
+
       await protocolConfig.enableRewardTarget(addresses.venus_RewardToken);
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing", {
@@ -2556,12 +2558,12 @@ describe.only("Tests for Deposit", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
             _bufferUnit: "0",
-            _solverHandler: zeroAddress, //Handler to swap
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -2925,12 +2927,12 @@ describe.only("Tests for Deposit", () => {
         await portfolio1
           .connect(addr1)
           .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
             _bufferUnit: "0",
-            _solverHandler: zeroAddress, //Handler to swap
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],

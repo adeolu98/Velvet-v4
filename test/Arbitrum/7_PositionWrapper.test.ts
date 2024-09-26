@@ -171,6 +171,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
+      await protocolConfig.setSupportedFactory(ensoHandler.address);
 
       const TokenExclusionManager = await ethers.getContractFactory(
         "TokenExclusionManager"
@@ -955,11 +956,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await portfolio
           .connect(nonOwner)
           .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
@@ -999,11 +1001,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await portfolio
           .connect(owner)
           .multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
-            _factory: zeroAddress,
+            _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
             _token1: zeroAddress, //USDC - Pool token
             _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _solverHandler: zeroAddress, //Handler to swap
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
