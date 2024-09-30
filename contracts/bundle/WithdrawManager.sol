@@ -32,7 +32,9 @@ contract WithdrawManager is ReentrancyGuard, TargetWhitelisting {
    * @param _target The address of the portfolio.
    * @param _tokenToWithdraw The address of the token to receive after withdrawal.
    * @param _portfolioTokenAmount The amount of the portfolio token to be withdrawn.
-   * @param _callData Additional data required for the multi-token swap and withdrawal.
+   * @param _expectedOutputAmount The minimum amount of tokens expected to receive after the swap and withdrawal.
+   * @param repayData Struct containing parameters for repaying flash loans, if any.
+   * @param _callData An array of bytes containing additional data required for each swap.
    */
   function withdraw(
     address _target,

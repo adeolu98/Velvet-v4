@@ -29,6 +29,7 @@ contract WithdrawBatch is ReentrancyGuard {
    * @param _target The address of the portfolio contract.
    * @param _tokenToWithdraw The address of the token to be withdrawn by the user.
    * @param user The address of the user initiating the withdrawal.
+   * @param _expectedOutputAmount The minimum amount of tokens expected to receive after the swap and withdrawal.
    * @param _callData The calldata required for executing the swaps.
    */
   function multiTokenSwapAndWithdraw(
