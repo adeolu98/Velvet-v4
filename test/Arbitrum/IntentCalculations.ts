@@ -222,8 +222,19 @@ export async function increaseLiquidity(
     swapAmount1
   );
 
+  const SwapVerificationLibrary = await ethers.getContractFactory(
+    "SwapVerificationLibrary"
+  );
+  const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+  await swapVerificationLibrary.deployed();
+
   const PositionManager = await ethers.getContractFactory(
-    "PositionManagerUniswap"
+    "PositionManagerUniswap",
+    {
+      libraries: {
+        SwapVerificationLibrary: swapVerificationLibrary.address,
+      },
+    }
   );
   const positionManager = PositionManager.attach(positionManagerAddress);
 
@@ -245,8 +256,19 @@ export async function decreaseLiquidity(
   positionManagerAddress: string,
   positionWrapperAddress: string
 ): Promise<any> {
+  const SwapVerificationLibrary = await ethers.getContractFactory(
+    "SwapVerificationLibrary"
+  );
+  const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+  await swapVerificationLibrary.deployed();
+
   const PositionManager = await ethers.getContractFactory(
-    "PositionManagerUniswap"
+    "PositionManagerUniswap",
+    {
+      libraries: {
+        SwapVerificationLibrary: swapVerificationLibrary.address,
+      },
+    }
   );
   const positionManager = PositionManager.attach(positionManagerAddress);
 

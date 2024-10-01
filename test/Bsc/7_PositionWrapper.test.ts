@@ -110,6 +110,7 @@ describe.only("Tests for Deposit", () => {
   const assetManagerHash = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
+  let swapVerificationLibrary: any;
 
   let positionWrappers: any = [];
   let swapTokens: any = [];
@@ -151,6 +152,12 @@ describe.only("Tests for Deposit", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
 
       const TokenBalanceLibrary = await ethers.getContractFactory(
         "TokenBalanceLibrary"
@@ -249,6 +256,13 @@ describe.only("Tests for Deposit", () => {
 
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
 
+      await protocolConfig.enableTokens([
+        iaddress.ethAddress,
+        iaddress.btcAddress,
+        iaddress.usdcAddress,
+        iaddress.usdtAddress,
+      ]);
+
       let whitelistedTokens = [
         iaddress.usdcAddress,
         iaddress.btcAddress,
@@ -268,7 +282,12 @@ describe.only("Tests for Deposit", () => {
       zeroAddress = "0x0000000000000000000000000000000000000000";
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena"
+        "PositionManagerThena",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -528,6 +547,36 @@ describe.only("Tests for Deposit", () => {
             MAX_TICK
           )
         ).to.be.revertedWithCustomError(positionManager, "TokenNotWhitelisted");
+      });
+
+      it("owner should create new position", async () => {
+        // UniswapV3 position
+        const token0 = iaddress.usdtAddress;
+        const token1 = iaddress.usdcAddress;
+
+        await positionManager.createNewWrapperPosition(
+          token0,
+          token1,
+          "Test",
+          "t",
+          MIN_TICK,
+          MAX_TICK
+        );
+
+        position1 = await positionManager.deployedPositionWrappers(0);
+
+        const PositionWrapper = await ethers.getContractFactory(
+          "PositionWrapper"
+        );
+        positionWrapper = PositionWrapper.attach(position1);
+      });
+
+      it("protocol owner should enable tokens", async () => {
+        let tx = await protocolConfig.enableTokens([
+          iaddress.usdtAddress,
+          iaddress.usdcAddress,
+        ]);
+        await tx.wait();
       });
 
       it("owner should create new position", async () => {
@@ -1213,7 +1262,10 @@ describe.only("Tests for Deposit", () => {
             newTickLower,
             newTickUpper
           )
-        ).to.be.revertedWithCustomError(positionManager, "InvalidSwapAmount");
+        ).to.be.revertedWithCustomError(
+          swapVerificationLibrary,
+          "InvalidSwapAmount"
+        );
 
         let totalSupplyAfter = await positionWrapper.totalSupply();
         expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
@@ -1239,7 +1291,10 @@ describe.only("Tests for Deposit", () => {
             newTickLower,
             newTickUpper
           )
-        ).to.be.revertedWithCustomError(positionManager, "InvalidSwapAmount");
+        ).to.be.revertedWithCustomError(
+          swapVerificationLibrary,
+          "InvalidSwapAmount"
+        );
 
         let totalSupplyAfter = await positionWrapper.totalSupply();
         expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
@@ -1398,7 +1453,12 @@ describe.only("Tests for Deposit", () => {
 
       it("owner should not be able to  upgrade the position manager if protocol is not paused", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerThena"
+          "PositionManagerThena",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();
@@ -1417,7 +1477,12 @@ describe.only("Tests for Deposit", () => {
 
       it("should upgrade the position manager", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerThena"
+          "PositionManagerThena",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();
@@ -1430,7 +1495,12 @@ describe.only("Tests for Deposit", () => {
 
       it("nonOwner should not be able to upgrade the position manager", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerThena"
+          "PositionManagerThena",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();

@@ -7,9 +7,9 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { IFactory } from "./IFactory.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { ISwapRouter } from "./ISwapRouter.sol";
-
 import { LiquidityAmountsCalculations } from "../abstract/LiquidityAmountsCalculations.sol";
-
+import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
+import { SwapVerificationLibrary } from "../abstract/SwapVerificationLibrary.sol";
 /**
  * @title PositionManagerAbstractAlgebra
  * @dev Extension of PositionManagerAbstract for managing Algebra V3 positions with added features like custom token swapping.
@@ -198,6 +198,11 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       revert ErrorLibrary.TokenNotWhitelisted();
     }
 
+    if (
+      !protocolConfig.isTokenEnabled(_token0) ||
+      !protocolConfig.isTokenEnabled(_token1)
+    ) revert ErrorLibrary.TokenNotEnabled();
+
     (address token0, address token1) = _getTokensInPoolOrder(_token0, _token1);
 
     // Deploy and initialize the position wrapper.
@@ -346,7 +351,13 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       (uint128 tokensOwed0, uint128 tokensOwed1) = _getTokensOwed(
         _params._tokenId
       );
-      _verifyZeroSwapAmountForReinvestFees(_params, tokensOwed0, tokensOwed1);
+      SwapVerificationLibrary.verifyZeroSwapAmountForReinvestFees(
+        protocolConfig,
+        _params,
+        address(uniswapV3PositionManager),
+        tokensOwed0,
+        tokensOwed1
+      );
     }
   }
 
@@ -359,30 +370,30 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   function _swapTokenToToken(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal override returns (uint256 balance0, uint256 balance1) {
-    address tokenIn = _params._tokenIn;
-    address tokenOut = _params._tokenOut;
-
-    address token0 = _params._token0;
-    address token1 = _params._token1;
-
     if (
-      tokenIn == tokenOut ||
-      !(tokenOut == token0 || tokenOut == token1) ||
-      !(tokenIn == token0 || tokenIn == token1)
+      _params._tokenIn == _params._tokenOut ||
+      !(_params._tokenOut == _params._token0 ||
+        _params._tokenOut == _params._token1) ||
+      !(_params._tokenIn == _params._token0 ||
+        _params._tokenIn == _params._token1)
     ) {
       revert ErrorLibrary.InvalidTokenAddress();
     }
 
-    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
-
-    uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(tokenIn).balanceOf(
-      address(this)
+    IERC20Upgradeable(_params._tokenIn).approve(
+      address(router),
+      _params._amountIn
     );
+
+    uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(_params._tokenIn)
+      .balanceOf(address(this));
+    uint256 balanceTokenOutBeforeSwap = IERC20Upgradeable(_params._tokenOut)
+      .balanceOf(address(this));
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
       .ExactInputSingleParams({
-        tokenIn: tokenIn,
-        tokenOut: tokenOut,
+        tokenIn: _params._tokenIn,
+        tokenOut: _params._tokenOut,
         recipient: address(this),
         deadline: block.timestamp,
         amountIn: _params._amountIn,
@@ -392,18 +403,25 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
 
     router.exactInputSingle(params);
 
-    uint256 balanceTokenInAfterSwap = IERC20Upgradeable(tokenIn).balanceOf(
-      address(this)
+    SwapVerificationLibrary.verifySwap(
+      _params._tokenIn,
+      _params._tokenOut,
+      _params._amountIn,
+      IERC20Upgradeable(_params._tokenOut).balanceOf(address(this)) -
+        balanceTokenOutBeforeSwap,
+      IPriceOracle(protocolConfig.oracle())
     );
 
-    (balance0, balance1) = _verifyRatioAfterSwap(
+    (balance0, balance1) = SwapVerificationLibrary.verifyRatioAfterSwap(
+      protocolConfig,
       _params._positionWrapper,
+      address(uniswapV3PositionManager),
       _params._tickLower,
       _params._tickUpper,
-      token0,
-      token1,
+      _params._token0,
+      _params._token1,
       balanceTokenInBeforeSwap,
-      balanceTokenInAfterSwap
+      IERC20Upgradeable(_params._tokenIn).balanceOf(address(this))
     );
   }
 
@@ -418,7 +436,11 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     address _token0,
     address _token1
   ) internal view returns (address token0, address token1) {
-    IFactory factory = IFactory(_getFactoryAddress());
+    IFactory factory = IFactory(
+      SwapVerificationLibrary.getFactoryAddress(
+        address(uniswapV3PositionManager)
+      )
+    );
     IPool pool = IPool(factory.poolByPair(_token0, _token1));
 
     token0 = pool.token0();

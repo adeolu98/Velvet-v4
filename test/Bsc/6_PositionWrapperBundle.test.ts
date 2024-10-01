@@ -102,6 +102,7 @@ describe.only("Tests for Deposit", () => {
   let addr1: SignerWithAddress;
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
+  let swapVerificationLibrary: any;
 
   let zeroAddress: any;
 
@@ -155,6 +156,12 @@ describe.only("Tests for Deposit", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
 
       const TokenBalanceLibrary = await ethers.getContractFactory(
         "TokenBalanceLibrary"
@@ -218,6 +225,13 @@ describe.only("Tests for Deposit", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
+      await protocolConfig.enableTokens([
+        iaddress.ethAddress,
+        iaddress.btcAddress,
+        iaddress.usdcAddress,
+        iaddress.usdtAddress,
+      ]);
+
       const Rebalancing = await ethers.getContractFactory("Rebalancing", {
         libraries: {
           TokenBalanceLibrary: tokenBalanceLibrary.address,
@@ -273,7 +287,12 @@ describe.only("Tests for Deposit", () => {
       let whitelist = [owner.address];
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena"
+        "PositionManagerThena",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();

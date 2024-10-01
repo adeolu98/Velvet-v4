@@ -197,4 +197,6 @@ library ErrorLibrary {
   error InvalidBufferUnit();
   // @notice Thrown when new buffer unit is more then max accetable buffer unit
   error InvalidNewBufferUnit();
+  /// @notice Thrown when a swap operation is invalid
+  error InvalidSwap();
 }

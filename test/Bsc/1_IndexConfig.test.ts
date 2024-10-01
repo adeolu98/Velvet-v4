@@ -199,8 +199,19 @@ describe.only("Tests for Portfolio Config", () => {
 
       let whitelist = [owner.address];
 
-      const PositionManagerThena = await ethers.getContractFactory(
-        "PositionManagerThena"
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
+
+      const PositionManager = await ethers.getContractFactory(
+        "PositionManagerThena",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManagerThena.deploy();
       await positionManagerBaseAddress.deployed();

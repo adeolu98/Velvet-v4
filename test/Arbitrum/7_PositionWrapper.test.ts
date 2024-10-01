@@ -77,6 +77,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let addrs: SignerWithAddress[];
   let zeroAddress: any;
   let swapHandlerV3: SwapHandlerV3;
+  let swapVerificationLibrary: any;
 
   let position1: any;
 
@@ -110,6 +111,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
 
       const TokenBalanceLibrary = await ethers.getContractFactory(
         "TokenBalanceLibrary"
@@ -147,7 +154,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await positionWrapperBaseAddress.deployed();
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap"
+        "PositionManagerUniswap",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -172,6 +184,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
       await protocolConfig.setSupportedFactory(ensoHandler.address);
+
+      await protocolConfig.enableTokens([
+        addresses.USDT,
+        addresses.USDC,
+        addresses.WBTC,
+        addresses.WETH,
+      ]);
 
       const TokenExclusionManager = await ethers.getContractFactory(
         "TokenExclusionManager"
@@ -1060,7 +1079,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("owner should not be able to  upgrade the position manager if protocol is not paused", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerUniswap"
+          "PositionManagerUniswap",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();
@@ -1079,7 +1103,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("should upgrade the position manager", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerUniswap"
+          "PositionManagerUniswap",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();
@@ -1092,7 +1121,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("nonOwner should not be able to upgrade the position manager", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerUniswap"
+          "PositionManagerUniswap",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();
