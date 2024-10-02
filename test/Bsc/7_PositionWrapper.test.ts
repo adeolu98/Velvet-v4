@@ -256,13 +256,6 @@ describe.only("Tests for Deposit", () => {
 
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
 
-      await protocolConfig.enableTokens([
-        iaddress.ethAddress,
-        iaddress.btcAddress,
-        iaddress.usdcAddress,
-        iaddress.usdtAddress,
-      ]);
-
       let whitelistedTokens = [
         iaddress.usdcAddress,
         iaddress.btcAddress,
@@ -554,6 +547,32 @@ describe.only("Tests for Deposit", () => {
         const token0 = iaddress.usdtAddress;
         const token1 = iaddress.usdcAddress;
 
+        await expect(
+          positionManager.createNewWrapperPosition(
+            token0,
+            token1,
+            "Test",
+            "t",
+            MIN_TICK,
+            MAX_TICK
+          )
+        ).to.be.revertedWithCustomError(positionManager, "TokenNotEnabled");
+      });
+
+      it("protocol owner should enable tokens", async () => {
+        await protocolConfig.enableTokens([
+          iaddress.ethAddress,
+          iaddress.btcAddress,
+          iaddress.usdcAddress,
+          iaddress.usdtAddress,
+        ]);
+      });
+
+      it("owner should create new position", async () => {
+        // UniswapV3 position
+        const token0 = iaddress.usdtAddress;
+        const token1 = iaddress.usdcAddress;
+
         await positionManager.createNewWrapperPosition(
           token0,
           token1,
@@ -569,14 +588,6 @@ describe.only("Tests for Deposit", () => {
           "PositionWrapper"
         );
         positionWrapper = PositionWrapper.attach(position1);
-      });
-
-      it("protocol owner should enable tokens", async () => {
-        let tx = await protocolConfig.enableTokens([
-          iaddress.usdtAddress,
-          iaddress.usdcAddress,
-        ]);
-        await tx.wait();
       });
 
       it("owner should create new position", async () => {
@@ -1434,6 +1445,22 @@ describe.only("Tests for Deposit", () => {
 
       it("owner should be able to update allowedRatioDeviationBps param", async () => {
         await protocolConfig.updateAllowedRatioDeviationBps(100);
+      });
+
+      it("nonOwner should not be able to update slippage for fee reinvestment param", async () => {
+        await expect(
+          protocolConfig.connect(nonOwner).updateAllowedSlippage(100)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("owner should not be able to update slippage for fee reinvestment param with invalid value", async () => {
+        await expect(
+          protocolConfig.updateAllowedSlippage(20000)
+        ).to.be.revertedWithCustomError(protocolConfig, "InvalidDeviationBps");
+      });
+
+      it("owner should be able to update slippage for fee reinvestment param", async () => {
+        await protocolConfig.updateAllowedSlippage(100);
       });
 
       it("owner should not be able to upgrade the position wrapper if protocol is not paused", async () => {

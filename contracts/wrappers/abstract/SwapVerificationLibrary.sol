@@ -39,6 +39,7 @@ library SwapVerificationLibrary {
     address _buyToken,
     uint256 _sellAmount,
     uint256 _buyAmount,
+    uint256 _slippage,
     IPriceOracle _priceOracle
   ) external view {
     if (_sellAmount > 0) {
@@ -51,7 +52,7 @@ library SwapVerificationLibrary {
         _buyAmount
       );
 
-      if (buyValue < getSlippage(sellValue)) {
+      if (buyValue < getSlippage(_slippage, sellValue)) {
         revert ErrorLibrary.InvalidSwap();
       }
     }
@@ -63,9 +64,10 @@ library SwapVerificationLibrary {
    * @return minAmount The minimum acceptable amount after slippage.
    */
   function getSlippage(
+    uint256 _slippage,
     uint256 _amount
   ) private pure returns (uint256 minAmount) {
-    minAmount = (_amount * (TOTAL_WEIGHT - 100)) / (TOTAL_WEIGHT);
+    minAmount = (_amount * (TOTAL_WEIGHT - _slippage)) / (TOTAL_WEIGHT);
   }
 
   /**

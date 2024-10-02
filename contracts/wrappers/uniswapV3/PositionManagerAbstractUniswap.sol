@@ -420,6 +420,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       _params._amountIn,
       IERC20Upgradeable(_params._tokenOut).balanceOf(address(this)) -
         balanceTokenOutBeforeSwap,
+      protocolConfig.acceptedSlippageFeeReinvestment(),
       IPriceOracle(protocolConfig.oracle())
     );
 
