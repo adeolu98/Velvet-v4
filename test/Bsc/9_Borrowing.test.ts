@@ -898,7 +898,7 @@ describe.only("Tests for Deposit", () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
         let flashloanBufferUnit = 25;//Flashloan buffer unit in 1/10000
-        let bufferUnit = 180;//Buffer unit for collateral amount in 1/100000
+        let bufferUnit = 190;//Buffer unit for collateral amount in 1/100000
         let borrowedToken = addresses.LINK_Address;
         let borrowedProtocolToken = addresses.vLINK_Address;
 
@@ -1211,7 +1211,7 @@ describe.only("Tests for Deposit", () => {
       it("repay should revert if wrong flashloan provider factory if provided" ,async () => {
 
         let flashloanBufferUnit = 20;//Flashloan buffer unit in 1/10000.This value is used slightly increase the amount of flashLoanAmount, for any priceImpact (10000 = 100%)
-        let bufferUnit = 140;//The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%) 
+        let bufferUnit = 160;//The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%) 
 
         await expect(rebalancing.repay(addresses.corePool_controller, {
           _factory: addresses.USDT,
@@ -1233,7 +1233,7 @@ describe.only("Tests for Deposit", () => {
       it("repay should revert if wrong solver handler is incorrect" ,async () => {
 
         let flashloanBufferUnit = 20;//Flashloan buffer unit in 1/10000
-        let bufferUnit = 140;//Buffer unit for collateral amount in 1/100000
+        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
 
         await expect(rebalancing.repay(addresses.corePool_controller, {
           _factory: addresses.thena_factory,
@@ -1275,7 +1275,7 @@ describe.only("Tests for Deposit", () => {
 
       it("repay should revert if buffer unit execeeds acceptable buffer unit" ,async () => {
 
-        let bufferUnit = 190;//Buffer unit for collateral amount in 1/100000
+        let bufferUnit = 390;//Buffer unit for collateral amount in 1/100000
 
         await expect(rebalancing.repay(addresses.corePool_controller, {
           _factory: addresses.thena_factory,
@@ -1339,7 +1339,7 @@ describe.only("Tests for Deposit", () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
         let flashloanBufferUnit = 23;//Flashloan buffer unit in 1/10000
-        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
+        let bufferUnit = 170;//Buffer unit for collateral amount in 1/100000
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
@@ -1455,8 +1455,8 @@ describe.only("Tests for Deposit", () => {
 
         let vault = await portfolio.vault();
 
-        let flashloanBufferUnit = 5;//Flashloan buffer unit in 1/10000
-        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
+        let flashloanBufferUnit = 6;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 170;//Buffer unit for collateral amount in 1/100000
 
         let flashLoanToken = addresses.USDT;
         let flashLoanProtocolToken = addresses.vUSDT_Address;
@@ -1597,6 +1597,7 @@ describe.only("Tests for Deposit", () => {
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
+          0,
           {
             _factory: addresses.thena_factory,
             _token0: addresses.USDT, //USDT - Pool token
@@ -1788,6 +1789,7 @@ describe.only("Tests for Deposit", () => {
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
+          0,
           {
             _factory: addresses.thena_factory,
             _token0: addresses.USDT, //USDT - Pool token
