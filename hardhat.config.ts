@@ -203,7 +203,7 @@ const config: HardhatUserConfig = {
     spacing: 2,
   },
   tenderly: {
-    project: "Base10April",
+    project: "v4-bnb-test",
     username: "velvet-capital",
     privateVerification: true,
   },
