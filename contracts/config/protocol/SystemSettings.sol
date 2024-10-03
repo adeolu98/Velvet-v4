@@ -66,7 +66,7 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     assetLimit = 15;
     whitelistLimit = 300;
     allowedDustTolerance = 10; // equivalent to 0.01%
-    MAX_COLLATERAL_BUFFER_UNIT = 160; // equivalent to 0.016%
+    MAX_COLLATERAL_BUFFER_UNIT = 300; // equivalent to 0.03%
   }
 
   /**

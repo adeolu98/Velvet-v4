@@ -82,11 +82,11 @@ interface IAssetHandler {
     returns (MultiTransaction[] memory transactions, uint256 totalFlashAmount);
 
   function executeUserFlashLoan(
-    address _controller,
     address _vault,
     address _receiver,
     uint256 _portfolioTokenAmount,
     uint256 _totalSupply,
+    address[] memory borrowedTokens,
     FunctionParameters.withdrawRepayParams calldata repayData
   ) external;
 
