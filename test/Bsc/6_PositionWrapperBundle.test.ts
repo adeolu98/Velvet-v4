@@ -806,15 +806,15 @@ describe.only("Tests for Deposit", () => {
 
         let swapAmounts: any = [[]];
         if (withdrawAmounts.token0Amount > 0) {
-          swapAmounts[0][0] = (
-            withdrawAmounts.token0Amount * 0.9999999
-          ).toFixed(0);
+          swapAmounts[0][0] = (withdrawAmounts.token0Amount * 0.99999).toFixed(
+            0
+          );
         }
 
         if (withdrawAmounts.token1Amount > 0) {
-          swapAmounts[0][1] = (
-            withdrawAmounts.token1Amount * 0.9999999
-          ).toFixed(0);
+          swapAmounts[0][1] = (withdrawAmounts.token1Amount * 0.99999).toFixed(
+            0
+          );
         }
 
         const postResponse0 = await createEnsoCallDataRoute(
@@ -1094,12 +1094,12 @@ describe.only("Tests for Deposit", () => {
             );
             if (withdrawAmounts.token0Amount > 0) {
               swapAmounts.push(
-                (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+                (withdrawAmounts.token0Amount * 0.99999).toFixed(0)
               );
             }
             if (withdrawAmounts.token1Amount > 0) {
               swapAmounts.push(
-                (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+                (withdrawAmounts.token1Amount * 0.99999).toFixed(0)
               );
             }
             wrapperIndex++;
@@ -1120,7 +1120,7 @@ describe.only("Tests for Deposit", () => {
               user.address,
               swapTokens[i],
               tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
+              (swapAmounts[i] * 0.99999).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
@@ -1217,12 +1217,12 @@ describe.only("Tests for Deposit", () => {
             );
             if (withdrawAmounts.token0Amount > 0) {
               swapAmounts.push(
-                (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+                (withdrawAmounts.token0Amount * 0.99999).toFixed(0)
               );
             }
             if (withdrawAmounts.token1Amount > 0) {
               swapAmounts.push(
-                (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+                (withdrawAmounts.token1Amount * 0.99999).toFixed(0)
               );
             }
             wrapperIndex++;
@@ -1243,7 +1243,7 @@ describe.only("Tests for Deposit", () => {
               user.address,
               swapTokens[i],
               tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
+              (swapAmounts[i] * 0.99999).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
@@ -1523,10 +1523,10 @@ describe.only("Tests for Deposit", () => {
               percentage.toString()
             );
             swapAmounts.push(
-              (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+              (withdrawAmounts.token0Amount * 0.99999).toFixed(0)
             );
             swapAmounts.push(
-              (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+              (withdrawAmounts.token1Amount * 0.99999).toFixed(0)
             );
             wrapperIndex++;
           }
@@ -1546,7 +1546,7 @@ describe.only("Tests for Deposit", () => {
               user.address,
               swapTokens[i],
               tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
+              (swapAmounts[i] * 0.99999).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
