@@ -437,7 +437,9 @@ describe.only("Tests for Deposit", () => {
           value: "1000000000000000000",
         });
 
-        let amountToSwap = "100000000000000000000";
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
 
         console.log("SupplyBefore", await portfolio.totalSupply());
 
@@ -491,7 +493,9 @@ describe.only("Tests for Deposit", () => {
           value: "100000000000000000",
         });
 
-        let amountToSwap = "3000000000000000000";
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
 
         console.log("SupplyBefore", await portfolio.totalSupply());
 
@@ -535,6 +539,7 @@ describe.only("Tests for Deposit", () => {
 
       it("should revert if receiver in calldata is not token holder", async () => {
         await ethers.provider.send("evm_increaseTime", [62]);
+        const supplyBefore = await portfolio.totalSupply();
         const user = owner;
         const tokenToSwapInto = iaddress.btcAddress;
 
@@ -550,13 +555,13 @@ describe.only("Tests for Deposit", () => {
 
         let withdrawalAmounts =
           await portfolioCalculations.getWithdrawalAmounts(
-            amountPortfolioToken,
+            amountPortfolioToken.toString(),
             portfolio.address
           );
 
         await portfolio.approve(
           withdrawManager.address,
-          BigNumber.from(amountPortfolioToken)
+          BigNumber.from(amountPortfolioToken.toString())
         );
 
         for (let i = 0; i < tokens.length; i++) {
@@ -582,6 +587,7 @@ describe.only("Tests for Deposit", () => {
             portfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            0,
             {
               _factory: addresses.thena_factory,
               _token0: zeroAddress, //USDT - Pool token
@@ -615,13 +621,13 @@ describe.only("Tests for Deposit", () => {
 
         let withdrawalAmounts =
           await portfolioCalculations.getWithdrawalAmounts(
-            amountPortfolioToken,
+            amountPortfolioToken.toString(),
             portfolio.address
           );
 
         await portfolio.approve(
           withdrawManager.address,
-          BigNumber.from(amountPortfolioToken)
+          BigNumber.from(amountPortfolioToken.toString())
         );
 
         for (let i = 0; i < tokens.length; i++) {
@@ -647,6 +653,7 @@ describe.only("Tests for Deposit", () => {
             portfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            0,
             {
               _factory: addresses.thena_factory,
               _token0: zeroAddress, //USDT - Pool token
@@ -675,6 +682,7 @@ describe.only("Tests for Deposit", () => {
             fakePortfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            0,
             {
               _factory: addresses.thena_factory,
               _token0: zeroAddress, //USDT - Pool token
@@ -744,6 +752,7 @@ describe.only("Tests for Deposit", () => {
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
+          0,
           {
             _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
@@ -823,6 +832,7 @@ describe.only("Tests for Deposit", () => {
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
+          0,
           {
             _factory: addresses.thena_factory,
             _token0: zeroAddress, //USDT - Pool token
@@ -856,7 +866,9 @@ describe.only("Tests for Deposit", () => {
           value: "1000000000000000000",
         });
 
-        let amountToSwap = "10000000000000000000";
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
 
         console.log("SupplyBefore", await portfolio.totalSupply());
 

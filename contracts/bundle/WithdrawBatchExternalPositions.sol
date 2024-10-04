@@ -33,16 +33,20 @@ contract WithdrawBatchExternalPositions is ReentrancyGuard {
    * 3. Executes a multi-token withdrawal from the portfolio.
    * 4. Swaps the tokens and transfers them to the user.
    * 5. Handles any remaining token balances and transfers them back to the user.
+   * @param _swapTokens An array of addresses of tokens to be swapped.
    * @param _target The address of the portfolio contract.
    * @param _tokenToWithdraw The address of the token to be withdrawn by the user.
    * @param user The address of the user initiating the withdrawal.
+   * @param _expectedOutputAmount The minimum amount of tokens expected to receive after the swap and withdrawal.
    * @param _callData The calldata required for executing the swaps.
+   * @param _params A struct containing parameters for external position withdrawals.
    */
   function multiTokenSwapAndWithdraw(
     address[] memory _swapTokens,
     address _target,
     address _tokenToWithdraw,
     address user,
+    uint256 _expectedOutputAmount,
     bytes[] memory _callData,
     FunctionParameters.ExternalPositionWithdrawParams memory _params
   ) external nonReentrant {
@@ -53,26 +57,12 @@ contract WithdrawBatchExternalPositions is ReentrancyGuard {
       user
     );
 
-    IPositionManager positionManager = IPositionManager(
-      IAssetManagementConfig(IPortfolio(_target).assetManagementConfig())
-        .positionManager()
+    uint256 withdrawTokenBalanceBefore = _getTokenBalanceOfUser(
+      _tokenToWithdraw,
+      address(this)
     );
 
-    // Decrease liquidity from UniswapV3 positions
-    uint256 positionWrapperLength = _params._positionWrappers.length;
-    for (uint256 i = 0; i < positionWrapperLength; i++) {
-      address _positionWrapper = _params._positionWrappers[i];
-      uint256 balance = IERC20(_positionWrapper).balanceOf(address(this));
-      positionManager.decreaseLiquidity(
-        _positionWrapper,
-        MathUtils.safe128(balance),
-        _params._amountsMin0[i],
-        _params._amountsMin1[i],
-        _params._tokenIn[i],
-        _params._tokenOut[i],
-        _params._amountIn[i]
-      );
-    }
+    _decreaseLiquidity(_target, _params);
 
     // Perform swaps and send tokens to user
     uint256 swapTokenLength = _swapTokens.length;
@@ -98,16 +88,87 @@ contract WithdrawBatchExternalPositions is ReentrancyGuard {
       }
     }
 
+    // Return balance difference to the user
+    uint256 withdrawTokenBalanceAfter = _getTokenBalanceOfUser(
+      _tokenToWithdraw,
+      address(this)
+    );
+    if (withdrawTokenBalanceAfter > withdrawTokenBalanceBefore) {
+      _transferTokens(
+        _tokenToWithdraw,
+        user,
+        withdrawTokenBalanceAfter - withdrawTokenBalanceBefore
+      );
+    }
+
     // Subtracting balanceIfSameToken to get the correct amount, to verify that calldata is not manipulated,
     // and to ensure the user has received their shares properly
     uint256 userBalanceAfterSwap = _getTokenBalanceOfUser(
       _tokenToWithdraw,
       user
-    ) - balanceOfSameToken;
+    );
+
+    uint256 calldataBalanceDifference = userBalanceAfterSwap -
+      balanceOfSameToken;
+
+    uint256 balanceDifference = userBalanceAfterSwap - userBalanceBeforeSwap;
 
     //Checking balance of user after swap, to confirm recevier is user
-    if (userBalanceAfterSwap <= userBalanceBeforeSwap)
-      revert ErrorLibrary.InvalidBalanceDiff();
+    if (
+      balanceDifference < _expectedOutputAmount ||
+      calldataBalanceDifference <= userBalanceBeforeSwap
+    ) revert ErrorLibrary.InvalidBalanceDiff();
+  }
+
+  /**
+   * @notice Decreases liquidity from UniswapV3 positions
+   * @dev This function is called internally to reduce liquidity in UniswapV3 positions
+   * @param _target The address of the target portfolio
+   * @param _params A struct containing parameters for external position withdrawals
+   */
+  function _decreaseLiquidity(
+    address _target,
+    FunctionParameters.ExternalPositionWithdrawParams memory _params
+  ) internal {
+    IPositionManager positionManager = IPositionManager(
+      IAssetManagementConfig(IPortfolio(_target).assetManagementConfig())
+        .positionManager()
+    );
+
+    uint256 positionWrapperLength = _params._positionWrappers.length;
+    for (uint256 i = 0; i < positionWrapperLength; i++) {
+      address _positionWrapper = _params._positionWrappers[i];
+      uint256 balance = IERC20(_positionWrapper).balanceOf(address(this));
+      positionManager.decreaseLiquidity(
+        _positionWrapper,
+        MathUtils.safe128(balance),
+        _params._amountsMin0[i],
+        _params._amountsMin1[i],
+        _params._tokenIn[i],
+        _params._tokenOut[i],
+        _params._amountIn[i]
+      );
+    }
+  }
+
+  /**
+   * @notice Transfers tokens from this contract to a specified address
+   * @dev Handles both ETH and ERC20 token transfers
+   * @param _token Address of the token to transfer (use ETH_ADDRESS for ETH)
+   * @param _to Address of the recipient
+   * @param _amount Amount of tokens to transfer
+   */
+  function _transferTokens(
+    address _token,
+    address _to,
+    uint256 _amount
+  ) internal {
+    if (_token == ETH_ADDRESS) {
+      (bool success, ) = payable(_to).call{ value: _amount }("");
+      if (!success) revert ErrorLibrary.TransferFailed();
+    } else {
+      TransferHelper.safeTransfer(_token, _to, _amount);
+    }
   }
 
   /**
