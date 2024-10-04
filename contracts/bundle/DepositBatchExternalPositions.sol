@@ -38,7 +38,7 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
 
     _multiTokenSwapAndDeposit(data, _params, user);
 
-    (bool sent, ) = user.call{value: address(this).balance}("");
+    (bool sent, ) = user.call{ value: address(this).balance }("");
     if (!sent) revert ErrorLibrary.TransferFailed();
   }
 
@@ -85,11 +85,17 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
       _params._portfolioTokenIndex.length != _params._isExternalPosition.length
     ) revert ErrorLibrary.InvalidLength();
 
+    uint256 positionWrapperLength = _params._positionWrappers.length;
+
     if (
-      _params._positionWrappers.length !=
-      _params._positionWrapperIndex.length ||
+      positionWrapperLength != _params._positionWrapperIndex.length ||
       _params._positionWrapperIndex.length != _params._index0.length ||
-      _params._index0.length != _params._index1.length
+      _params._index0.length != _params._index1.length ||
+      positionWrapperLength != _params._tokenIn.length ||
+      positionWrapperLength != _params._tokenOut.length ||
+      positionWrapperLength != _params._amountIn.length ||
+      positionWrapperLength != _params._amount0Min.length ||
+      positionWrapperLength != _params._amount1Min.length
     ) revert ErrorLibrary.InvalidLength();
 
     address[] memory tokens = IPortfolio(data._target).getTokens();
@@ -280,8 +286,8 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
         WrapperFunctionParameters.InitialMintParams({
           _amount0Desired: _swapResults[_params._index0[i]],
           _amount1Desired: _swapResults[_params._index1[i]],
-          _amount0Min: _params._amount0Min,
-          _amount1Min: _params._amount1Min
+          _amount0Min: _params._amount0Min[i],
+          _amount1Min: _params._amount1Min[i]
         })
       );
     } else {
@@ -292,11 +298,11 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
           _positionWrapper: positionWrapper,
           _amount0Desired: _swapResults[_params._index0[i]],
           _amount1Desired: _swapResults[_params._index1[i]],
-          _amount0Min: _params._amount0Min,
-          _amount1Min: _params._amount1Min,
-          _tokenIn: _params._tokenIn,
-          _tokenOut: _params._tokenOut,
-          _amountIn: _params._amountIn
+          _amount0Min: _params._amount0Min[i],
+          _amount1Min: _params._amount1Min[i],
+          _tokenIn: _params._tokenIn[i],
+          _tokenOut: _params._tokenOut[i],
+          _amountIn: _params._amountIn[i]
         })
       );
     }
