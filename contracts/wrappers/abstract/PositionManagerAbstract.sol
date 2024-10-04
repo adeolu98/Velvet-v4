@@ -125,8 +125,12 @@ abstract contract PositionManagerAbstract is
   function increaseLiquidity(
     WrapperFunctionParameters.WrapperDepositParams memory _params
   ) external notPaused nonReentrant {
-    uint256 tokenId = _params._positionWrapper.tokenId();
+    if (
+      address(_params._positionWrapper) == address(0) ||
+      _params._dustReceiver == address(0)
+    ) revert ErrorLibrary.InvalidAddress();
 
+    uint256 tokenId = _params._positionWrapper.tokenId();
     address token0 = _params._positionWrapper.token0();
     address token1 = _params._positionWrapper.token1();
 
@@ -219,6 +223,9 @@ abstract contract PositionManagerAbstract is
     uint256 amountIn
   ) external notEmergencyPaused nonReentrant {
     uint256 tokenId = _positionWrapper.tokenId();
+
+    if (_positionWrapper == IPositionWrapper(address(0)))
+      revert ErrorLibrary.InvalidAddress();
 
     // Ensure the withdrawal amount is greater than zero.
     if (_withdrawalAmount == 0) revert ErrorLibrary.AmountCannotBeZero();

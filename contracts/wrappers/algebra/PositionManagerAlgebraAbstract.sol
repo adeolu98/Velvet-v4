@@ -60,6 +60,8 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     string memory _symbol,
     WrapperFunctionParameters.PositionMintParamsThena memory params
   ) external notPaused nonReentrant returns (address) {
+    if (_dustReceiver == address(0)) revert ErrorLibrary.InvalidAddress();
+
     // Create and initialize a new wrapper position
     IPositionWrapper positionWrapper = createNewWrapperPosition(
       _token0,
@@ -189,6 +191,9 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     int24 _tickLower,
     int24 _tickUpper
   ) public notPaused onlyAssetManager returns (IPositionWrapper) {
+    if (_token0 == address(0) || _token1 == address(0))
+      revert ErrorLibrary.InvalidAddress();
+
     // Check if both tokens are whitelisted if the token whitelisting feature is enabled.
     if (
       assetManagementConfig.tokenWhitelistingEnabled() &&

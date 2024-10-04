@@ -58,6 +58,8 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     string memory _symbol,
     WrapperFunctionParameters.PositionMintParams memory params
   ) external notPaused nonReentrant returns (address) {
+    if (_dustReceiver == address(0)) revert ErrorLibrary.InvalidAddress();
+
     // Create and initialize a new wrapper position
     IPositionWrapper positionWrapper = createNewWrapperPosition(
       _token0,
@@ -87,6 +89,9 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     IPositionWrapper _positionWrapper,
     WrapperFunctionParameters.InitialMintParams memory params
   ) external notPaused nonReentrant {
+    if (address(_positionWrapper) == address(0) || _dustReceiver == address(0))
+      revert ErrorLibrary.InvalidAddress();
+
     // Mint the new Uniswap V3 position using the provided liquidity parameters.
     _initializePositionAndDeposit(
       _dustReceiver,
@@ -123,8 +128,10 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     int24 _tickLower,
     int24 _tickUpper
   ) external notPaused onlyAssetManager {
-    uint256 tokenId = _positionWrapper.tokenId();
+    if (address(_positionWrapper) == address(0))
+      revert ErrorLibrary.InvalidAddress();
 
+    uint256 tokenId = _positionWrapper.tokenId();
     address token0 = _positionWrapper.token0();
     address token1 = _positionWrapper.token1();
 
@@ -193,6 +200,9 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     int24 _tickLower,
     int24 _tickUpper
   ) public notPaused onlyAssetManager returns (IPositionWrapper) {
+    if (_token0 == address(0) || _token1 == address(0))
+      revert ErrorLibrary.InvalidAddress();
+
     // Check if both tokens are whitelisted if the token whitelisting feature is enabled.
     if (
       assetManagementConfig.tokenWhitelistingEnabled() &&
