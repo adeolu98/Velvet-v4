@@ -1,8 +1,9 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
-import { ethers, upgrades } from "hardhat";
+import { ethers,network, upgrades } from "hardhat";
 import { BigNumber, Contract } from "ethers";
+import VENUS_CHAINLINK_ORACLE_ABI from "../abi/venus_chainlink_oracle.json";
 
 import {
   PERMIT2_ADDRESS,
@@ -38,6 +39,7 @@ import {
   EnsoHandler,
   TokenBalanceLibrary,
   BorrowManager,
+  VenusAssetHandler,
   EnsoHandlerBundled,
   AccessController__factory,
   TokenExclusionManager__factory,
@@ -53,6 +55,7 @@ import {
   IFactory__factory,
   INonfungiblePositionManager__factory,
   IPool__factory,
+  IVenusComptroller
 } from "../../typechain";
 
 import { chainIdToAddresses } from "../../scripts/networkVariables";
@@ -77,12 +80,14 @@ describe.only("Tests for Deposit", () => {
   let borrowManager: BorrowManager;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let depositBatch: DepositBatchExternalPositions;
+  let depositBatch2 : DepositBatch;
   let depositManager: DepositManagerExternalPositions;
   let withdrawBatch: WithdrawBatchExternalPositions;
   let withdrawManager: WithdrawManagerExternalPositions;
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
+  let venusAssetHandler: VenusAssetHandler;
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
@@ -102,15 +107,10 @@ describe.only("Tests for Deposit", () => {
   let addr1: SignerWithAddress;
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
-  let swapVerificationLibrary: any;
 
   let zeroAddress: any;
 
   let amountCalculationsAlgebra: AmountCalculationsAlgebra;
-
-  const assetManagerHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("ASSET_MANAGER")
-  );
 
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -157,12 +157,6 @@ describe.only("Tests for Deposit", () => {
 
       const provider = ethers.getDefaultProvider();
 
-      const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
-      );
-      swapVerificationLibrary = await SwapVerificationLibrary.deploy();
-      await swapVerificationLibrary.deployed();
-
       const TokenBalanceLibrary = await ethers.getContractFactory(
         "TokenBalanceLibrary"
       );
@@ -187,6 +181,10 @@ describe.only("Tests for Deposit", () => {
       );
       depositManager = await DepositManager.deploy(depositBatch.address);
       await depositManager.deployed();
+
+      const DepositBatch2 = await ethers.getContractFactory("DepositBatch");
+      depositBatch2 = await DepositBatch2.deploy();
+      await depositBatch2.deployed();
 
       const WithdrawBatch = await ethers.getContractFactory(
         "WithdrawBatchExternalPositions"
@@ -221,16 +219,44 @@ describe.only("Tests for Deposit", () => {
         { kind: "uups" }
       );
 
+      const chainLinkOracle = "0x1B2103441A0A108daD8848D8F5d790e4D402921F";
+
+      let oracle = new ethers.Contract(
+        chainLinkOracle,
+        VENUS_CHAINLINK_ORACLE_ABI,
+        owner.provider
+      );
+
+      let oracleOwner = await oracle.owner();
+
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [oracleOwner],
+      });
+      const oracleSigner = await ethers.getSigner(oracleOwner);
+
+      const tx = await oracle.connect(oracleSigner).setTokenConfigs([
+        {
+          asset: "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
+          feed: "0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE",
+          maxStalePeriod: "31536000",
+        },
+        {
+          asset: "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
+          feed: "0x132d3C0B1D2cEa0BC552588063bdBb210FDeecfA",
+          maxStalePeriod: "31536000",
+        },
+        {
+          asset: "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
+          feed: "0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf",
+          maxStalePeriod: "31536000",
+        },
+      ]);
+      await tx.wait();
+
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
-
-      await protocolConfig.enableTokens([
-        iaddress.ethAddress,
-        iaddress.btcAddress,
-        iaddress.usdcAddress,
-        iaddress.usdtAddress,
-      ]);
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing", {
         libraries: {
@@ -259,6 +285,13 @@ describe.only("Tests for Deposit", () => {
       });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
+
+      const VenusAssetHandler = await ethers.getContractFactory(
+        "VenusAssetHandler"
+      );
+      venusAssetHandler = await VenusAssetHandler.deploy();
+      await venusAssetHandler.deployed();
+
       const PancakeSwapHandler = await ethers.getContractFactory(
         "UniswapV2Handler"
       );
@@ -267,7 +300,45 @@ describe.only("Tests for Deposit", () => {
 
       swapHandler.init(addresses.PancakeSwapRouterAddress);
 
+      await protocolConfig.setAssetHandlers(
+        [
+          addresses.vBNB_Address,
+          addresses.vBTC_Address,
+          addresses.vDAI_Address,
+          addresses.vUSDT_Address,
+          addresses.vUSDT_DeFi_Address,
+          addresses.corePool_controller,
+        ],
+        [
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+        ]
+      );
+
+      await protocolConfig.setSupportedControllers([
+        addresses.corePool_controller,
+      ]);
+
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
+
+      await protocolConfig.setAssetAndMarketControllers(
+        [
+          addresses.vBNB_Address,
+          addresses.vBTC_Address,
+          addresses.vDAI_Address,
+          addresses.vUSDT_Address
+        ],
+        [
+          addresses.corePool_controller,
+          addresses.corePool_controller,
+          addresses.corePool_controller,
+          addresses.corePool_controller
+        ]
+      );
 
       let whitelistedTokens = [
         iaddress.usdcAddress,
@@ -287,12 +358,7 @@ describe.only("Tests for Deposit", () => {
       let whitelist = [owner.address];
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena",
-        {
-          libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
-          },
-        }
+        "PositionManagerThena"
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -750,121 +816,48 @@ describe.only("Tests for Deposit", () => {
         await calculateOutputAmounts(position1, "10000");
       });
 
-      it("should rebalance from a position wrapper token to a ERC20 token", async () => {
-        // initialized tokens
-
+      it("should rebalance to lending token vBNB", async () => {
         let tokens = await portfolio.getTokens();
-        let sellToken = position1;
-        let buyToken = iaddress.usdtAddress;
+        let sellToken = tokens[3];
+        let buyToken = addresses.vBNB_Address;
 
-        let removedPosition = positionWrapper;
-
-        let token0 = await removedPosition.token0();
-        let token1 = await removedPosition.token1();
-
-        let newTokens = [
-          iaddress.usdcAddress,
-          position2,
-          iaddress.dogeAddress,
-          iaddress.btcAddress,
-          buyToken,
-        ];
-
-        positionWrappers = [position2];
-        swapTokens = [
-          iaddress.usdcAddress,
-          await positionWrapper2.token0(), // position2 - token0
-          await positionWrapper2.token1(), // position2 - token1
-          iaddress.dogeAddress,
-          iaddress.btcAddress,
-          iaddress.usdtAddress,
-        ];
-        positionWrapperIndex = [1];
-        portfolioTokenIndex = [0, 1, 1, 2, 3, 4];
-        isExternalPosition = [false, true, true, false, false, false];
-        isTokenExternalPosition = [false, true, false, false, false];
-        index0 = [1];
-        index1 = [2];
+        let newTokens = [tokens[0], tokens[1], tokens[2],buyToken,tokens[4]];
 
         let vault = await portfolio.vault();
 
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-        let sellTokenBalance = BigNumber.from(
+        let balance = BigNumber.from(
           await ERC20.attach(sellToken).balanceOf(vault)
         ).toString();
 
-        // get underlying amounts of position
-        let percentage = await amountCalculationsAlgebra.getPercentage(
-          sellTokenBalance,
-          await removedPosition.totalSupply()
-        );
+        let balanceToSwap = BigNumber.from(balance).toString();
+        console.log("Balance to rebalance", balanceToSwap);
 
-        let withdrawAmounts = await calculateOutputAmounts(
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
           sellToken,
-          percentage.toString()
-        );
-
-        let swapAmounts: any = [[]];
-        if (withdrawAmounts.token0Amount > 0) {
-          swapAmounts[0][0] = (
-            withdrawAmounts.token0Amount * 0.9999999
-          ).toFixed(0);
-        }
-
-        if (withdrawAmounts.token1Amount > 0) {
-          swapAmounts[0][1] = (
-            withdrawAmounts.token1Amount * 0.9999999
-          ).toFixed(0);
-        }
-
-        const postResponse0 = await createEnsoCallDataRoute(
-          ensoHandler.address,
-          ensoHandler.address,
-          token0,
           buyToken,
-          swapAmounts[0][0]
-        );
-
-        const postResponse1 = await createEnsoCallDataRoute(
-          ensoHandler.address,
-          ensoHandler.address,
-          token1,
-          buyToken,
-          swapAmounts[0][1]
-        );
-
-        let callDataEnso: any = [[]];
-        callDataEnso[0][0] = postResponse0.data.tx.data;
-        callDataEnso[0][1] = postResponse1.data.tx.data;
-
-        const callDataDecreaseLiquidity: any = [];
-        // Encode the function call
-        let ABI = [
-          "function decreaseLiquidity(address _positionWrapper, uint256 _withdrawalAmount, uint256 _amount0Min, uint256 _amount1Min, address tokenIn, address tokenOut, uint256 amountIn)",
-        ];
-        let abiEncode = new ethers.utils.Interface(ABI);
-        callDataDecreaseLiquidity[0] = abiEncode.encodeFunctionData(
-          "decreaseLiquidity",
-          [sellToken, sellTokenBalance, 0, 0, token0, token1, 0]
+          balanceToSwap
         );
 
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
           [
-            " bytes[][]", // callDataEnso
+            "bytes[][]", // callDataEnso
             "bytes[]", // callDataDecreaseLiquidity
             "bytes[][]", // callDataIncreaseLiquidity
             "address[][]", // increaseLiquidityTarget
             "address[]", // underlyingTokensDecreaseLiquidity
             "address[]", // tokensIn
             "address[]", // tokens
-            " uint256[]", // minExpectedOutputAmounts
+            "uint256[]", // minExpectedOutputAmounts
           ],
           [
-            callDataEnso,
-            callDataDecreaseLiquidity,
+            [[postResponse.data.tx.data]],
+            [],
             [[]],
             [[]],
-            [await removedPosition.token0(), await removedPosition.token1()],
+            [],
             [sellToken],
             [buyToken],
             [0],
@@ -874,10 +867,64 @@ describe.only("Tests for Deposit", () => {
         await rebalancing.updateTokens({
           _newTokens: newTokens,
           _sellTokens: [sellToken],
-          _sellAmounts: [sellTokenBalance],
+          _sellAmounts: [balanceToSwap],
           _handler: ensoHandler.address,
           _callData: encodedParameters,
         });
+
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
+        );
+        console.log(
+          "balance after buy",
+          await ERC20.attach(buyToken).balanceOf(vault)
+        );
+      })
+
+      it("should borrow USDT using vBNB as collateral", async () => {
+        console.log("newtokens", await portfolio.getTokens());
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let vault = await portfolio.vault();
+        console.log(
+          "USDT Balance before",
+          await ERC20.attach(addresses.USDT).balanceOf(vault)
+        );
+
+        await rebalancing.borrow(
+          addresses.vUSDT_Address,
+          [addresses.vBNB_Address],
+          addresses.USDT,
+          addresses.corePool_controller,
+          "5000000000000000000"
+        );
+        console.log(
+          "USDT Balance after",
+          await ERC20.attach(addresses.USDT).balanceOf(vault)
+        );
+      });
+
+      it("should borrow DAI using vBNB as collateral", async () => {
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let vault = await portfolio.vault();
+        console.log(
+          "DAI Balance before",
+          await ERC20.attach(addresses.DAI_Address).balanceOf(vault)
+        );
+
+        await rebalancing.borrow(
+          addresses.vDAI_Address,
+          [addresses.vBNB_Address],
+          addresses.DAI_Address,
+          addresses.corePool_controller,
+          "5000000000000000000"
+        );
+        console.log(
+          "DAI Balance after",
+          await ERC20.attach(addresses.DAI_Address).balanceOf(vault)
+        );
+
+        console.log("newtokens", await portfolio.getTokens());
       });
 
       it("Create a new position wrapper", async () => {
@@ -915,29 +962,34 @@ describe.only("Tests for Deposit", () => {
         let token1 = await addedPosition.token1();
 
         let newTokens = [
-          iaddress.usdcAddress,
-          position2,
-          iaddress.dogeAddress,
-          iaddress.btcAddress,
+          tokens[0],
+          tokens[1], // position1
+          tokens[2],
+          tokens[3],//position2
+          tokens[4],
           buyToken,
+          tokens[6]
         ];
 
-        positionWrappers = [position2, buyToken];
+        positionWrappers = [position1, position2, buyToken];
         swapTokens = [
           iaddress.usdcAddress,
           await positionWrapper2.token0(), // position2 - token0
           await positionWrapper2.token1(), // position2 - token1
           iaddress.dogeAddress,
-          iaddress.btcAddress,
-          await addedPosition.token0(), // position1 - token0
-          await addedPosition.token1(), // position1 - token1
+          addresses.vBNB_Address,
+          await positionWrapper.token0(), // position1 - token0
+          await positionWrapper.token1(), // position1 - token1
+          token0,
+          token1,
+          addresses.DAI_Address
         ];
-        positionWrapperIndex = [1, 4];
-        portfolioTokenIndex = [0, 1, 1, 2, 3, 4, 4];
-        isExternalPosition = [false, true, true, false, false, true, true];
-        isTokenExternalPosition = [false, true, false, false, true];
-        index0 = [1, 5];
-        index1 = [2, 6];
+        positionWrapperIndex = [1, 4, 5];
+        portfolioTokenIndex = [0, 1, 1, 2, 3, 4, 4, 5, 5,6];
+        isExternalPosition = [false, true, true, false, false, true, true, true, true, false];
+        isTokenExternalPosition = [false, true, false, false, true, true, false];
+        index0 = [1, 5, 7];
+        index1 = [2, 6, 8];
 
         let vault = await portfolio.vault();
 
@@ -1047,560 +1099,180 @@ describe.only("Tests for Deposit", () => {
         });
       });
 
-      it("should withdraw in single token by user in native token", async () => {
-        await ethers.provider.send("evm_increaseTime", [62]);
-
-        const supplyBefore = await portfolio.totalSupply();
-        const user = owner;
-        const tokenToSwapInto = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-
-        let responses = [];
-
-        const amountPortfolioToken = BigNumber.from(
-          await portfolio.balanceOf(user.address)
-        ).div(2);
-
-        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-        const balanceBefore = await provider.getBalance(user.address);
-        const tokens = await portfolio.getTokens();
-
-        let withdrawalAmounts =
-          await portfolioCalculations.getWithdrawalAmounts(
-            amountPortfolioToken,
-            portfolio.address
-          );
-
-        let swapAmounts = [];
-        let wrapperIndex = 0;
-        for (let i = 0; i < tokens.length; i++) {
-          // only push one amount
-          if (!isTokenExternalPosition[i]) {
-            swapAmounts.push(withdrawalAmounts[i]);
-          } else {
-            const PositionWrapper = await ethers.getContractFactory(
-              "PositionWrapper"
-            );
-            const positionWrapperCurrent = PositionWrapper.attach(
-              positionWrappers[wrapperIndex]
-            );
-            let percentage = await amountCalculationsAlgebra.getPercentage(
-              withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
-            );
-
-            let withdrawAmounts = await calculateOutputAmounts(
-              tokens[i],
-              percentage.toString()
-            );
-            if (withdrawAmounts.token0Amount > 0) {
-              swapAmounts.push(
-                (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
-              );
-            }
-            if (withdrawAmounts.token1Amount > 0) {
-              swapAmounts.push(
-                (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
-              );
-            }
-            wrapperIndex++;
-          }
-        }
-
-        await portfolio.approve(
-          withdrawManager.address,
-          BigNumber.from(amountPortfolioToken)
-        );
-
-        for (let i = 0; i < swapTokens.length; i++) {
-          if (swapTokens[i] == tokenToSwapInto) {
-            responses.push("0x");
-          } else {
-            let response = await createEnsoCallDataRoute(
-              withdrawBatch.address,
-              user.address,
-              swapTokens[i],
-              tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
-            );
-            responses.push(response.data.tx.data);
-          }
-        }
-
-        let balanceBeforeETH = await owner.getBalance();
-
-        /*
-    FunctionParameters.withdrawRepayParams calldata repayData,
-    FunctionParameters.ExternalPositionWithdrawParams memory _params*/
-
-        await withdrawManager.withdraw(
-          swapTokens,
-          portfolio.address,
-          tokenToSwapInto,
-          amountPortfolioToken,
-          responses,
-          0,
-          {
-            _factory: addresses.thena_factory,
-            _token0: zeroAddress,
-            _token1: zeroAddress,
-            _flashLoanToken: zeroAddress,
-            _bufferUnit: "0",
-            _solverHandler: ensoHandler.address,
-            _flashLoanAmount: [0],
-            firstSwapData: ["0x"],
-            secondSwapData: ["0x"],
-          },
-          {
-            _positionWrappers: positionWrappers,
-            _amountsMin0: [0, 0],
-            _amountsMin1: [0, 0],
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
-          }
-        );
-
-        let balanceAfterETH = await owner.getBalance();
-
-        const supplyAfter = await portfolio.totalSupply();
-
-        const balanceAfter = await provider.getBalance(user.address);
-
-        expect(Number(balanceAfter)).to.be.greaterThan(Number(balanceBefore));
-        expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
-      });
-
-      it("should withdraw in single token by user in native token", async () => {
-        await ethers.provider.send("evm_increaseTime", [62]);
-
-        const supplyBefore = await portfolio.totalSupply();
-        const user = owner;
-        const tokenToSwapInto = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-
-        let responses = [];
-
-        const amountPortfolioToken = BigNumber.from(
-          await portfolio.balanceOf(user.address)
-        );
-
-        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-        const balanceBefore = await provider.getBalance(user.address);
-        const tokens = await portfolio.getTokens();
-
-        let withdrawalAmounts =
-          await portfolioCalculations.getWithdrawalAmounts(
-            amountPortfolioToken,
-            portfolio.address
-          );
-
-        let swapAmounts = [];
-        let wrapperIndex = 0;
-        for (let i = 0; i < tokens.length; i++) {
-          // only push one amount
-          if (!isTokenExternalPosition[i]) {
-            swapAmounts.push(withdrawalAmounts[i]);
-          } else {
-            const PositionWrapper = await ethers.getContractFactory(
-              "PositionWrapper"
-            );
-            const positionWrapperCurrent = PositionWrapper.attach(
-              positionWrappers[wrapperIndex]
-            );
-            let percentage = await amountCalculationsAlgebra.getPercentage(
-              withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
-            );
-
-            let withdrawAmounts = await calculateOutputAmounts(
-              tokens[i],
-              percentage.toString()
-            );
-            if (withdrawAmounts.token0Amount > 0) {
-              swapAmounts.push(
-                (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
-              );
-            }
-            if (withdrawAmounts.token1Amount > 0) {
-              swapAmounts.push(
-                (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
-              );
-            }
-            wrapperIndex++;
-          }
-        }
-
-        await portfolio.approve(
-          withdrawManager.address,
-          BigNumber.from(amountPortfolioToken)
-        );
-
-        for (let i = 0; i < swapTokens.length; i++) {
-          if (swapTokens[i] == tokenToSwapInto) {
-            responses.push("0x");
-          } else {
-            let response = await createEnsoCallDataRoute(
-              withdrawBatch.address,
-              user.address,
-              swapTokens[i],
-              tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
-            );
-            responses.push(response.data.tx.data);
-          }
-        }
-
-        let balanceBeforeETH = await owner.getBalance();
-
-        await withdrawManager.withdraw(
-          swapTokens,
-          portfolio.address,
-          tokenToSwapInto,
-          amountPortfolioToken,
-          responses,
-          0,
-          {
-            _factory: addresses.thena_factory,
-            _token0: zeroAddress,
-            _token1: zeroAddress,
-            _flashLoanToken: zeroAddress,
-            _bufferUnit: "0",
-            _solverHandler: ensoHandler.address,
-            _flashLoanAmount: [0],
-            firstSwapData: ["0x"],
-            secondSwapData: ["0x"],
-          },
-          {
-            _positionWrappers: positionWrappers,
-            _amountsMin0: [0, 0],
-            _amountsMin1: [0, 0],
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
-          }
-        );
-
-        let balanceAfterETH = await owner.getBalance();
-
-        const supplyAfter = await portfolio.totalSupply();
-
-        const balanceAfter = await provider.getBalance(user.address);
-
-        expect(Number(balanceAfter)).to.be.greaterThan(Number(balanceBefore));
-        expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
-      });
-
-      it("user should invest", async () => {
+       it("should rebalance dai to vBNB", async () => {
         let tokens = await portfolio.getTokens();
+        let sellToken = tokens[6];
+        let buyToken = addresses.vBNB_Address;
 
-        const permit2 = await ethers.getContractAt(
-          "IAllowanceTransfer",
-          PERMIT2_ADDRESS
+        let newTokens = [tokens[0], tokens[1], tokens[2] ,tokens[3], tokens[4], tokens[5]];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let balance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        let balanceToSwap = BigNumber.from(balance).toString();
+
+        console.log("Balance to rebalance", balanceToSwap);
+
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          sellToken,
+          buyToken,
+          balanceToSwap
         );
 
-        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
 
-        const tokenToSwap = iaddress.usdcAddress;
-
-        await swapHandler.swapETHToTokens("500", tokenToSwap, owner.address, {
-          value: "3000000000000000000",
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [balanceToSwap],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
         });
 
-        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
-          owner.address
-        );
-
-        console.log("SupplyBefore", await portfolio.totalSupply());
-
-        let postResponse = [];
-
-        for (let i = 0; i < swapTokens.length; i++) {
-          let amountIn = BigNumber.from(amountToSwap).div(swapTokens.length);
-          if (tokenToSwap == swapTokens[i]) {
-            const abiCoder = ethers.utils.defaultAbiCoder;
-            const encodedata = abiCoder.encode(["uint"], [amountIn]);
-            postResponse.push(encodedata);
-          } else {
-            let response = await createEnsoCallDataRoute(
-              depositBatch.address,
-              depositBatch.address,
-              tokenToSwap,
-              swapTokens[i],
-              Number(amountIn)
-            );
-            postResponse.push(response.data.tx.data);
-          }
-        }
-
-        //----------Approval-------------
-
-        await ERC20.attach(tokenToSwap).approve(
-          depositManager.address,
-          amountToSwap.toString()
-        );
-
-        let balanceBefore = await ERC20.attach(tokenToSwap).balanceOf(
-          owner.address
-        );
-
-        await depositManager.deposit(
-          {
-            _minMintAmount: 0,
-            _depositAmount: amountToSwap.toString(),
-            _target: portfolio.address,
-            _depositToken: tokenToSwap,
-            _callData: postResponse,
-          },
-          {
-            _positionWrappers: positionWrappers,
-            _swapTokens: swapTokens,
-            _positionWrapperIndex: positionWrapperIndex,
-            _portfolioTokenIndex: portfolioTokenIndex,
-            _index0: index0,
-            _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
-            _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
-          }
-        );
-
-        let balanceAfter = await ERC20.attach(tokenToSwap).balanceOf(
-          owner.address
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
         );
         console.log(
-          "Balance Difference",
-          Number(BigNumber.from(balanceBefore)) -
-            Number(BigNumber.from(balanceAfter))
+          "balance after buy",
+          await ERC20.attach(buyToken).balanceOf(vault)
+        );
+       })
+
+       it("should repay borrowed dai using flashloan", async () => {
+        let vault = await portfolio.vault();
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
+        let flashloanBufferUnit = 23;//Flashloan buffer unit in 1/10000
+        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
+
+        let balanceBorrowed =
+          await portfolioCalculations.getVenusTokenBorrowedBalance(
+            [addresses.vDAI_Address],
+            vault
+          );
+        const userData = await venusAssetHandler.getUserAccountData(
+          vault,
+          addresses.corePool_controller
+        );
+        const lendTokens = userData[1].lendTokens;
+
+        console.log("balanceBorrowed before repay", balanceBorrowed);
+
+        const balanceToRepay = (balanceBorrowed[0]).toString();
+
+        const balanceToSwap = (await portfolioCalculations.calculateFlashLoanAmountForRepayment(
+          addresses.vDAI_Address,
+          addresses.vUSDT_Address,
+          addresses.corePool_controller,
+          balanceToRepay,
+          flashloanBufferUnit
+        )).toString();
+
+        console.log("balanceToRepay", balanceToRepay);
+        console.log("balanceToSwap", balanceToSwap);
+
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          addresses.USDT,
+          addresses.DAI_Address,
+          balanceToSwap
         );
 
-        console.log("SupplyAfter", await portfolio.totalSupply());
-
-        const userShare =
-          Number(BigNumber.from(await portfolio.balanceOf(owner.address))) /
-          Number(BigNumber.from(await portfolio.totalSupply()));
-        await calculateOutputAmounts(position1, "10000");
-      });
-
-      it("user should invest", async () => {
-        let tokens = await portfolio.getTokens();
-
-        const permit2 = await ethers.getContractAt(
-          "IAllowanceTransfer",
-          PERMIT2_ADDRESS
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          ["bytes[]", "address[]", "uint256[]"],
+          [[postResponse.data.tx.data], [addresses.DAI_Address], [0]]
         );
 
-        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let encodedParameters1 = [];
+        //Because repay(rebalance) is one borrow token at a time
+        const amounToSell =
+          await portfolioCalculations.getCollateralAmountToSell(
+            vault,
+            addresses.corePool_controller,
+            venusAssetHandler.address,
+            addresses.vDAI_Address,
+            balanceToRepay,
+            "10", //Flash loan fee
+            bufferUnit //Buffer unit for collateral amount
+          );
+        console.log("amounToSell", amounToSell);
+        console.log("lendTokens", lendTokens);
 
-        const tokenToSwap = iaddress.usdcAddress;
-
-        await swapHandler.swapETHToTokens("500", tokenToSwap, owner.address, {
-          value: "3000000000000000000",
-        });
-
-        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
-          owner.address
-        );
-
-        console.log("SupplyBefore", await portfolio.totalSupply());
-
-        let postResponse = [];
-
-        for (let i = 0; i < swapTokens.length; i++) {
-          let amountIn = BigNumber.from(amountToSwap).div(swapTokens.length);
-          if (tokenToSwap == swapTokens[i]) {
-            const abiCoder = ethers.utils.defaultAbiCoder;
-            const encodedata = abiCoder.encode(["uint"], [amountIn]);
-            postResponse.push(encodedata);
-          } else {
-            let response = await createEnsoCallDataRoute(
-              depositBatch.address,
-              depositBatch.address,
-              tokenToSwap,
-              swapTokens[i],
-              Number(amountIn)
-            );
-            postResponse.push(response.data.tx.data);
-          }
-        }
-
-        //----------Approval-------------
-
-        await ERC20.attach(tokenToSwap).approve(
-          depositManager.address,
-          amountToSwap.toString()
-        );
-
-        let balanceBefore = await ERC20.attach(tokenToSwap).balanceOf(
-          owner.address
-        );
-
-        await depositManager.deposit(
-          {
-            _minMintAmount: 0,
-            _depositAmount: amountToSwap.toString(),
-            _target: portfolio.address,
-            _depositToken: tokenToSwap,
-            _callData: postResponse,
-          },
-          {
-            _positionWrappers: positionWrappers,
-            _swapTokens: swapTokens,
-            _positionWrapperIndex: positionWrapperIndex,
-            _portfolioTokenIndex: portfolioTokenIndex,
-            _index0: index0,
-            _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
-            _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
-          }
-        );
-
-        let balanceAfter = await ERC20.attach(tokenToSwap).balanceOf(
-          owner.address
-        );
-        console.log(
-          "Balance Difference",
-          Number(BigNumber.from(balanceBefore)) -
-            Number(BigNumber.from(balanceAfter))
-        );
-
-        console.log("SupplyAfter", await portfolio.totalSupply());
-
-        const userShare =
-          Number(BigNumber.from(await portfolio.balanceOf(owner.address))) /
-          Number(BigNumber.from(await portfolio.totalSupply()));
-        await calculateOutputAmounts(position1, "10000");
-      });
-
-      it("should withdraw in single token by user in native token", async () => {
-        await ethers.provider.send("evm_increaseTime", [62]);
-
-        const supplyBefore = await portfolio.totalSupply();
-        const user = owner;
-        const tokenToSwapInto = iaddress.usdcAddress;
-
-        let responses = [];
-
-        const amountPortfolioToken = BigNumber.from(
-          await portfolio.balanceOf(user.address)
-        );
-
-        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-        const balanceBefore = await provider.getBalance(user.address);
-        const tokens = await portfolio.getTokens();
-
-        let withdrawalAmounts =
-          await portfolioCalculations.getWithdrawalAmounts(
-            amountPortfolioToken,
-            portfolio.address
+        for (let j = 0; j < lendTokens.length; j++) {
+          const postResponse1 = await createEnsoCallDataRoute(
+            ensoHandler.address,
+            ensoHandler.address,
+            lendTokens[j],
+            addresses.USDT,
+            amounToSell[j].toString() //Need calculation here
           );
 
-        let swapAmounts = [];
-        let wrapperIndex = 0;
-        for (let i = 0; i < tokens.length; i++) {
-          // only push one amount
-          if (!isTokenExternalPosition[i]) {
-            swapAmounts.push(withdrawalAmounts[i]);
-          } else {
-            const PositionWrapper = await ethers.getContractFactory(
-              "PositionWrapper"
-            );
-            const positionWrapperCurrent = PositionWrapper.attach(
-              positionWrappers[wrapperIndex]
-            );
-            let percentage = await amountCalculationsAlgebra.getPercentage(
-              withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
-            );
-
-            let withdrawAmounts = await calculateOutputAmounts(
-              tokens[i],
-              percentage.toString()
-            );
-            swapAmounts.push(
-              (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
-            );
-            swapAmounts.push(
-              (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
-            );
-            wrapperIndex++;
-          }
+          encodedParameters1.push(
+            ethers.utils.defaultAbiCoder.encode(
+              ["bytes[]", "address[]", "uint256[]"],
+              [[postResponse1.data.tx.data], [addresses.USDT], [0]]
+            )
+          );
         }
 
-        await portfolio.approve(
-          withdrawManager.address,
-          BigNumber.from(amountPortfolioToken)
-        );
+        await rebalancing.repay(addresses.corePool_controller, {
+          _factory: addresses.thena_factory,
+          _token0: addresses.USDT, //USDT - Pool token
+          _token1: addresses.USDC_Address, //USDC - Pool token
+          _flashLoanToken: addresses.USDT, //Token to take flashlaon
+          _debtToken: [addresses.DAI_Address], //Token to pay debt of
+          _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
+          _bufferUnit: bufferUnit, //Buffer unit for collateral amount
+          _solverHandler: ensoHandler.address, //Handler to swap
+          _flashLoanAmount: [balanceToSwap],
+          _debtRepayAmount: [balanceToRepay],
+          firstSwapData: [encodedParameters],
+          secondSwapData: encodedParameters1,
+          isMaxRepayment: false
+        });
 
-        for (let i = 0; i < swapTokens.length; i++) {
-          if (swapTokens[i] == tokenToSwapInto) {
-            responses.push("0x");
-          } else {
-            let response = await createEnsoCallDataRoute(
-              withdrawBatch.address,
-              user.address,
-              swapTokens[i],
-              tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
-            );
-            responses.push(response.data.tx.data);
-          }
-        }
-
-        let balanceBeforeETH = await owner.getBalance();
-
-        let balanceBeforeI = await ERC20.attach(tokenToSwapInto).balanceOf(
-          owner.address
-        );
-
-        await withdrawManager.withdraw(
-          swapTokens,
-          portfolio.address,
-          tokenToSwapInto,
-          amountPortfolioToken,
-          responses,
-          0,
-          {
-            _factory: addresses.thena_factory,
-            _token0: zeroAddress,
-            _token1: zeroAddress,
-            _flashLoanToken: zeroAddress,
-            _bufferUnit: "0",
-            _solverHandler: ensoHandler.address,
-            _flashLoanAmount: [0],
-            firstSwapData: ["0x"],
-            secondSwapData: ["0x"],
-          },
-          {
-            _positionWrappers: positionWrappers,
-            _amountsMin0: [0, 0],
-            _amountsMin1: [0, 0],
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
-          }
-        );
-
-        let balanceAfterETH = await owner.getBalance();
-
-        let balanceAfterI = await ERC20.attach(tokenToSwapInto).balanceOf(
-          owner.address
-        );
         console.log(
-          "Balance Difference",
-          Number(BigNumber.from(balanceAfterI)) -
-            Number(BigNumber.from(balanceBeforeI))
+          "Balance of vToken After",
+          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
         );
 
-        const supplyAfter = await portfolio.totalSupply();
+        balanceBorrowed =
+          await portfolioCalculations.getVenusTokenBorrowedBalance(
+            [addresses.vUSDT_Address],
+            vault
+          );
 
-        expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
-      });
+        console.log("balanceBorrowed after repay", balanceBorrowed);
+       })
     });
   });
 });

@@ -41,6 +41,7 @@ import {
   FeeModule,
   FeeModule__factory,
   EnsoHandler,
+  VenusAssetHandler,
   EnsoHandlerBundled,
   AccessController__factory,
   TokenExclusionManager__factory,
@@ -86,6 +87,7 @@ describe.only("Tests for Deposit", () => {
   let swapHandler: UniswapV2Handler;
   let borrowManager: BorrowManager;
   let tokenBalanceLibrary: TokenBalanceLibrary;
+  let venusAssetHandler: VenusAssetHandler;
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
@@ -244,6 +246,12 @@ describe.only("Tests for Deposit", () => {
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
+      const VenusAssetHandler = await ethers.getContractFactory(
+        "VenusAssetHandler"
+      );
+      venusAssetHandler = await VenusAssetHandler.deploy();
+      await venusAssetHandler.deployed();
+
       const Portfolio = await ethers.getContractFactory("Portfolio", {
         libraries: {
           TokenBalanceLibrary: tokenBalanceLibrary.address,
@@ -259,7 +267,45 @@ describe.only("Tests for Deposit", () => {
 
       swapHandler.init(addresses.PancakeSwapRouterAddress);
 
+      await protocolConfig.setAssetHandlers(
+        [
+          addresses.vBNB_Address,
+          addresses.vBTC_Address,
+          addresses.vDAI_Address,
+          addresses.vUSDT_Address,
+          addresses.vUSDT_DeFi_Address,
+          addresses.corePool_controller,
+        ],
+        [
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+          venusAssetHandler.address,
+        ]
+      );
+
+      await protocolConfig.setSupportedControllers([
+        addresses.corePool_controller,
+      ]);
+
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
+
+      await protocolConfig.setAssetAndMarketControllers(
+        [
+          addresses.vBNB_Address,
+          addresses.vBTC_Address,
+          addresses.vDAI_Address,
+          addresses.vUSDT_Address
+        ],
+        [
+          addresses.corePool_controller,
+          addresses.corePool_controller,
+          addresses.corePool_controller,
+          addresses.corePool_controller
+        ]
+      );
 
       let whitelistedTokens = [
         iaddress.usdcAddress,
