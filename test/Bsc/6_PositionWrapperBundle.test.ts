@@ -1007,8 +1007,8 @@ describe.only("Tests for Deposit", () => {
             owner.address, // _dustReceiver
             buyToken, // _positionWrapper
             {
-              _amount0Desired: (depositAmounts.amount0 * 0.9995).toFixed(0),
-              _amount1Desired: (depositAmounts.amount1 * 0.9995).toFixed(0),
+              _amount0Desired: (depositAmounts.amount0 * 0.999).toFixed(0),
+              _amount1Desired: (depositAmounts.amount1 * 0.999).toFixed(0),
               _amount0Min: 0,
               _amount1Min: 0,
             },
