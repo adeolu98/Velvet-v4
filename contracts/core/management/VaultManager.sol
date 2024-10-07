@@ -19,6 +19,7 @@ import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
 import {FunctionParameters} from "../../FunctionParameters.sol";
 import {TokenBalanceLibrary} from "../calculations/TokenBalanceLibrary.sol";
 import {IBorrowManager} from "../interfaces/IBorrowManager.sol";
+import "hardhat/console.sol";
 
 /**
  * @title VaultManager
@@ -635,7 +636,7 @@ abstract contract VaultManager is
         }
 
         if (
-          TokenBalanceLibrary._getTokenBalanceOf(
+          TokenBalanceLibrary._getTokenBalanceOf( //Need here normal getTokenBalanceOf
             portfolioToken,
             vault,
             _protocolConfig

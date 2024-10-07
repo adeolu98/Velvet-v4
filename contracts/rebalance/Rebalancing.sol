@@ -13,7 +13,6 @@ import "@cryptoalgebra/integral-periphery/contracts/libraries/TransferHelper.sol
 import "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import { IThena } from "../core/interfaces/IThena.sol";
 import { IVenusPool } from "../core/interfaces/IVenusPool.sol";
-import { FunctionParameters } from "../FunctionParameters.sol";
 import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
 import { TokenBalanceLibrary } from "../core/calculations/TokenBalanceLibrary.sol";
 import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
@@ -153,7 +152,6 @@ contract Rebalancing is
     }
 
     // Ensure that each token bought by the solver is in the portfolio list.
-
     _verifyNewTokenList(ensoBuyTokens, _newTokens);
   }
 
@@ -344,10 +342,10 @@ contract Rebalancing is
         if (_isPortfolioToken(_token, _getCurrentTokens()))
             revert ErrorLibrary.IsPortfolioToken();
 
-    uint256 tokenBalanceToRemove = _getTokenBalanceForPartialRemoval(
-      _token,
-      _percentage
-    );
+      uint256 tokenBalanceToRemove = _getTokenBalanceForPartialRemoval(
+        _token,
+        _percentage
+      );
 
         _tokenRemoval(_token, tokenBalanceToRemove);
     }
