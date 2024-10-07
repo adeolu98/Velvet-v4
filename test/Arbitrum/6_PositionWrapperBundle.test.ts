@@ -513,12 +513,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [0, 0],
+            _amount1Min: [0, 0],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           },
           {
             value: "1000000000000000000",
@@ -587,12 +587,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [0, 0],
+            _amount1Min: [0, 0],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 
@@ -663,12 +663,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [0, 0],
+            _amount1Min: [0, 0],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 
