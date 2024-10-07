@@ -391,4 +391,9 @@ library FunctionParameters {
     address _to;
     bytes _calldata;
   }
+
+  struct UnusedCollateral{
+    address[] _controllers;
+    uint256[] _unusedCollateralPercentage;
+  }
 }

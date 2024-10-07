@@ -19,6 +19,7 @@ import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
 import {FunctionParameters} from "../../FunctionParameters.sol";
 import {TokenBalanceLibrary} from "../calculations/TokenBalanceLibrary.sol";
 import {IBorrowManager} from "../interfaces/IBorrowManager.sol";
+import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
 import "hardhat/console.sol";
 
 /**
@@ -416,6 +417,7 @@ abstract contract VaultManager is
     );
     for (uint256 i; i < portfolioTokenLength; i++) {
       address _token = portfolioTokens[i];
+
       // Calculate the proportion of each token to return based on the burned portfolio tokens.
       uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
         _token,
@@ -593,6 +595,26 @@ abstract contract VaultManager is
     if (amountLength != portfolioTokens.length) {
       revert ErrorLibrary.InvalidDepositInputLength();
     }
+
+    //Calculate everything needed(callateral and debt)
+      address[] memory controllers = _protocolConfig
+            .getSupportedControllers();
+
+      uint256 unusedCollateralPercentage;
+      for(uint256 j; j < controllers.length; j++){
+        address controller = controllers[j];
+        IAssetHandler assetHandler = IAssetHandler(_protocolConfig.assetHandlers(controller));
+        (FunctionParameters.AccountData memory accountData, ) = 
+            assetHandler.getUserAccountData(vault, controller);
+        if (accountData.totalCollateral == 0) {
+          // If there's no collateral, return 100% as unused
+          unusedCollateralPercentage = 1e18;
+        }else{
+          // Calculate the percentage of collateral that's not being used to back debt
+          // The result is scaled by 1e18 for precision
+          unusedCollateralPercentage = ((accountData.totalCollateral - accountData.totalDebt) * 1e18) / accountData.totalCollateral;
+        }
+      }
 
     // Get current token balances in the vault for ratio calculations
     uint256[] memory tokenBalancesBefore = TokenBalanceLibrary

@@ -61,10 +61,11 @@ const chainIds = {
 };
 
 const config: HardhatUserConfig = {
+  solidity: "0.8.17",
   gasReporter: {
     enabled: true,
-    currency: "USD",
-    showTimeSpent: true,
+    currency: 'USD',
+    gasPrice: 21
   },
   networks: {
     hardhat: {
