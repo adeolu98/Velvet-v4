@@ -151,7 +151,7 @@ contract PortfolioCalculations is ExponentialNoError {
         IProtocolConfig _protocolConfig = IProtocolConfig(
             portfolio.protocolConfig()
         );
-        uint256[] memory vaultBalance = TokenBalanceLibrary.getTokenBalancesOf(
+        (uint256[] memory vaultBalance, TokenBalanceLibrary.ControllerData[] memory controllersData) = TokenBalanceLibrary.getTokenBalancesOf(
             portfolio.getTokens(),
             portfolio.vault(),
             _protocolConfig
@@ -259,11 +259,12 @@ contract PortfolioCalculations is ExponentialNoError {
         for (uint256 i = 0; i < tokensLength; i++) {
             address _token = tokens[i];
             // Calculate the proportion of each token to return based on the burned portfolio tokens.
-            uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
-                _token,
-                _vault,
-                _protocolConfig
-            );
+            uint256 tokenBalance;
+            // TokenBalanceLibrary._getTokenBalanceOf(
+            //     _token,
+            //     _vault,
+            //     _protocolConfig
+            // );
             tokenBalance =
                 (tokenBalance * afterFeeAmount) /
                 totalSupplyPortfolio;

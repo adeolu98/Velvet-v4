@@ -133,6 +133,18 @@ contract RebalancingConfig is AccessRoles, Initializable {
         return result;
     }
 
+    function getTokenBalancesOf(
+        address[] memory _tokens,
+        address _of
+    ) internal view returns (uint256[] memory) {
+        uint256 tokensLength = _tokens.length;
+        uint256[] memory tokenBalances = new uint256[](tokensLength);
+        for (uint256 i; i < tokensLength; i++) {
+            tokenBalances[i] = _getTokenBalanceOf(_tokens[i], _of);
+        }
+        return tokenBalances;
+    }
+
     function _getTokenBalanceOf(
         address _token,
         address _of

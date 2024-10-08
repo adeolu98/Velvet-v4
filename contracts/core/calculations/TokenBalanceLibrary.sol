@@ -5,6 +5,8 @@ import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20
 import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
 import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
 import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
+
 
 /**
  * @title Token Balance Library
@@ -12,6 +14,47 @@ import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
  * and collective token balances from a specified vault address.
  */
 library TokenBalanceLibrary {
+    struct ControllerData {
+        address controller;
+        uint256 unusedCollateralPercentage;
+    }
+
+    function getControllersData(
+        address vault,
+        IProtocolConfig _protocolConfig
+    ) public view returns (ControllerData[] memory controllersData) {
+        address[] memory controllers = _protocolConfig.getSupportedControllers();
+        controllersData = new ControllerData[](controllers.length);
+
+        for (uint256 i; i < controllers.length; i++) {
+            address controller = controllers[i];
+            IAssetHandler assetHandler = IAssetHandler(_protocolConfig.assetHandlers(controller));
+            (FunctionParameters.AccountData memory accountData, ) = 
+                assetHandler.getUserAccountData(vault, controller);
+            
+            uint256 unusedCollateralPercentage;
+            if (accountData.totalCollateral == 0) {
+                unusedCollateralPercentage = 1e18; // 100% unused if no collateral
+            } else {
+                unusedCollateralPercentage = ((accountData.totalCollateral - accountData.totalDebt) * 1e18) / accountData.totalCollateral;
+            }
+
+            controllersData[i] = ControllerData({
+                controller: controller,
+                unusedCollateralPercentage: unusedCollateralPercentage
+            });
+        }
+    }
+
+    function findControllerData(ControllerData[] memory controllersData, address controller) internal pure returns (ControllerData memory) {
+        for (uint256 i; i < controllersData.length; i++) {
+            if (controllersData[i].controller == controller) {
+                return controllersData[i];
+            }
+        }
+        revert ErrorLibrary.ControllerDataNotFound();
+    }
+
     /**
      * @notice Fetches the balances of multiple tokens from a single vault.
      * @dev Iterates through an array of token addresses to retrieve each token's balance in the vault.
@@ -25,14 +68,19 @@ library TokenBalanceLibrary {
         address[] memory portfolioTokens,
         address _vault,
         IProtocolConfig _protocolConfig
-    ) public view returns (uint256[] memory vaultBalances) {
+    ) public view returns (uint256[] memory vaultBalances, ControllerData[] memory controllersData) {
         uint256 portfolioLength = portfolioTokens.length;
         vaultBalances = new uint256[](portfolioLength); // Initializes the array to hold fetched balances.
+        
+        controllersData = 
+            getControllersData(_vault, _protocolConfig);
+
         for (uint256 i; i < portfolioLength;) {
             vaultBalances[i] = _getTokenBalanceOf(
                 portfolioTokens[i],
                 _vault,
-                _protocolConfig
+                _protocolConfig,
+                controllersData
             ); // Fetches balance for each token.
             unchecked { ++i; }
         }
@@ -50,18 +98,20 @@ library TokenBalanceLibrary {
     function _getTokenBalanceOf(
         address _token,
         address _vault,
-        IProtocolConfig _protocolConfig
+        IProtocolConfig _protocolConfig,
+        ControllerData[] memory controllersData
     ) public view returns (uint256 tokenBalance) {
         if (_token == address(0) || _vault == address(0))
             revert ErrorLibrary.InvalidAddress(); // Ensures neither the token nor the vault address is zero.
-        // Need to optimize it, so that, we don't have to getUserAccountData for all protocol tokens
-        tokenBalance = _protocolConfig.isBorrowableToken(_token)
-            ? IAssetHandler(_protocolConfig.assetHandlers(_token))
-                .getInvestibleBalance(
-                    _token,
-                    _vault,
-                    _protocolConfig.marketControllers(_token)
-                )
-            : IERC20Upgradeable(_token).balanceOf(_vault); // Actual balance fetch.
+        if (_protocolConfig.isBorrowableToken(_token)) {
+            address controller = _protocolConfig.marketControllers(_token);
+            ControllerData memory controllerData = 
+                findControllerData(controllersData, controller);
+            
+            uint256 rawBalance = IERC20Upgradeable(_token).balanceOf(_vault);
+            tokenBalance = (rawBalance * controllerData.unusedCollateralPercentage) / 1e18;
+        } else {
+            tokenBalance = IERC20Upgradeable(_token).balanceOf(_vault);
+        }
     }
 }
