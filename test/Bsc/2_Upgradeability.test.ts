@@ -231,7 +231,7 @@ describe.only("Tests for Upgradeability", () => {
           },
         }
       );
-      const positionManagerBaseAddress = await PositionManagerThena.deploy();
+      const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule");

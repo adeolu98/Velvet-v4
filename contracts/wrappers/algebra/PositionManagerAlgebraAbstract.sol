@@ -375,30 +375,30 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
   function _swapTokenToToken(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal override returns (uint256 balance0, uint256 balance1) {
+    address tokenIn = _params._tokenIn;
+    address tokenOut = _params._tokenOut;
+
     if (
-      _params._tokenIn == _params._tokenOut ||
-      !(_params._tokenOut == _params._token0 ||
-        _params._tokenOut == _params._token1) ||
-      !(_params._tokenIn == _params._token0 ||
-        _params._tokenIn == _params._token1)
+      tokenIn == tokenOut ||
+      !(tokenOut == _params._token0 || tokenOut == _params._token1) ||
+      !(tokenIn == _params._token0 || tokenIn == _params._token1)
     ) {
       revert ErrorLibrary.InvalidTokenAddress();
     }
 
-    IERC20Upgradeable(_params._tokenIn).approve(
-      address(router),
-      _params._amountIn
-    );
+    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
 
-    uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(_params._tokenIn)
-      .balanceOf(address(this));
-    uint256 balanceTokenOutBeforeSwap = IERC20Upgradeable(_params._tokenOut)
-      .balanceOf(address(this));
+    uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(tokenIn).balanceOf(
+      address(this)
+    );
+    uint256 balanceTokenOutBeforeSwap = IERC20Upgradeable(tokenOut).balanceOf(
+      address(this)
+    );
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
       .ExactInputSingleParams({
-        tokenIn: _params._tokenIn,
-        tokenOut: _params._tokenOut,
+        tokenIn: tokenIn,
+        tokenOut: tokenOut,
         recipient: address(this),
         deadline: block.timestamp,
         amountIn: _params._amountIn,
@@ -409,10 +409,10 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     router.exactInputSingle(params);
 
     SwapVerificationLibrary.verifySwap(
-      _params._tokenIn,
-      _params._tokenOut,
+      tokenIn,
+      tokenOut,
       _params._amountIn,
-      IERC20Upgradeable(_params._tokenOut).balanceOf(address(this)) -
+      IERC20Upgradeable(tokenOut).balanceOf(address(this)) -
         balanceTokenOutBeforeSwap,
       protocolConfig.acceptedSlippageFeeReinvestment(),
       IPriceOracle(protocolConfig.oracle())
@@ -427,7 +427,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       _params._token0,
       _params._token1,
       balanceTokenInBeforeSwap,
-      IERC20Upgradeable(_params._tokenIn).balanceOf(address(this))
+      IERC20Upgradeable(tokenIn).balanceOf(address(this))
     );
   }
 

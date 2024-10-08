@@ -213,7 +213,7 @@ describe.only("Tests for Portfolio Config", () => {
           },
         }
       );
-      const positionManagerBaseAddress = await PositionManagerThena.deploy();
+      const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule", {});

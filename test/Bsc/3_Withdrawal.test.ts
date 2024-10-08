@@ -230,7 +230,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           },
         }
       );
-      const positionManagerBaseAddress = await PositionManagerThena.deploy();
+      const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule", {});
