@@ -698,6 +698,19 @@ abstract contract VaultManager is
       );
   }
 
+  /**
+   * @notice Handles token transfers for an empty vault.
+   * @dev This function is called when the total supply is zero, indicating an empty vault.
+   * It transfers the specified amounts of each token from the user to the vault.
+   * @param _from The address from which tokens are transferred.
+   * @param amountLength The number of tokens to be transferred.
+   * @param depositAmounts An array of amounts to be deposited for each token.
+   * @param portfolioTokens An array of token addresses in the portfolio.
+   * @param tokenBalancesBefore An array of token balances before the transfer.
+   * @param usePermit A boolean indicating whether to use permit for transfers.
+   * @param controllersData An array of controller data for balance calculations.
+   * @return uint256 Returns 0 as there's no ratio to calculate for an empty vault.
+   */
   function _handleEmptyVaultTransfer(
     address _from,
     uint256 amountLength,
@@ -732,6 +745,15 @@ abstract contract VaultManager is
     return 0;
   }
 
+  /**
+   * @notice Calculates the minimum ratio among all deposit amounts and their corresponding vault balances.
+   * @dev This function iterates through all tokens and calculates the ratio of deposit amount to vault balance,
+   * then returns the minimum ratio found.
+   * @param amountLength The number of tokens to process.
+   * @param depositAmounts An array of deposit amounts for each token.
+   * @param tokenBalancesBefore An array of token balances in the vault before the deposit.
+   * @return uint256 The minimum ratio found among all tokens.
+   */
   function _calculateMinRatio(
     uint256 amountLength,
     uint256[] calldata depositAmounts,
@@ -748,6 +770,18 @@ abstract contract VaultManager is
     return _minRatio;
   }
 
+  /**
+   * @notice Executes token transfers from the user to the vault based on the calculated minimum ratio.
+   * @dev This function transfers tokens, updates balances, and calculates the new minimum ratio after transfers.
+   * @param _from The address from which tokens are transferred.
+   * @param amountLength The number of tokens to process.
+   * @param portfolioTokens An array of token addresses in the portfolio.
+   * @param tokenBalancesBefore An array of token balances before the transfer.
+   * @param _minRatio The minimum ratio calculated before transfers.
+   * @param usePermit A boolean indicating whether to use permit for transfers.
+   * @param controllersData An array of controller data for balance calculations.
+   * @return uint256 The new minimum ratio after all transfers are completed.
+   */
   function _executeTransfers(
     address _from,
     uint256 amountLength,
@@ -789,6 +823,14 @@ abstract contract VaultManager is
     return _minRatioAfterTransfer;
   }
 
+  /**
+   * @notice Transfers a specified amount of tokens from a user to the vault.
+   * @dev This function chooses between permit and regular transfer based on the usePermit parameter.
+   * @param _from The address from which tokens are transferred.
+   * @param token The address of the token to transfer.
+   * @param amount The amount of tokens to transfer.
+   * @param usePermit A boolean indicating whether to use permit for the transfer.
+   */
   function _transferToken(
     address _from,
     address token,
