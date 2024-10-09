@@ -57,6 +57,12 @@ contract PositionWrapper is
     string memory _name,
     string memory _symbol
   ) external initializer {
+    if (
+      _positionManager == address(0) ||
+      _token0 == address(0) ||
+      _token1 == address(0)
+    ) revert ErrorLibrary.InvalidAddress();
+
     __UUPSUpgradeable_init();
     __Ownable_init();
     token0 = _token0;

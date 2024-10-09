@@ -239,6 +239,8 @@ interface IProtocolConfig {
 
   function allowedRatioDeviationBps() external view returns (uint256);
 
+  function acceptedSlippageFeeReinvestment() external view returns (uint256);
+
   function marketControllers(address _asset) external view returns (address);
 
   function assetHandlers(address _asset) external view returns (address);
@@ -251,5 +253,7 @@ interface IProtocolConfig {
 
   function isBorrowableToken(address _asset) external view returns (bool);
 
-  function isSupportedFactory(address _factoryAddress) external view returns (bool);
+  function isSupportedFactory(
+    address _factoryAddress
+  ) external view returns (bool);
 }

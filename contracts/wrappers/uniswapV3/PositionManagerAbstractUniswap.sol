@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, INonfungiblePositionManager, ErrorLibrary, IERC20Upgradeable } from "../abstract/PositionManagerAbstract.sol";
+import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, INonfungiblePositionManager, ErrorLibrary, IERC20Upgradeable, TransferHelper } from "../abstract/PositionManagerAbstract.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IFactory } from "./IFactory.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-
+import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
+import { SwapVerificationLibrary } from "../abstract/SwapVerificationLibrary.sol";
 /**
  * @title PositionManagerAbstractUniswap
  * @dev Extension of PositionManagerAbstract for managing Uniswap V3 positions with added features like custom token swapping.
  */
 abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
-  ISwapRouter router;
+  ISwapRouter internal router;
 
   /**
    * @dev Initializes the contract with additional protocol configuration and swap router addresses.
@@ -57,6 +58,8 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     string memory _symbol,
     WrapperFunctionParameters.PositionMintParams memory params
   ) external notPaused nonReentrant returns (address) {
+    if (_dustReceiver == address(0)) revert ErrorLibrary.InvalidAddress();
+
     // Create and initialize a new wrapper position
     IPositionWrapper positionWrapper = createNewWrapperPosition(
       _token0,
@@ -86,6 +89,9 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     IPositionWrapper _positionWrapper,
     WrapperFunctionParameters.InitialMintParams memory params
   ) external notPaused nonReentrant {
+    if (address(_positionWrapper) == address(0) || _dustReceiver == address(0))
+      revert ErrorLibrary.InvalidAddress();
+
     // Mint the new Uniswap V3 position using the provided liquidity parameters.
     _initializePositionAndDeposit(
       _dustReceiver,
@@ -122,8 +128,10 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     int24 _tickLower,
     int24 _tickUpper
   ) external notPaused onlyAssetManager {
-    uint256 tokenId = _positionWrapper.tokenId();
+    if (address(_positionWrapper) == address(0))
+      revert ErrorLibrary.InvalidAddress();
 
+    uint256 tokenId = _positionWrapper.tokenId();
     address token0 = _positionWrapper.token0();
     address token1 = _positionWrapper.token1();
 
@@ -192,6 +200,9 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     int24 _tickLower,
     int24 _tickUpper
   ) public notPaused onlyAssetManager returns (IPositionWrapper) {
+    if (_token0 == address(0) || _token1 == address(0))
+      revert ErrorLibrary.InvalidAddress();
+
     // Check if both tokens are whitelisted if the token whitelisting feature is enabled.
     if (
       assetManagementConfig.tokenWhitelistingEnabled() &&
@@ -200,6 +211,11 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     ) {
       revert ErrorLibrary.TokenNotWhitelisted();
     }
+
+    if (
+      !protocolConfig.isTokenEnabled(_token0) ||
+      !protocolConfig.isTokenEnabled(_token1)
+    ) revert ErrorLibrary.TokenNotEnabled();
 
     (address token0, address token1) = _getTokensInPoolOrder(
       _token0,
@@ -352,7 +368,13 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       (uint128 tokensOwed0, uint128 tokensOwed1) = _getTokensOwed(
         _params._tokenId
       );
-      _verifyZeroSwapAmountForReinvestFees(_params, tokensOwed0, tokensOwed1);
+      SwapVerificationLibrary.verifyZeroSwapAmountForReinvestFees(
+        protocolConfig,
+        _params,
+        address(uniswapV3PositionManager),
+        tokensOwed0,
+        tokensOwed1
+      );
     }
   }
 
@@ -365,30 +387,33 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
   function _swapTokenToToken(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal override returns (uint256 balance0, uint256 balance1) {
-    address tokenIn = _params._tokenIn;
-    address tokenOut = _params._tokenOut;
-
-    address token0 = _params._token0;
-    address token1 = _params._token1;
-
     if (
-      tokenIn == tokenOut ||
-      !(tokenOut == token0 || tokenOut == token1) ||
-      !(tokenIn == token0 || tokenIn == token1)
+      _params._tokenIn == _params._tokenOut ||
+      !(_params._tokenOut == _params._token0 ||
+        _params._tokenOut == _params._token1) ||
+      !(_params._tokenIn == _params._token0 ||
+        _params._tokenIn == _params._token1)
     ) {
       revert ErrorLibrary.InvalidTokenAddress();
     }
 
-    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
-
-    uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(tokenIn).balanceOf(
-      address(this)
+    TransferHelper.safeApprove(_params._tokenIn, address(router), 0);
+    TransferHelper.safeApprove(
+      _params._tokenIn,
+      address(router),
+      _params._amountIn
     );
+
+    uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(_params._tokenIn)
+      .balanceOf(address(this));
+
+    uint256 balanceTokenOutBeforeSwap = IERC20Upgradeable(_params._tokenOut)
+      .balanceOf(address(this));
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
       .ExactInputSingleParams({
-        tokenIn: tokenIn,
-        tokenOut: tokenOut,
+        tokenIn: _params._tokenIn,
+        tokenOut: _params._tokenOut,
         fee: 100,
         recipient: address(this),
         deadline: block.timestamp,
@@ -399,16 +424,27 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
 
     router.exactInputSingle(params);
 
-    uint256 balanceTokenInAfterSwap = IERC20Upgradeable(tokenIn).balanceOf(
-      address(this)
+    SwapVerificationLibrary.verifySwap(
+      _params._tokenIn,
+      _params._tokenOut,
+      _params._amountIn,
+      IERC20Upgradeable(_params._tokenOut).balanceOf(address(this)) -
+        balanceTokenOutBeforeSwap,
+      protocolConfig.acceptedSlippageFeeReinvestment(),
+      IPriceOracle(protocolConfig.oracle())
     );
 
-    (balance0, balance1) = _verifyRatioAfterSwap(
+    uint256 balanceTokenInAfterSwap = IERC20Upgradeable(_params._tokenIn)
+      .balanceOf(address(this));
+
+    (balance0, balance1) = SwapVerificationLibrary.verifyRatioAfterSwap(
+      protocolConfig,
       _params._positionWrapper,
+      address(uniswapV3PositionManager),
       _params._tickLower,
       _params._tickUpper,
-      token0,
-      token1,
+      _params._token0,
+      _params._token1,
       balanceTokenInBeforeSwap,
       balanceTokenInAfterSwap
     );

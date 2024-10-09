@@ -102,6 +102,7 @@ describe.only("Tests for Deposit", () => {
   let addr1: SignerWithAddress;
   let addrs: SignerWithAddress[];
   let feeModule0: FeeModule;
+  let swapVerificationLibrary: any;
 
   let zeroAddress: any;
 
@@ -155,6 +156,12 @@ describe.only("Tests for Deposit", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
 
       const TokenBalanceLibrary = await ethers.getContractFactory(
         "TokenBalanceLibrary"
@@ -218,6 +225,13 @@ describe.only("Tests for Deposit", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
+      await protocolConfig.enableTokens([
+        iaddress.ethAddress,
+        iaddress.btcAddress,
+        iaddress.usdcAddress,
+        iaddress.usdtAddress,
+      ]);
+
       const Rebalancing = await ethers.getContractFactory("Rebalancing", {
         libraries: {
           TokenBalanceLibrary: tokenBalanceLibrary.address,
@@ -273,7 +287,12 @@ describe.only("Tests for Deposit", () => {
       let whitelist = [owner.address];
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena"
+        "PositionManagerThena",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -787,15 +806,15 @@ describe.only("Tests for Deposit", () => {
 
         let swapAmounts: any = [[]];
         if (withdrawAmounts.token0Amount > 0) {
-          swapAmounts[0][0] = (
-            withdrawAmounts.token0Amount * 0.9999999
-          ).toFixed(0);
+          swapAmounts[0][0] = (withdrawAmounts.token0Amount * 0.99999).toFixed(
+            0
+          );
         }
 
         if (withdrawAmounts.token1Amount > 0) {
-          swapAmounts[0][1] = (
-            withdrawAmounts.token1Amount * 0.9999999
-          ).toFixed(0);
+          swapAmounts[0][1] = (withdrawAmounts.token1Amount * 0.99999).toFixed(
+            0
+          );
         }
 
         const postResponse0 = await createEnsoCallDataRoute(
@@ -988,8 +1007,8 @@ describe.only("Tests for Deposit", () => {
             owner.address, // _dustReceiver
             buyToken, // _positionWrapper
             {
-              _amount0Desired: (depositAmounts.amount0 * 0.9995).toFixed(0),
-              _amount1Desired: (depositAmounts.amount1 * 0.9995).toFixed(0),
+              _amount0Desired: (depositAmounts.amount0 * 0.999).toFixed(0),
+              _amount1Desired: (depositAmounts.amount1 * 0.999).toFixed(0),
               _amount0Min: 0,
               _amount1Min: 0,
             },
@@ -1075,12 +1094,12 @@ describe.only("Tests for Deposit", () => {
             );
             if (withdrawAmounts.token0Amount > 0) {
               swapAmounts.push(
-                (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+                (withdrawAmounts.token0Amount * 0.99999).toFixed(0)
               );
             }
             if (withdrawAmounts.token1Amount > 0) {
               swapAmounts.push(
-                (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+                (withdrawAmounts.token1Amount * 0.99999).toFixed(0)
               );
             }
             wrapperIndex++;
@@ -1101,7 +1120,7 @@ describe.only("Tests for Deposit", () => {
               user.address,
               swapTokens[i],
               tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
+              (swapAmounts[i] * 0.99999).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
@@ -1198,12 +1217,12 @@ describe.only("Tests for Deposit", () => {
             );
             if (withdrawAmounts.token0Amount > 0) {
               swapAmounts.push(
-                (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+                (withdrawAmounts.token0Amount * 0.99999).toFixed(0)
               );
             }
             if (withdrawAmounts.token1Amount > 0) {
               swapAmounts.push(
-                (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+                (withdrawAmounts.token1Amount * 0.99999).toFixed(0)
               );
             }
             wrapperIndex++;
@@ -1224,7 +1243,7 @@ describe.only("Tests for Deposit", () => {
               user.address,
               swapTokens[i],
               tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
+              (swapAmounts[i] * 0.99999).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }
@@ -1504,10 +1523,10 @@ describe.only("Tests for Deposit", () => {
               percentage.toString()
             );
             swapAmounts.push(
-              (withdrawAmounts.token0Amount * 0.9999999).toFixed(0)
+              (withdrawAmounts.token0Amount * 0.99999).toFixed(0)
             );
             swapAmounts.push(
-              (withdrawAmounts.token1Amount * 0.9999999).toFixed(0)
+              (withdrawAmounts.token1Amount * 0.99999).toFixed(0)
             );
             wrapperIndex++;
           }
@@ -1527,7 +1546,7 @@ describe.only("Tests for Deposit", () => {
               user.address,
               swapTokens[i],
               tokenToSwapInto,
-              (swapAmounts[i] * 0.9999999).toFixed(0)
+              (swapAmounts[i] * 0.99999).toFixed(0)
             );
             responses.push(response.data.tx.data);
           }

@@ -217,10 +217,21 @@ describe.only("Tests for Upgradeability", () => {
       let whitelist = [owner.address];
       zeroAddress = "0x0000000000000000000000000000000000000000";
 
-      const PositionManagerThena = await ethers.getContractFactory(
-        "PositionManagerThena"
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
       );
-      const positionManagerBaseAddress = await PositionManagerThena.deploy();
+      const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
+
+      const PositionManager = await ethers.getContractFactory(
+        "PositionManagerThena",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
+      );
+      const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule");

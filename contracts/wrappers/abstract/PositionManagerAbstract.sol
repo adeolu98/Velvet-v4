@@ -15,8 +15,9 @@ import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManag
 import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 import { IAccessController } from "../../access/IAccessController.sol";
 import { AccessRoles } from "../../access/AccessRoles.sol";
-
 import { LiquidityAmountsCalculations } from "./LiquidityAmountsCalculations.sol";
+import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
+import { SwapVerificationLibrary } from "./SwapVerificationLibrary.sol";
 
 /**
  * @title PositionManagerAbstract
@@ -124,8 +125,12 @@ abstract contract PositionManagerAbstract is
   function increaseLiquidity(
     WrapperFunctionParameters.WrapperDepositParams memory _params
   ) external notPaused nonReentrant {
-    uint256 tokenId = _params._positionWrapper.tokenId();
+    if (
+      address(_params._positionWrapper) == address(0) ||
+      _params._dustReceiver == address(0)
+    ) revert ErrorLibrary.InvalidAddress();
 
+    uint256 tokenId = _params._positionWrapper.tokenId();
     address token0 = _params._positionWrapper.token0();
     address token1 = _params._positionWrapper.token1();
 
@@ -218,6 +223,9 @@ abstract contract PositionManagerAbstract is
     uint256 amountIn
   ) external notEmergencyPaused nonReentrant {
     uint256 tokenId = _positionWrapper.tokenId();
+
+    if (_positionWrapper == IPositionWrapper(address(0)))
+      revert ErrorLibrary.InvalidAddress();
 
     // Ensure the withdrawal amount is greater than zero.
     if (_withdrawalAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
@@ -503,94 +511,6 @@ abstract contract PositionManagerAbstract is
   ) internal virtual returns (uint256, uint256);
 
   /**
-   * @dev Calculates the new token ratios after a swap and verifies them against expected pool ratios.
-   * @param _positionWrapper Position wrapper containing the tokens.
-   * @param _tickLower Lower price tick.
-   * @param _tickUpper Upper price tick.
-   * @param _token0 First token address.
-   * @param _token1 Second token address.
-   * @return balance0 New balance of token0.
-   * @return balance1 New balance of token1.
-   */
-  function _calculateRatios(
-    IPositionWrapper _positionWrapper,
-    int24 _tickLower,
-    int24 _tickUpper,
-    address _token0,
-    address _token1
-  )
-    internal
-    returns (
-      uint256 balance0,
-      uint256 balance1,
-      uint256 ratioAfterSwap,
-      uint256 poolRatio
-    )
-  {
-    balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
-    balance1 = IERC20Upgradeable(_token1).balanceOf(address(this));
-
-    ratioAfterSwap = balance0 < 1_000_000 || balance1 < 1_000_000
-      ? 0
-      : (balance0 * 1e18) / balance1;
-
-    poolRatio = LiquidityAmountsCalculations.getRatioForTicks(
-      _positionWrapper,
-      _getFactoryAddress(),
-      _tickLower,
-      _tickUpper
-    );
-  }
-
-  /**
-   * @dev Verifies the token balance ratios after a swap to ensure they meet specific conditions set by the pool parameters.
-   * This function can apply a one-sided ratio check if the pool ratio is zero (indicating special conditions like fee collection or bootstrapping phases),
-   * or a normal ratio verification against the expected pool ratio under standard operation conditions.
-   * @param _positionWrapper The position wrapper associated with the Uniswap V3 position.
-   * @param _tickLower Lower bound of the price tick range for the position.
-   * @param _tickUpper Upper bound of the price tick range for the position.
-   * @param _token0 Address of the first token in the liquidity pair.
-   * @param _token1 Address of the second token in the liquidity pair.
-   * @param _balanceBeforeSwap The token balance before the swap, used for one-sided ratio verification.
-   * @param _balanceAfterSwap The token balance after the swap, also used for one-sided ratio verification.
-   * @return balance0 Updated balance of token0 after potential verification actions.
-   * @return balance1 Updated balance of token1 after potential verification actions.
-   * @notice This function performs checks to ensure the post-swap token distribution adheres to expected ratios,
-   * which are crucial for maintaining the integrity and stability of the liquidity pool.
-   */
-  function _verifyRatioAfterSwap(
-    IPositionWrapper _positionWrapper,
-    int24 _tickLower,
-    int24 _tickUpper,
-    address _token0,
-    address _token1,
-    uint256 _balanceBeforeSwap,
-    uint256 _balanceAfterSwap
-  ) internal returns (uint256 balance0, uint256 balance1) {
-    // Fetch current balances of tokens
-    balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
-    balance1 = IERC20Upgradeable(_token1).balanceOf(address(this));
-
-    // Calculate the ratio after the swap and the expected pool ratio
-    uint256 ratioAfterSwap;
-    uint256 poolRatio;
-    (balance0, balance1, ratioAfterSwap, poolRatio) = _calculateRatios(
-      _positionWrapper,
-      _tickLower,
-      _tickUpper,
-      _token0,
-      _token1
-    );
-
-    // If the pool ratio is zero, verify using a one-sided check, otherwise use a standard ratio check
-    if (poolRatio == 0) {
-      _verifyOneSidedRatio(_balanceBeforeSwap, _balanceAfterSwap);
-    } else {
-      _verifyRatio(poolRatio, ratioAfterSwap);
-    }
-  }
-
-  /**
    * @dev Handles swapping tokens to achieve a desired pool ratio.
    * @param _params Parameters including tokens and amounts for the swap.
    * @return balance0 Updated balance of token0.
@@ -603,51 +523,11 @@ abstract contract PositionManagerAbstract is
     if (_params._amountIn > 0) {
       (balance0, balance1) = _swapTokenToToken(_params);
     } else {
-      _verifyZeroSwapAmount(_params);
-    }
-  }
-
-  /**
-   * @dev Verifies that the token ratio after a swap operation matches the expected pool ratio.
-   * This function is used in scenarios where a swap should result in a balance that adheres to predefined pool conditions,
-   * typically to maintain price stability or meet other strategic criteria.
-   * @param _params Swap parameters including details about the position, tokens, and price ticks.
-   * @notice This function calculates the current and expected ratios and checks them for consistency.
-   */
-  function _verifyZeroSwapAmount(
-    WrapperFunctionParameters.SwapParams memory _params
-  ) internal {
-    (, , uint256 ratioAfterSwap, uint256 poolRatio) = _calculateRatios(
-      _params._positionWrapper,
-      _params._tickLower,
-      _params._tickUpper,
-      _params._token0,
-      _params._token1
-    );
-
-    _verifyRatio(poolRatio, ratioAfterSwap);
-  }
-
-  /**
-   * @dev Checks if the conditions are met to verify a zero swap amount based on tokens owed from fees.
-   * This function is specifically used to ensure that any fees due for reinvestment don't exceed
-   * certain thresholds before proceeding with a ratio verification step.
-   * @param _params Swap parameters encapsulating position and token details.
-   * @param _tokensOwed0 Tokens owed of type token0, typically fees that are ready for reinvestment.
-   * @param _tokensOwed1 Tokens owed of type token1, similarly fees that might be reinvested.
-   * @notice Only proceeds with the verification if either of the owed token amounts exceeds
-   * the minimum reinvestment threshold.
-   */
-  function _verifyZeroSwapAmountForReinvestFees(
-    WrapperFunctionParameters.SwapParams memory _params,
-    uint128 _tokensOwed0,
-    uint128 _tokensOwed1
-  ) internal {
-    if (
-      _tokensOwed0 > MIN_REINVESTMENT_AMOUNT ||
-      _tokensOwed1 > MIN_REINVESTMENT_AMOUNT
-    ) {
-      _verifyZeroSwapAmount(_params);
+      SwapVerificationLibrary.verifyZeroSwapAmount(
+        protocolConfig,
+        _params,
+        address(uniswapV3PositionManager)
+      );
     }
   }
 
@@ -679,51 +559,6 @@ abstract contract PositionManagerAbstract is
   function _getTicksFromPosition(
     uint256 _tokenId
   ) internal view virtual returns (int24, int24);
-
-  /**
-   * @dev Retrieves the factory address from the Non-Fungible Position Manager.
-   * @return Address of the factory.
-   */
-  function _getFactoryAddress() internal view returns (address) {
-    return
-      INonfungiblePositionManager(address(uniswapV3PositionManager)).factory();
-  }
-
-  /**
-   * @dev Verifies that the resulting token ratio is within the acceptable range.
-   * @param _poolRatio Expected ratio of the token pool.
-   * @param _ratioAfterSwap Actual ratio after the swap.
-   */
-  function _verifyRatio(
-    uint256 _poolRatio,
-    uint256 _ratioAfterSwap
-  ) internal view {
-    // allow 0.5% derivation
-    uint256 allowedRatioDeviationBps = protocolConfig
-      .allowedRatioDeviationBps();
-    uint256 upperBound = (_poolRatio *
-      (TOTAL_WEIGHT + allowedRatioDeviationBps)) / TOTAL_WEIGHT;
-    uint256 lowerBound = (_poolRatio *
-      (TOTAL_WEIGHT - allowedRatioDeviationBps)) / TOTAL_WEIGHT;
-
-    if (_ratioAfterSwap > upperBound || _ratioAfterSwap < lowerBound) {
-      revert ErrorLibrary.InvalidSwapAmount();
-    }
-  }
-
-  function _verifyOneSidedRatio(
-    uint256 _balanceBeforeSwap,
-    uint256 _balanceAfterSwap
-  ) internal view {
-    uint256 allowedRatioDeviationBps = protocolConfig
-      .allowedRatioDeviationBps();
-    uint256 dustAllowance = (_balanceBeforeSwap *
-      (TOTAL_WEIGHT - allowedRatioDeviationBps)) / TOTAL_WEIGHT;
-
-    if (_balanceAfterSwap > dustAllowance) {
-      revert ErrorLibrary.InvalidSwapAmount();
-    }
-  }
 
   /**
    * @notice Authorizes upgrade for this contract

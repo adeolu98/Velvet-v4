@@ -77,6 +77,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let addrs: SignerWithAddress[];
   let zeroAddress: any;
   let swapHandlerV3: SwapHandlerV3;
+  let swapVerificationLibrary: any;
 
   let position1: any;
 
@@ -110,6 +111,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
 
       const TokenBalanceLibrary = await ethers.getContractFactory(
         "TokenBalanceLibrary"
@@ -147,7 +154,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await positionWrapperBaseAddress.deployed();
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap"
+        "PositionManagerUniswap",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -374,6 +386,33 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             MAX_TICK
           )
         ).to.be.revertedWithCustomError(positionManager, "TokenNotWhitelisted");
+      });
+
+      it("owner should not be able to create a new position with disabled tokens", async () => {
+        // UniswapV3 position
+        const token0 = addresses.USDC;
+        const token1 = addresses.USDT;
+
+        await expect(
+          positionManager.createNewWrapperPosition(
+            token0,
+            token1,
+            "Test",
+            "t",
+            "100",
+            MIN_TICK,
+            MAX_TICK
+          )
+        ).to.be.revertedWithCustomError(positionManager, "TokenNotEnabled");
+      });
+
+      it("protocol owner should enable tokens", async () => {
+        await protocolConfig.enableTokens([
+          addresses.USDT,
+          addresses.USDC,
+          addresses.WBTC,
+          addresses.WETH,
+        ]);
       });
 
       it("owner should create new position", async () => {
@@ -1043,6 +1082,22 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await protocolConfig.updateAllowedRatioDeviationBps(100);
       });
 
+      it("nonOwner should not be able to update slippage for fee reinvestment param", async () => {
+        await expect(
+          protocolConfig.connect(nonOwner).updateAllowedSlippage(100)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+
+      it("owner should not be able to update slippage for fee reinvestment param with invalid value", async () => {
+        await expect(
+          protocolConfig.updateAllowedSlippage(20000)
+        ).to.be.revertedWithCustomError(protocolConfig, "InvalidDeviationBps");
+      });
+
+      it("owner should be able to update slippage for fee reinvestment param", async () => {
+        await protocolConfig.updateAllowedSlippage(100);
+      });
+
       it("owner should not be able to upgrade the position wrapper if protocol is not paused", async () => {
         const PositionWrapper = await ethers.getContractFactory(
           "PositionWrapper"
@@ -1060,7 +1115,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("owner should not be able to  upgrade the position manager if protocol is not paused", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerUniswap"
+          "PositionManagerUniswap",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();
@@ -1079,7 +1139,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("should upgrade the position manager", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerUniswap"
+          "PositionManagerUniswap",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();
@@ -1092,7 +1157,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("nonOwner should not be able to upgrade the position manager", async () => {
         const PositionManager = await ethers.getContractFactory(
-          "PositionManagerUniswap"
+          "PositionManagerUniswap",
+          {
+            libraries: {
+              SwapVerificationLibrary: swapVerificationLibrary.address,
+            },
+          }
         );
         const positionManagerBase = await PositionManager.deploy();
         await positionManagerBase.deployed();

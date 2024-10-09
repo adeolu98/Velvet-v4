@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
-import { ethers,network, upgrades } from "hardhat";
+import { ethers, network, upgrades } from "hardhat";
 import { BigNumber, Contract } from "ethers";
 import VENUS_CHAINLINK_ORACLE_ABI from "../abi/venus_chainlink_oracle.json";
 
@@ -55,7 +55,7 @@ import {
   IFactory__factory,
   INonfungiblePositionManager__factory,
   IPool__factory,
-  IVenusComptroller
+  IVenusComptroller,
 } from "../../typechain";
 
 import { chainIdToAddresses } from "../../scripts/networkVariables";
@@ -80,7 +80,7 @@ describe.only("Tests for Deposit", () => {
   let borrowManager: BorrowManager;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let depositBatch: DepositBatchExternalPositions;
-  let depositBatch2 : DepositBatch;
+  let depositBatch2: DepositBatch;
   let depositManager: DepositManagerExternalPositions;
   let withdrawBatch: WithdrawBatchExternalPositions;
   let withdrawManager: WithdrawManagerExternalPositions;
@@ -258,6 +258,13 @@ describe.only("Tests for Deposit", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
+      await protocolConfig.enableTokens([
+        iaddress.ethAddress,
+        iaddress.btcAddress,
+        iaddress.usdcAddress,
+        iaddress.usdtAddress,
+      ]);
+
       const Rebalancing = await ethers.getContractFactory("Rebalancing", {
         libraries: {
           TokenBalanceLibrary: tokenBalanceLibrary.address,
@@ -330,13 +337,13 @@ describe.only("Tests for Deposit", () => {
           addresses.vBNB_Address,
           addresses.vBTC_Address,
           addresses.vDAI_Address,
-          addresses.vUSDT_Address
+          addresses.vUSDT_Address,
         ],
         [
           addresses.corePool_controller,
           addresses.corePool_controller,
           addresses.corePool_controller,
-          addresses.corePool_controller
+          addresses.corePool_controller,
         ]
       );
 
@@ -357,8 +364,19 @@ describe.only("Tests for Deposit", () => {
 
       let whitelist = [owner.address];
 
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
+
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena"
+        "PositionManagerThena",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -821,7 +839,7 @@ describe.only("Tests for Deposit", () => {
         let sellToken = tokens[3];
         let buyToken = addresses.vBNB_Address;
 
-        let newTokens = [tokens[0], tokens[1], tokens[2],buyToken,tokens[4]];
+        let newTokens = [tokens[0], tokens[1], tokens[2], buyToken, tokens[4]];
 
         let vault = await portfolio.vault();
 
@@ -880,7 +898,7 @@ describe.only("Tests for Deposit", () => {
           "balance after buy",
           await ERC20.attach(buyToken).balanceOf(vault)
         );
-      })
+      });
 
       it("should borrow USDT using vBNB as collateral", async () => {
         console.log("newtokens", await portfolio.getTokens());
@@ -965,10 +983,10 @@ describe.only("Tests for Deposit", () => {
           tokens[0],
           tokens[1], // position1
           tokens[2],
-          tokens[3],//position2
+          tokens[3], //position2
           tokens[4],
           buyToken,
-          tokens[6]
+          tokens[6],
         ];
 
         positionWrappers = [position1, position2, buyToken];
@@ -982,12 +1000,31 @@ describe.only("Tests for Deposit", () => {
           await positionWrapper.token1(), // position1 - token1
           token0,
           token1,
-          addresses.DAI_Address
+          addresses.DAI_Address,
         ];
         positionWrapperIndex = [1, 4, 5];
-        portfolioTokenIndex = [0, 1, 1, 2, 3, 4, 4, 5, 5,6];
-        isExternalPosition = [false, true, true, false, false, true, true, true, true, false];
-        isTokenExternalPosition = [false, true, false, false, true, true, false];
+        portfolioTokenIndex = [0, 1, 1, 2, 3, 4, 4, 5, 5, 6];
+        isExternalPosition = [
+          false,
+          true,
+          true,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          false,
+        ];
+        isTokenExternalPosition = [
+          false,
+          true,
+          false,
+          false,
+          true,
+          true,
+          false,
+        ];
         index0 = [1, 5, 7];
         index1 = [2, 6, 8];
 
@@ -1099,12 +1136,19 @@ describe.only("Tests for Deposit", () => {
         });
       });
 
-       it("should rebalance dai to vBNB", async () => {
+      it("should rebalance dai to vBNB", async () => {
         let tokens = await portfolio.getTokens();
         let sellToken = tokens[6];
         let buyToken = addresses.vBNB_Address;
 
-        let newTokens = [tokens[0], tokens[1], tokens[2] ,tokens[3], tokens[4], tokens[5]];
+        let newTokens = [
+          tokens[0],
+          tokens[1],
+          tokens[2],
+          tokens[3],
+          tokens[4],
+          tokens[5],
+        ];
 
         let vault = await portfolio.vault();
 
@@ -1164,14 +1208,14 @@ describe.only("Tests for Deposit", () => {
           "balance after buy",
           await ERC20.attach(buyToken).balanceOf(vault)
         );
-       })
+      });
 
-       it("should repay borrowed dai using flashloan", async () => {
+      it("should repay borrowed dai using flashloan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
-        let flashloanBufferUnit = 23;//Flashloan buffer unit in 1/10000
-        let bufferUnit = 160;//Buffer unit for collateral amount in 1/100000
+        let flashloanBufferUnit = 23; //Flashloan buffer unit in 1/10000
+        let bufferUnit = 160; //Buffer unit for collateral amount in 1/100000
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
@@ -1186,15 +1230,17 @@ describe.only("Tests for Deposit", () => {
 
         console.log("balanceBorrowed before repay", balanceBorrowed);
 
-        const balanceToRepay = (balanceBorrowed[0]).toString();
+        const balanceToRepay = balanceBorrowed[0].toString();
 
-        const balanceToSwap = (await portfolioCalculations.calculateFlashLoanAmountForRepayment(
-          addresses.vDAI_Address,
-          addresses.vUSDT_Address,
-          addresses.corePool_controller,
-          balanceToRepay,
-          flashloanBufferUnit
-        )).toString();
+        const balanceToSwap = (
+          await portfolioCalculations.calculateFlashLoanAmountForRepayment(
+            addresses.vDAI_Address,
+            addresses.vUSDT_Address,
+            addresses.corePool_controller,
+            balanceToRepay,
+            flashloanBufferUnit
+          )
+        ).toString();
 
         console.log("balanceToRepay", balanceToRepay);
         console.log("balanceToSwap", balanceToSwap);
@@ -1257,7 +1303,7 @@ describe.only("Tests for Deposit", () => {
           _debtRepayAmount: [balanceToRepay],
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
-          isMaxRepayment: false
+          isMaxRepayment: false,
         });
 
         console.log(
@@ -1272,7 +1318,7 @@ describe.only("Tests for Deposit", () => {
           );
 
         console.log("balanceBorrowed after repay", balanceBorrowed);
-       })
+      });
     });
   });
 });

@@ -92,6 +92,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let feeModule0: FeeModule;
   let approve_amount = ethers.constants.MaxUint256; //(2^256 - 1 )
   let token;
+  let swapVerificationLibrary: any;
 
   let positionWrappers: any = [];
   let swapTokens: any = [];
@@ -133,6 +134,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
 
       const TokenBalanceLibrary = await ethers.getContractFactory(
         "TokenBalanceLibrary"
@@ -193,6 +200,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.setCoolDownPeriod("60");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
+      await protocolConfig.enableTokens([
+        addresses.USDT,
+        addresses.USDC,
+        addresses.WBTC,
+        addresses.WETH,
+      ]);
+
       const Rebalancing = await ethers.getContractFactory("Rebalancing", {
         libraries: {
           TokenBalanceLibrary: tokenBalanceLibrary.address,
@@ -248,7 +262,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       let whitelist = [owner.address];
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap"
+        "PositionManagerUniswap",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
