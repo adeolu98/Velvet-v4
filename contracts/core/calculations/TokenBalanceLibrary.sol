@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
-import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
-import {FunctionParameters} from "../../FunctionParameters.sol";
+import { IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
+import { IAssetHandler } from "../interfaces/IAssetHandler.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
 
 /**
  * @title Token Balance Library
