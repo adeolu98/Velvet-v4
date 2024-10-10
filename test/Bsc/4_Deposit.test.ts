@@ -146,11 +146,7 @@ describe.only("Tests for Deposit", () => {
 
       await protocolConfig.enableRewardTarget(addresses.venus_RewardToken);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -204,10 +200,21 @@ describe.only("Tests for Deposit", () => {
 
       zeroAddress = "0x0000000000000000000000000000000000000000";
 
-      const PositionManagerThena = await ethers.getContractFactory(
-        "PositionManagerThena"
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
       );
-      const positionManagerBaseAddress = await PositionManagerThena.deploy();
+      const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
+
+      const PositionManager = await ethers.getContractFactory(
+        "PositionManagerThena",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
+      );
+      const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule");

@@ -92,6 +92,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let feeModule0: FeeModule;
   let approve_amount = ethers.constants.MaxUint256; //(2^256 - 1 )
   let token;
+  let swapVerificationLibrary: any;
 
   let positionWrappers: any = [];
   let swapTokens: any = [];
@@ -133,6 +134,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ] = accounts;
 
       const provider = ethers.getDefaultProvider();
+
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
 
       const TokenBalanceLibrary = await ethers.getContractFactory(
         "TokenBalanceLibrary"
@@ -193,11 +200,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.setCoolDownPeriod("60");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      await protocolConfig.enableTokens([
+        addresses.USDT,
+        addresses.USDC,
+        addresses.WBTC,
+        addresses.WETH,
+      ]);
+
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -248,7 +258,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       let whitelist = [owner.address];
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap"
+        "PositionManagerUniswap",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -513,12 +528,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [0, 0],
+            _amount1Min: [0, 0],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           },
           {
             value: "1000000000000000000",
@@ -587,12 +602,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [0, 0],
+            _amount1Min: [0, 0],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 
@@ -663,12 +678,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [0, 0],
+            _amount1Min: [0, 0],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 

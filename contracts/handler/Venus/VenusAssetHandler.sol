@@ -873,17 +873,13 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     }
 
     function executeUserFlashLoan(
-        address _controller,
         address _vault,
         address _receiver,
         uint256 _portfolioTokenAmount,
         uint256 _totalSupply,
+        address[] memory borrowedTokens,
         FunctionParameters.withdrawRepayParams calldata repayData
     ) external {
-        (, address[] memory borrowedTokens) = getAllProtocolAssets(
-            _vault,
-            _controller
-        ); // Get all borrowed tokens for the vault under the controller
         uint borrowedLength = borrowedTokens.length;
         address[] memory underlying = new address[](borrowedLength); // Array to store underlying tokens of borrowed assets
         uint256[] memory tokenBalance = new uint256[](borrowedLength); // Array to store balances of borrowed tokens

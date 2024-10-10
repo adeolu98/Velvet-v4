@@ -90,16 +90,25 @@ contract BorrowManager is
             IAssetHandler assetHandler = IAssetHandler(
                 _protocolConfig.assetHandlers(_controller)
             );
+            
+            (, address[] memory borrowedTokens) = assetHandler.getAllProtocolAssets(
+                _vault,
+                _controller
+            ); // Get all borrowed tokens for the vault under the controller
+
+            // Check if there are any borrowed tokens
+            if(borrowedTokens.length == 0) continue; // If no borrowed tokens, skip to the next controller
+
 
             // Prepare the data for the flash loan execution
             bytes memory data = abi.encodeWithSelector(
                 IAssetHandler.executeUserFlashLoan.selector,
-                _controller,
                 _vault,
                 address(this),
                 _portfolioTokenAmount,
                 _totalSupply,
-                repayData
+                repayData,
+                borrowedTokens
             );
 
             // Perform the delegatecall to the asset handler

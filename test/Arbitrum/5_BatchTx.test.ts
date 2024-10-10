@@ -163,11 +163,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.enableSolverHandler(ensoHandler.address);
       await protocolConfig.setSupportedFactory(ensoHandler.address);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -219,8 +215,19 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       zeroAddress = "0x0000000000000000000000000000000000000000";
 
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibrary"
+      );
+      const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
+
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerUniswap"
+        "PositionManagerUniswap",
+        {
+          libraries: {
+            SwapVerificationLibrary: swapVerificationLibrary.address,
+          },
+        }
       );
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
@@ -469,7 +476,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         let postResponse = [];
 
-        let amountToSwap = "100000000000000000000";
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
 
         for (let i = 0; i < tokens.length; i++) {
           let amountIn = BigNumber.from(amountToSwap).div(tokens.length);
@@ -523,7 +532,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           value: "100000000000000000",
         });
 
-        let amountToSwap = "300000000";
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
 
         console.log("SupplyBefore", await portfolio.totalSupply());
 
@@ -614,16 +625,17 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             portfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            0,
             {
               _factory: ensoHandler.address,
               _token0: zeroAddress, //USDT - Pool token
-            _token1: zeroAddress, //USDC - Pool token
-            _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _bufferUnit: "0",
-            _solverHandler: ensoHandler.address, //Handler to swap
-            _flashLoanAmount: [0],
-            firstSwapData: ["0x"],
-            secondSwapData: ["0x"],
+              _token1: zeroAddress, //USDC - Pool token
+              _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _bufferUnit: "0",
+              _solverHandler: ensoHandler.address, //Handler to swap
+              _flashLoanAmount: [0],
+              firstSwapData: ["0x"],
+              secondSwapData: ["0x"],
             },
 
             responses
@@ -680,16 +692,17 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             portfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            0,
             {
               _factory: ensoHandler.address,
               _token0: zeroAddress, //USDT - Pool token
-            _token1: zeroAddress, //USDC - Pool token
-            _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _bufferUnit: "0",
-            _solverHandler: ensoHandler.address, //Handler to swap
-            _flashLoanAmount: [0],
-            firstSwapData: ["0x"],
-            secondSwapData: ["0x"],
+              _token1: zeroAddress, //USDC - Pool token
+              _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _bufferUnit: "0",
+              _solverHandler: ensoHandler.address, //Handler to swap
+              _flashLoanAmount: [0],
+              firstSwapData: ["0x"],
+              secondSwapData: ["0x"],
             },
             responses
           )
@@ -708,16 +721,17 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             fakePortfolio.address,
             tokenToSwapInto,
             amountPortfolioToken,
+            0,
             {
               _factory: ensoHandler.address,
               _token0: zeroAddress, //USDT - Pool token
-            _token1: zeroAddress, //USDC - Pool token
-            _flashLoanToken: zeroAddress, //Token to take flashlaon
-            _bufferUnit: "0",
-            _solverHandler: ensoHandler.address, //Handler to swap
-            _flashLoanAmount: [0],
-            firstSwapData: ["0x"],
-            secondSwapData: ["0x"],
+              _token1: zeroAddress, //USDC - Pool token
+              _flashLoanToken: zeroAddress, //Token to take flashlaon
+              _bufferUnit: "0",
+              _solverHandler: ensoHandler.address, //Handler to swap
+              _flashLoanAmount: [0],
+              firstSwapData: ["0x"],
+              secondSwapData: ["0x"],
             },
             ["0x"]
           )
@@ -781,6 +795,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
+          0,
           {
             _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
@@ -852,6 +867,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           portfolio.address,
           tokenToSwapInto,
           amountPortfolioToken,
+          0,
           {
             _factory: ensoHandler.address,
             _token0: zeroAddress, //USDT - Pool token
@@ -887,7 +903,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           value: "100000000000000000",
         });
 
-        let amountToSwap = "100000000000000000000";
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
 
         for (let i = 0; i < tokens.length; i++) {
           let amountIn = BigNumber.from(amountToSwap).div(tokens.length);

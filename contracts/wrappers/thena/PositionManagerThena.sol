@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { PositionManagerAbstractAlgebra } from "../algebra/PositionManagerAlgebraAbstract.sol";
+import { PositionManagerAbstractAlgebra, ErrorLibrary } from "../algebra/PositionManagerAlgebraAbstract.sol";
 
 /**
  * @title PositionManager
@@ -14,6 +14,13 @@ contract PositionManagerThena is PositionManagerAbstractAlgebra {
     address _assetManagerConfig,
     address _accessController
   ) external initializer {
+    // Add input validation
+    if (
+      _protocolConfig == address(0) ||
+      _assetManagerConfig == address(0) ||
+      _accessController == address(0)
+    ) revert ErrorLibrary.InvalidAddress();
+
     PositionManagerAbstractAlgebra_init(
       0xa51ADb08Cbe6Ae398046A23bec013979816B77Ab,
       0x327Dd3208f0bCF590A66110aCB6e5e6941A4EfA0,

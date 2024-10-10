@@ -333,16 +333,19 @@ library FunctionParameters {
 
   /**
    * @notice Struct to hold parameters for managing deposits into external positions.
-   * @dev This struct helps organize the data necessary for performing swaps and managing liquidity, especially for positions represented externally.
-   * @param _positionWrappers Array of addresses for external position wrapper contracts, which abstract underlying liquidity pools or other DeFi primitives.
-   * @param _swapTokens Array of tokens involved in swaps or to be added to liquidity pools.
-   * @param _positionWrapperIndex Array of indices specifying for each position wrapper the index of the corresponding portfolio token.
-   * @param _portfolioTokenIndex Array of indices linking each swap token or liquidity operation to specific tokens in the managing portfolio.
-   * @param _index0 Array of indices in _swapTokens representing the first token of each liquidity pair.
-   * @param _index1 Array of indices in _swapTokens representing the second token of each liquidity pair.
-   * @param _amount0Min Minimum amount of the first token in a liquidity pair to mitigate slippage, ensuring operations don't proceed under unfavorable market conditions.
-   * @param _amount1Min Minimum amount of the second token in a liquidity pair to mitigate slippage, similarly to _amount0Min.
-   * @param _isExternalPosition Array of booleans indicating whether each token operation involves an external position, allowing for specific handling.
+   * @dev This struct organizes data for performing swaps and managing liquidity in external positions.
+   * @param _positionWrappers Addresses of external position wrapper contracts.
+   * @param _swapTokens Tokens involved in swaps or liquidity additions.
+   * @param _positionWrapperIndex Indices linking position wrappers to portfolio tokens.
+   * @param _portfolioTokenIndex Indices linking swap tokens to portfolio tokens.
+   * @param _index0 Indices of first tokens in liquidity pairs.
+   * @param _index1 Indices of second tokens in liquidity pairs.
+   * @param _amount0Min Minimum amounts for first tokens to mitigate slippage.
+   * @param _amount1Min Minimum amounts for second tokens to mitigate slippage.
+   * @param _isExternalPosition Booleans indicating external position involvement.
+   * @param _tokenIn Input tokens for swap operations.
+   * @param _tokenOut Output tokens for swap operations.
+   * @param _amountIn Input amounts for swap operations.
    */
   struct ExternalPositionDepositParams {
     address[] _positionWrappers;
@@ -351,32 +354,33 @@ library FunctionParameters {
     uint256[] _portfolioTokenIndex;
     uint256[] _index0;
     uint256[] _index1;
-    uint256 _amount0Min;
-    uint256 _amount1Min;
+    uint256[] _amount0Min;
+    uint256[] _amount1Min;
     bool[] _isExternalPosition;
-    address _tokenIn;
-    address _tokenOut;
-    uint256 _amountIn;
+    address[] _tokenIn;
+    address[] _tokenOut;
+    uint256[] _amountIn;
   }
 
   /**
-   * @title ExternalPositionWithdrawParams
-   * @dev Struct to hold parameters for managing withdrawals from external positions, facilitating operations like swaps or liquidity removals.
-   * This structure is crucial for coordinating interactions with external DeFi protocols, ensuring that operations proceed within predefined parameters for risk and slippage management.
-   * @param _positionWrappers Array of addresses of external position wrapper contracts from which withdrawals are to be made. These wrappers abstract the interactions with the underlying liquidity pools or DeFi primitives.
-   * @param _tokenIn Address of the token being used in the operation, generally for swapping into another token.
-   * @param _tokenOut Address of the token expected to be received from the swap operation. This is crucial for operations where a specific output token is desired.
-   * @param _amountIn The total amount of the input token that will be used in the swap or withdrawal operation. This defines the scale of the operation.
-   * @param _amountsMin0 Array of minimum amounts of the first token that must be received when withdrawing liquidity or performing swaps, specific to each position or operation. This parameter helps to ensure that each operation adheres to risk thresholds specific to the token pair involved.
-   * @param _amountsMin1 Array of minimum amounts of the second token that must be received, analogous to _amountsMin0, providing a similar layer of protection and precision in managing slippage and output amounts.
-   */
+   /**
+    * @title ExternalPositionWithdrawParams
+    * @dev Struct to hold parameters for managing withdrawals from external positions, facilitating operations like swaps or liquidity removals.
+    * This structure is crucial for coordinating interactions with external DeFi protocols, ensuring that operations proceed within predefined parameters for risk and slippage management.
+    * @param _positionWrappers Array of addresses of external position wrapper contracts from which withdrawals are to be made.
+    * @param _amountsMin0 Array of minimum amounts of the first token that must be received when withdrawing liquidity or performing swaps.
+    * @param _amountsMin1 Array of minimum amounts of the second token that must be received, analogous to _amountsMin0.
+    * @param _tokenIn Array of addresses of tokens being used as input for swap operations.
+    * @param _tokenOut Array of addresses of tokens expected to be received from swap operations.
+    * @param _amountIn Array of amounts of input tokens to be used in swap or withdrawal operations.
+    */
   struct ExternalPositionWithdrawParams {
     address[] _positionWrappers;
     uint256[] _amountsMin0;
     uint256[] _amountsMin1;
-    address _tokenIn;
-    address _tokenOut;
-    uint256 _amountIn;
+    address[] _tokenIn;
+    address[] _tokenOut;
+    uint256[] _amountIn;
   }
 
   /**
@@ -390,10 +394,5 @@ library FunctionParameters {
     IPositionManager _positionManager;
     address _to;
     bytes _calldata;
-  }
-
-  struct UnusedCollateral{
-    address[] _controllers;
-    uint256[] _unusedCollateralPercentage;
   }
 }

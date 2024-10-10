@@ -14,9 +14,12 @@ abstract contract ExternalPositionManagement is OwnableCheck, Initializable {
   event PositionWrapperBaseAddressUpdated(address indexed _newAddress);
   event AllowedRatioDeviationBpsUpdated(uint256 indexed _newDeviationBps);
   event UpgradePositionWrapper(address indexed newImplementation);
+  event UpdatedSlippageFeeReinvestment(uint256 indexed _newSlippage);
 
   /// @notice The maximum allowed deviation from the target ratio for external positions, measured in basis points.
   uint256 public allowedRatioDeviationBps;
+  /// @notice The accepted slippage for fee reinvestment, measured in basis points.
+  uint256 public acceptedSlippageFeeReinvestment;
 
   function __ExternalPositionManagement_init(
     address _positionWrapperBaseAlgebra
@@ -26,6 +29,7 @@ abstract contract ExternalPositionManagement is OwnableCheck, Initializable {
     );
 
     allowedRatioDeviationBps = 50;
+    acceptedSlippageFeeReinvestment = 100;
   }
 
   /**
@@ -75,5 +79,24 @@ abstract contract ExternalPositionManagement is OwnableCheck, Initializable {
     allowedRatioDeviationBps = _newDeviationBps;
 
     emit AllowedRatioDeviationBpsUpdated(_newDeviationBps);
+  }
+
+  /**
+   * @notice Updates the allowed slippage for fee reinvestment.
+   * @dev Allows the contract's protocol owner to update the accepted slippage for fee reinvestment.
+   *      This function ensures that the new slippage value is within an acceptable range (0-10%).
+   * @param _newSlippageFeeReinvestment The new slippage value in basis points (1 bp = 0.01%).
+   */
+
+  function updateAllowedSlippage(
+    uint256 _newSlippageFeeReinvestment
+  ) external onlyProtocolOwner {
+    // Check if the new deviation is within the allowed range.
+    if (_newSlippageFeeReinvestment > 1_000) {
+      revert ErrorLibrary.InvalidDeviationBps();
+    }
+    acceptedSlippageFeeReinvestment = _newSlippageFeeReinvestment;
+
+    emit UpdatedSlippageFeeReinvestment(_newSlippageFeeReinvestment);
   }
 }
