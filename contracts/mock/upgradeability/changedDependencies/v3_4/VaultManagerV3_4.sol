@@ -196,13 +196,17 @@ abstract contract VaultManagerV3_4 is
             _portfolioTokenAmount
         );
 
+        //Get controllers data for the vault
+        TokenBalanceLibrary.ControllerData[] memory controllersData = TokenBalanceLibrary.getControllersData(vault, _protocolConfig);
+
         for (uint256 i; i < portfolioTokenLength; i++) {
             address _token = portfolioTokens[i];
             // Calculate the proportion of each token to return based on the burned portfolio tokens.
             uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
                 portfolioTokens[i],
                 vault,
-                _protocolConfig
+                _protocolConfig,
+                controllersData
             );
             tokenBalance =
                 (tokenBalance * _portfolioTokenAmount) /
@@ -294,8 +298,14 @@ abstract contract VaultManagerV3_4 is
         }
 
         // Get current token balances in the vault for ratio calculations
-        uint256[] memory tokenBalancesBefore = TokenBalanceLibrary
-            .getTokenBalancesOf(portfolioTokens, vault, _protocolConfig);
+       (
+            uint256[] memory tokenBalancesBefore,
+            TokenBalanceLibrary.ControllerData[] memory controllersData
+        ) = TokenBalanceLibrary.getTokenBalancesOf(
+            portfolioTokens,
+            vault,
+            _protocolConfig
+        );
 
         // If the vault is empty, accept the deposits and return zero as the initial ratio
         if (totalSupply() == 0) {
@@ -319,7 +329,6 @@ abstract contract VaultManagerV3_4 is
         }
 
         uint256 transferAmount;
-        uint256 balanceAfter;
         uint256 _minRatioAfterTransfer = type(uint256).max;
         // Adjust token deposits to match the minimum ratio and update the vault balances
         for (uint256 i; i < amountLength; i++) {
@@ -328,16 +337,11 @@ abstract contract VaultManagerV3_4 is
                 (_minRatio * tokenBalancesBefore[i]) /
                 ONE_ETH_IN_WEI;
             _transferToVault(_from, token, transferAmount);
-
-            balanceAfter = TokenBalanceLibrary._getTokenBalanceOf(
-                portfolioTokens[i],
-                vault,
-                _protocolConfig
-            );
             uint256 tokenBalanceAfter = TokenBalanceLibrary._getTokenBalanceOf(
                 token,
                 vault,
-                _protocolConfig
+                _protocolConfig,
+                controllersData
             );
             uint256 currentRatio = _getDepositToVaultBalanceRatio(
                 tokenBalanceAfter - tokenBalanceAfter,

@@ -368,9 +368,10 @@ abstract contract VaultManager is
   /**
    * @notice Internal function to handle the multi-token withdrawal logic.
    * @param _withdrawFor The address of the user making the withdrawal.
+   * @param _tokenReceiver The address to receive the withdrawn tokens.
    * @param _portfolioTokenAmount The amount of portfolio tokens to burn for withdrawal.
-   * * @param _tokenReceiver The address to receive the withdrawn tokens.
    * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
+   * @param repayData Struct containing data for repaying borrows.
    */
   function _multiTokenWithdrawal(
     address _withdrawFor,
@@ -381,80 +382,36 @@ abstract contract VaultManager is
   ) internal virtual {
     // Retrieve the list of tokens currently in the portfolio.
     address[] memory portfolioTokens = tokens;
-
     uint256 portfolioTokenLength = portfolioTokens.length;
 
     // Perform pre-withdrawal checks, including balance and cooldown verification.
-    _beforeWithdrawCheck(
+    _performWithdrawalChecks(
       _withdrawFor,
-      IPortfolio(address(this)),
       _portfolioTokenAmount,
       portfolioTokenLength,
       _exemptionTokens
     );
-
-    // Validate the cooldown period of the user.
-    _checkCoolDownPeriod(_withdrawFor);
-
-    // Charge any applicable fees before withdrawal.
-    _chargeFees(_withdrawFor);
 
     // Calculate the total supply of portfolio tokens for proportion calculations.
     uint256 totalSupplyPortfolio = totalSupply();
     // Burn the user's portfolio tokens and calculate the adjusted withdrawal amount post-fees.
     _portfolioTokenAmount = _burnWithdraw(_withdrawFor, _portfolioTokenAmount);
 
-    //Array to store, users withdrawal amounts
-    uint256[] memory userWithdrawalAmounts = new uint256[](
-      portfolioTokenLength
-    );
-
-    uint256 exemptionIndex = 0;
+    // Repay any outstanding borrows
     _borrowManager.repayBorrow(
       _portfolioTokenAmount,
       totalSupplyPortfolio,
       repayData
     );
-    for (uint256 i; i < portfolioTokenLength; i++) {
-      address _token = portfolioTokens[i];
 
-      // Calculate the proportion of each token to return based on the burned portfolio tokens.
-      uint256 tokenBalance;
-      //  = TokenBalanceLibrary._getTokenBalanceOf(
-      //   _token,
-      //   vault,
-      //   _protocolConfig,
-      //   controllersData
-      // );
-      tokenBalance =
-        (tokenBalance * _portfolioTokenAmount) /
-        totalSupplyPortfolio;
-
-      // Prepare the data for ERC20 token transfer
-      bytes memory inputData = abi.encodeWithSelector(
-        IERC20Upgradeable.transfer.selector,
-        _tokenReceiver,
-        tokenBalance
-      );
-
-      // Execute the transfer through the safe module and check for success
-      try IVelvetSafeModule(safeModule).executeWallet(_token, inputData) {
-        // Check if the token balance is zero and the current token is not an exemption token, revert with an error.
-        // This check is necessary because if there is any rebase token or the protocol sets the balance to zero,
-        // we need to be able to withdraw other tokens. The balance for a withdrawal should always be >0,
-        // except when the user accepts to lose this token.
-        if (tokenBalance == 0 && _exemptionTokens[exemptionIndex] != _token)
-          revert ErrorLibrary.WithdrawalAmountIsSmall();
-        userWithdrawalAmounts[i] = tokenBalance;
-      } catch {
-        //Checking if exception token was mentioned in exceptionToken array
-        if (_exemptionTokens[exemptionIndex] != _token) {
-          revert ErrorLibrary.InvalidExemptionTokens();
-        }
-        userWithdrawalAmounts[i] = 0;
-        exemptionIndex++;
-      }
-    }
+    // Process the withdrawal for each token and get the withdrawal amounts
+    uint256[] memory userWithdrawalAmounts = _processTokenWithdrawals(
+      _tokenReceiver,
+      _portfolioTokenAmount,
+      totalSupplyPortfolio,
+      portfolioTokens,
+      _exemptionTokens
+    );
 
     // Notify listeners of the withdrawal event.
     emit Withdrawn(
@@ -465,6 +422,133 @@ abstract contract VaultManager is
       balanceOf(_withdrawFor),
       userWithdrawalAmounts
     );
+  }
+
+  /**
+   * @notice Performs all necessary checks before withdrawal.
+   * @param _withdrawFor The address of the user making the withdrawal.
+   * @param _portfolioTokenAmount The amount of portfolio tokens to withdraw.
+   * @param portfolioTokenLength The number of tokens in the portfolio.
+   * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
+   */
+  function _performWithdrawalChecks(
+    address _withdrawFor,
+    uint256 _portfolioTokenAmount,
+    uint256 portfolioTokenLength,
+    address[] memory _exemptionTokens
+  ) private {
+    // Perform pre-withdrawal checks, including balance and cooldown verification.
+    _beforeWithdrawCheck(
+      _withdrawFor,
+      IPortfolio(address(this)),
+      _portfolioTokenAmount,
+      portfolioTokenLength,
+      _exemptionTokens
+    );
+    // Validate the cooldown period of the user.
+    _checkCoolDownPeriod(_withdrawFor);
+    // Charge any applicable fees before withdrawal.
+    _chargeFees(_withdrawFor);
+  }
+
+  /**
+   * @notice Processes the withdrawal for all tokens in the portfolio.
+   * @param _tokenReceiver The address to receive the withdrawn tokens.
+   * @param _portfolioTokenAmount The amount of portfolio tokens being withdrawn.
+   * @param totalSupplyPortfolio The total supply of portfolio tokens.
+   * @param portfolioTokens The array of token addresses in the portfolio.
+   * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
+   * @return An array of withdrawal amounts for each token.
+   */
+  function _processTokenWithdrawals(
+    address _tokenReceiver,
+    uint256 _portfolioTokenAmount,
+    uint256 totalSupplyPortfolio,
+    address[] memory portfolioTokens,
+    address[] memory _exemptionTokens
+  ) private returns (uint256[] memory) {
+    uint256 portfolioTokenLength = portfolioTokens.length;
+    uint256[] memory userWithdrawalAmounts = new uint256[](
+      portfolioTokenLength
+    );
+    uint256 exemptionIndex = 0;
+
+    // Get controllers data for the vault
+    TokenBalanceLibrary.ControllerData[]
+      memory controllersData = TokenBalanceLibrary.getControllersData(
+        vault,
+        _protocolConfig
+      );
+
+    for (uint256 i; i < portfolioTokenLength; i++) {
+      (userWithdrawalAmounts[i], exemptionIndex) = _processTokenWithdrawal(
+        portfolioTokens[i],
+        _tokenReceiver,
+        _portfolioTokenAmount,
+        totalSupplyPortfolio,
+        _exemptionTokens,
+        exemptionIndex,
+        controllersData
+      );
+    }
+
+    return userWithdrawalAmounts;
+  }
+
+  /**
+   * @notice Processes the withdrawal for a single token.
+   * @param _token The address of the token to withdraw.
+   * @param _tokenReceiver The address to receive the withdrawn tokens.
+   * @param _portfolioTokenAmount The amount of portfolio tokens being withdrawn.
+   * @param totalSupplyPortfolio The total supply of portfolio tokens.
+   * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
+   * @param exemptionIndex The current index in the exemption tokens array.
+   * @param controllersData The array of controller data for balance calculations.
+   * @return The amount of tokens withdrawn and the updated exemption index.
+   */
+  function _processTokenWithdrawal(
+    address _token,
+    address _tokenReceiver,
+    uint256 _portfolioTokenAmount,
+    uint256 totalSupplyPortfolio,
+    address[] memory _exemptionTokens,
+    uint256 exemptionIndex,
+    TokenBalanceLibrary.ControllerData[] memory controllersData
+  ) private returns (uint256, uint256) {
+    // Calculate the proportion of each token to return based on the burned portfolio tokens.
+    uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
+      _token,
+      vault,
+      _protocolConfig,
+      controllersData
+    );
+    tokenBalance =
+      (tokenBalance * _portfolioTokenAmount) /
+      totalSupplyPortfolio;
+
+    // Prepare the data for ERC20 token transfer
+    bytes memory inputData = abi.encodeWithSelector(
+      IERC20Upgradeable.transfer.selector,
+      _tokenReceiver,
+      tokenBalance
+    );
+
+    // Execute the transfer through the safe module and check for success
+    try IVelvetSafeModule(safeModule).executeWallet(_token, inputData) {
+      // Check if the token balance is zero and the current token is not an exemption token, revert with an error.
+      // This check is necessary because if there is any rebase token or the protocol sets the balance to zero,
+      // we need to be able to withdraw other tokens. The balance for a withdrawal should always be >0,
+      // except when the user accepts to lose this token.
+      if (tokenBalance == 0 && _exemptionTokens[exemptionIndex] != _token)
+        revert ErrorLibrary.WithdrawalAmountIsSmall();
+      return (tokenBalance, exemptionIndex);
+    } catch {
+      // Checking if exception token was mentioned in exceptionToken array
+      if (_exemptionTokens[exemptionIndex] != _token) {
+        revert ErrorLibrary.InvalidExemptionTokens();
+      }
+      return (0, exemptionIndex + 1);
+    }
   }
 
   /**
@@ -610,26 +694,6 @@ abstract contract VaultManager is
     if (amountLength != portfolioTokens.length) {
       revert ErrorLibrary.InvalidDepositInputLength();
     }
-
-    // //Calculate everything needed(callateral and debt)
-    //   address[] memory controllers = _protocolConfig
-    //         .getSupportedControllers();
-
-    //   uint256 unusedCollateralPercentage;
-    //   for(uint256 j; j < controllers.length; j++){
-    //     address controller = controllers[j];
-    //     IAssetHandler assetHandler = IAssetHandler(_protocolConfig.assetHandlers(controller));
-    //     (FunctionParameters.AccountData memory accountData, ) =
-    //         assetHandler.getUserAccountData(vault, controller);
-    //     if (accountData.totalCollateral == 0) {
-    //       // If there's no collateral, return 100% as unused
-    //       unusedCollateralPercentage = 1e18;
-    //     }else{
-    //       // Calculate the percentage of collateral that's not being used to back debt
-    //       // The result is scaled by 1e18 for precision
-    //       unusedCollateralPercentage = ((accountData.totalCollateral - accountData.totalDebt) * 1e18) / accountData.totalCollateral;
-    //     }
-    //   }
 
     // Get current token balances in the vault for ratio calculations
     (
