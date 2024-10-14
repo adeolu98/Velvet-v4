@@ -180,7 +180,10 @@ const config: HardhatUserConfig = {
     timeout: 400000,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey:{
+      mainnet : process.env.ETHERSCAN_API_KEY ? process.env.ETHERSCAN_API_KEY : "",
+      bsc: process.env.BSCSCAN_API_KEY ? process.env.BSCSCAN_API_KEY : ""
+    } ,
   },
   abiExporter: {
     path: "./abi",
@@ -203,7 +206,7 @@ const config: HardhatUserConfig = {
     spacing: 2,
   },
   tenderly: {
-    project: "Base10April",
+    project: "v4-bnb-test",
     username: "velvet-capital",
     privateVerification: true,
   },
