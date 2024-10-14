@@ -232,11 +232,7 @@ describe.only("Tests for Deposit", () => {
         iaddress.usdtAddress,
       ]);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -1154,9 +1150,9 @@ describe.only("Tests for Deposit", () => {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 
@@ -1273,9 +1269,9 @@ describe.only("Tests for Deposit", () => {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 
@@ -1580,9 +1576,9 @@ describe.only("Tests for Deposit", () => {
             _positionWrappers: positionWrappers,
             _amountsMin0: [0, 0],
             _amountsMin1: [0, 0],
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 

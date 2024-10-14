@@ -163,11 +163,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.enableSolverHandler(ensoHandler.address);
       await protocolConfig.setSupportedFactory(ensoHandler.address);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 

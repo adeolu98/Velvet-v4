@@ -151,7 +151,7 @@ contract PortfolioCalculations is ExponentialNoError {
         IProtocolConfig _protocolConfig = IProtocolConfig(
             portfolio.protocolConfig()
         );
-        uint256[] memory vaultBalance = TokenBalanceLibrary.getTokenBalancesOf(
+        (uint256[] memory vaultBalance, ) = TokenBalanceLibrary.getTokenBalancesOf(
             portfolio.getTokens(),
             portfolio.vault(),
             _protocolConfig
@@ -205,7 +205,6 @@ contract PortfolioCalculations is ExponentialNoError {
 
         address[] memory tokens = portfolio.getTokens();
         uint256 tokensLength = tokens.length;
-        address _vault = portfolio.vault();
 
         uint256[] memory withdrawalAmount = new uint256[](tokensLength);
 
@@ -255,6 +254,14 @@ contract PortfolioCalculations is ExponentialNoError {
                 afterFeeAmount -= assetManagerFee;
             }
         }
+        address _vault = portfolio.vault();
+
+        // Get controllers data for the vault
+        TokenBalanceLibrary.ControllerData[]
+            memory controllersData = TokenBalanceLibrary.getControllersData(
+                _vault,
+                _protocolConfig
+            );
 
         for (uint256 i = 0; i < tokensLength; i++) {
             address _token = tokens[i];
@@ -262,7 +269,8 @@ contract PortfolioCalculations is ExponentialNoError {
             uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
                 _token,
                 _vault,
-                _protocolConfig
+                _protocolConfig,
+                controllersData
             );
             tokenBalance =
                 (tokenBalance * afterFeeAmount) /

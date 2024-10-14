@@ -199,4 +199,6 @@ library ErrorLibrary {
   error InvalidNewBufferUnit();
   /// @notice Thrown when a swap operation is invalid
   error InvalidSwap();
+  // @notice Thrown when controller data is not found
+  error ControllerDataNotFound();
 }

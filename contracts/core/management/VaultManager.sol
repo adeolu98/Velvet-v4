@@ -19,6 +19,7 @@ import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
 import {FunctionParameters} from "../../FunctionParameters.sol";
 import {TokenBalanceLibrary} from "../calculations/TokenBalanceLibrary.sol";
 import {IBorrowManager} from "../interfaces/IBorrowManager.sol";
+import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
 import "hardhat/console.sol";
 
 /**
@@ -367,9 +368,10 @@ abstract contract VaultManager is
   /**
    * @notice Internal function to handle the multi-token withdrawal logic.
    * @param _withdrawFor The address of the user making the withdrawal.
+   * @param _tokenReceiver The address to receive the withdrawn tokens.
    * @param _portfolioTokenAmount The amount of portfolio tokens to burn for withdrawal.
-   * * @param _tokenReceiver The address to receive the withdrawn tokens.
    * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
+   * @param repayData Struct containing data for repaying borrows.
    */
   function _multiTokenWithdrawal(
     address _withdrawFor,
@@ -380,77 +382,36 @@ abstract contract VaultManager is
   ) internal virtual {
     // Retrieve the list of tokens currently in the portfolio.
     address[] memory portfolioTokens = tokens;
-
     uint256 portfolioTokenLength = portfolioTokens.length;
 
     // Perform pre-withdrawal checks, including balance and cooldown verification.
-    _beforeWithdrawCheck(
+    _performWithdrawalChecks(
       _withdrawFor,
-      IPortfolio(address(this)),
       _portfolioTokenAmount,
       portfolioTokenLength,
       _exemptionTokens
     );
-
-    // Validate the cooldown period of the user.
-    _checkCoolDownPeriod(_withdrawFor);
-
-    // Charge any applicable fees before withdrawal.
-    _chargeFees(_withdrawFor);
 
     // Calculate the total supply of portfolio tokens for proportion calculations.
     uint256 totalSupplyPortfolio = totalSupply();
     // Burn the user's portfolio tokens and calculate the adjusted withdrawal amount post-fees.
     _portfolioTokenAmount = _burnWithdraw(_withdrawFor, _portfolioTokenAmount);
 
-    //Array to store, users withdrawal amounts
-    uint256[] memory userWithdrawalAmounts = new uint256[](
-      portfolioTokenLength
-    );
-
-    uint256 exemptionIndex = 0;
+    // Repay any outstanding borrows
     _borrowManager.repayBorrow(
       _portfolioTokenAmount,
       totalSupplyPortfolio,
       repayData
     );
-    for (uint256 i; i < portfolioTokenLength; i++) {
-      address _token = portfolioTokens[i];
-      // Calculate the proportion of each token to return based on the burned portfolio tokens.
-      uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
-        _token,
-        vault,
-        _protocolConfig
-      );
-      tokenBalance =
-        (tokenBalance * _portfolioTokenAmount) /
-        totalSupplyPortfolio;
 
-      // Prepare the data for ERC20 token transfer
-      bytes memory inputData = abi.encodeWithSelector(
-        IERC20Upgradeable.transfer.selector,
-        _tokenReceiver,
-        tokenBalance
-      );
-
-      // Execute the transfer through the safe module and check for success
-      try IVelvetSafeModule(safeModule).executeWallet(_token, inputData) {
-        // Check if the token balance is zero and the current token is not an exemption token, revert with an error.
-        // This check is necessary because if there is any rebase token or the protocol sets the balance to zero,
-        // we need to be able to withdraw other tokens. The balance for a withdrawal should always be >0,
-        // except when the user accepts to lose this token.
-        if (tokenBalance == 0 && _exemptionTokens[exemptionIndex] != _token)
-          revert ErrorLibrary.WithdrawalAmountIsSmall();
-        userWithdrawalAmounts[i] = tokenBalance;
-      } catch {
-        //Checking if exception token was mentioned in exceptionToken array
-        if (_exemptionTokens[exemptionIndex] != _token) {
-          revert ErrorLibrary.InvalidExemptionTokens();
-        }
-        userWithdrawalAmounts[i] = 0;
-        exemptionIndex++;
-      }
-    }
+    // Process the withdrawal for each token and get the withdrawal amounts
+    uint256[] memory userWithdrawalAmounts = _processTokenWithdrawals(
+      _tokenReceiver,
+      _portfolioTokenAmount,
+      totalSupplyPortfolio,
+      portfolioTokens,
+      _exemptionTokens
+    );
 
     // Notify listeners of the withdrawal event.
     emit Withdrawn(
@@ -461,6 +422,133 @@ abstract contract VaultManager is
       balanceOf(_withdrawFor),
       userWithdrawalAmounts
     );
+  }
+
+  /**
+   * @notice Performs all necessary checks before withdrawal.
+   * @param _withdrawFor The address of the user making the withdrawal.
+   * @param _portfolioTokenAmount The amount of portfolio tokens to withdraw.
+   * @param portfolioTokenLength The number of tokens in the portfolio.
+   * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
+   */
+  function _performWithdrawalChecks(
+    address _withdrawFor,
+    uint256 _portfolioTokenAmount,
+    uint256 portfolioTokenLength,
+    address[] memory _exemptionTokens
+  ) private {
+    // Perform pre-withdrawal checks, including balance and cooldown verification.
+    _beforeWithdrawCheck(
+      _withdrawFor,
+      IPortfolio(address(this)),
+      _portfolioTokenAmount,
+      portfolioTokenLength,
+      _exemptionTokens
+    );
+    // Validate the cooldown period of the user.
+    _checkCoolDownPeriod(_withdrawFor);
+    // Charge any applicable fees before withdrawal.
+    _chargeFees(_withdrawFor);
+  }
+
+  /**
+   * @notice Processes the withdrawal for all tokens in the portfolio.
+   * @param _tokenReceiver The address to receive the withdrawn tokens.
+   * @param _portfolioTokenAmount The amount of portfolio tokens being withdrawn.
+   * @param totalSupplyPortfolio The total supply of portfolio tokens.
+   * @param portfolioTokens The array of token addresses in the portfolio.
+   * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
+   * @return An array of withdrawal amounts for each token.
+   */
+  function _processTokenWithdrawals(
+    address _tokenReceiver,
+    uint256 _portfolioTokenAmount,
+    uint256 totalSupplyPortfolio,
+    address[] memory portfolioTokens,
+    address[] memory _exemptionTokens
+  ) private returns (uint256[] memory) {
+    uint256 portfolioTokenLength = portfolioTokens.length;
+    uint256[] memory userWithdrawalAmounts = new uint256[](
+      portfolioTokenLength
+    );
+    uint256 exemptionIndex = 0;
+
+    // Get controllers data for the vault
+    TokenBalanceLibrary.ControllerData[]
+      memory controllersData = TokenBalanceLibrary.getControllersData(
+        vault,
+        _protocolConfig
+      );
+
+    for (uint256 i; i < portfolioTokenLength; i++) {
+      (userWithdrawalAmounts[i], exemptionIndex) = _processTokenWithdrawal(
+        portfolioTokens[i],
+        _tokenReceiver,
+        _portfolioTokenAmount,
+        totalSupplyPortfolio,
+        _exemptionTokens,
+        exemptionIndex,
+        controllersData
+      );
+    }
+
+    return userWithdrawalAmounts;
+  }
+
+  /**
+   * @notice Processes the withdrawal for a single token.
+   * @param _token The address of the token to withdraw.
+   * @param _tokenReceiver The address to receive the withdrawn tokens.
+   * @param _portfolioTokenAmount The amount of portfolio tokens being withdrawn.
+   * @param totalSupplyPortfolio The total supply of portfolio tokens.
+   * @param _exemptionTokens The array of tokens that are exempt from withdrawal if transfer fails.
+   * @param exemptionIndex The current index in the exemption tokens array.
+   * @param controllersData The array of controller data for balance calculations.
+   * @return The amount of tokens withdrawn and the updated exemption index.
+   */
+  function _processTokenWithdrawal(
+    address _token,
+    address _tokenReceiver,
+    uint256 _portfolioTokenAmount,
+    uint256 totalSupplyPortfolio,
+    address[] memory _exemptionTokens,
+    uint256 exemptionIndex,
+    TokenBalanceLibrary.ControllerData[] memory controllersData
+  ) private returns (uint256, uint256) {
+    // Calculate the proportion of each token to return based on the burned portfolio tokens.
+    uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
+      _token,
+      vault,
+      _protocolConfig,
+      controllersData
+    );
+    tokenBalance =
+      (tokenBalance * _portfolioTokenAmount) /
+      totalSupplyPortfolio;
+
+    // Prepare the data for ERC20 token transfer
+    bytes memory inputData = abi.encodeWithSelector(
+      IERC20Upgradeable.transfer.selector,
+      _tokenReceiver,
+      tokenBalance
+    );
+
+    // Execute the transfer through the safe module and check for success
+    try IVelvetSafeModule(safeModule).executeWallet(_token, inputData) {
+      // Check if the token balance is zero and the current token is not an exemption token, revert with an error.
+      // This check is necessary because if there is any rebase token or the protocol sets the balance to zero,
+      // we need to be able to withdraw other tokens. The balance for a withdrawal should always be >0,
+      // except when the user accepts to lose this token.
+      if (tokenBalance == 0 && _exemptionTokens[exemptionIndex] != _token)
+        revert ErrorLibrary.WithdrawalAmountIsSmall();
+      return (tokenBalance, exemptionIndex);
+    } catch {
+      // Checking if exception token was mentioned in exceptionToken array
+      if (_exemptionTokens[exemptionIndex] != _token) {
+        revert ErrorLibrary.InvalidExemptionTokens();
+      }
+      return (0, exemptionIndex + 1);
+    }
   }
 
   /**
@@ -516,7 +604,8 @@ abstract contract VaultManager is
     (
       uint256 amountLength,
       address[] memory portfolioTokens,
-      uint256[] memory tokenBalancesBefore
+      uint256[] memory tokenBalancesBefore,
+      TokenBalanceLibrary.ControllerData[] memory controllersData
     ) = _validateAndGetBalances(depositAmounts);
 
     try permit2.permit(msg.sender, _permit, _signature) {
@@ -542,7 +631,8 @@ abstract contract VaultManager is
         depositAmounts,
         portfolioTokens,
         tokenBalancesBefore,
-        true
+        true,
+        controllersData
       );
   }
 
@@ -561,7 +651,8 @@ abstract contract VaultManager is
     (
       uint256 amountLength,
       address[] memory portfolioTokens,
-      uint256[] memory tokenBalancesBefore
+      uint256[] memory tokenBalancesBefore,
+      TokenBalanceLibrary.ControllerData[] memory controllersData
     ) = _validateAndGetBalances(depositAmounts);
 
     // Handles the token transfer and minRatio calculations
@@ -572,7 +663,8 @@ abstract contract VaultManager is
         depositAmounts,
         portfolioTokens,
         tokenBalancesBefore,
-        false
+        false,
+        controllersData
       );
   }
 
@@ -585,7 +677,16 @@ abstract contract VaultManager is
    */
   function _validateAndGetBalances(
     uint256[] calldata depositAmounts
-  ) internal view returns (uint256, address[] memory, uint256[] memory) {
+  )
+    internal
+    view
+    returns (
+      uint256,
+      address[] memory,
+      uint256[] memory,
+      TokenBalanceLibrary.ControllerData[] memory
+    )
+  {
     uint256 amountLength = depositAmounts.length;
     address[] memory portfolioTokens = tokens;
 
@@ -595,10 +696,21 @@ abstract contract VaultManager is
     }
 
     // Get current token balances in the vault for ratio calculations
-    uint256[] memory tokenBalancesBefore = TokenBalanceLibrary
-      .getTokenBalancesOf(portfolioTokens, vault, _protocolConfig);
+    (
+      uint256[] memory tokenBalancesBefore,
+      TokenBalanceLibrary.ControllerData[] memory controllersData
+    ) = TokenBalanceLibrary.getTokenBalancesOf(
+        portfolioTokens,
+        vault,
+        _protocolConfig
+      );
 
-    return (amountLength, portfolioTokens, tokenBalancesBefore);
+    return (
+      amountLength,
+      portfolioTokens,
+      tokenBalancesBefore,
+      controllersData
+    );
   }
 
   /**
@@ -617,38 +729,101 @@ abstract contract VaultManager is
     uint256[] calldata depositAmounts,
     address[] memory portfolioTokens,
     uint256[] memory tokenBalancesBefore,
-    bool usePermit
+    bool usePermit,
+    TokenBalanceLibrary.ControllerData[] memory controllersData
   ) internal returns (uint256) {
-    //Array to store deposited amouts of user
-    uint256[] memory depositedAmounts = new uint256[](amountLength);
-
-    // If the vault is empty, accept the deposits and return zero as the initial ratio
     if (totalSupply() == 0) {
-      for (uint256 i; i < amountLength; i++) {
-        uint256 depositAmount = depositAmounts[i];
-        if (depositAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
-        address portfolioToken = portfolioTokens[i];
-        if (usePermit) {
-          _transferToVaultWithPermit(_from, portfolioToken, depositAmount);
-        } else {
-          // TransferHelper.safeTransferFrom(portfolioToken, _from, vault, depositAmount);
-          _transferToVault(_from, portfolioToken, depositAmount);
-        }
-
-        if (
-          TokenBalanceLibrary._getTokenBalanceOf( //Need here normal getTokenBalanceOf
-            portfolioToken,
-            vault,
-            _protocolConfig
-          ) <= tokenBalancesBefore[i]
-        ) revert ErrorLibrary.TransferFailed();
-        depositedAmounts[i] = depositAmount;
-      }
-      emit UserDepositedAmounts(depositedAmounts, portfolioTokens);
-      return 0;
+      return
+        _handleEmptyVaultTransfer(
+          _from,
+          amountLength,
+          depositAmounts,
+          portfolioTokens,
+          tokenBalancesBefore,
+          usePermit,
+          controllersData
+        );
     }
 
-    uint256 _minRatio = type(uint).max;
+    uint256 _minRatio = _calculateMinRatio(
+      amountLength,
+      depositAmounts,
+      tokenBalancesBefore
+    );
+    return
+      _executeTransfers(
+        _from,
+        amountLength,
+        portfolioTokens,
+        tokenBalancesBefore,
+        _minRatio,
+        usePermit,
+        controllersData
+      );
+  }
+
+  /**
+   * @notice Handles token transfers for an empty vault.
+   * @dev This function is called when the total supply is zero, indicating an empty vault.
+   * It transfers the specified amounts of each token from the user to the vault.
+   * @param _from The address from which tokens are transferred.
+   * @param amountLength The number of tokens to be transferred.
+   * @param depositAmounts An array of amounts to be deposited for each token.
+   * @param portfolioTokens An array of token addresses in the portfolio.
+   * @param tokenBalancesBefore An array of token balances before the transfer.
+   * @param usePermit A boolean indicating whether to use permit for transfers.
+   * @param controllersData An array of controller data for balance calculations.
+   * @return uint256 Returns 0 as there's no ratio to calculate for an empty vault.
+   */
+  function _handleEmptyVaultTransfer(
+    address _from,
+    uint256 amountLength,
+    uint256[] calldata depositAmounts,
+    address[] memory portfolioTokens,
+    uint256[] memory tokenBalancesBefore,
+    bool usePermit,
+    TokenBalanceLibrary.ControllerData[] memory controllersData
+  ) private returns (uint256) {
+    uint256[] memory depositedAmounts = new uint256[](amountLength);
+
+    for (uint256 i; i < amountLength; i++) {
+      uint256 depositAmount = depositAmounts[i];
+      if (depositAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
+
+      _transferToken(_from, portfolioTokens[i], depositAmount, usePermit);
+
+      if (
+        TokenBalanceLibrary._getTokenBalanceOf(
+          portfolioTokens[i],
+          vault,
+          _protocolConfig,
+          controllersData
+        ) <= tokenBalancesBefore[i]
+      ) {
+        revert ErrorLibrary.TransferFailed();
+      }
+      depositedAmounts[i] = depositAmount;
+    }
+
+    emit UserDepositedAmounts(depositedAmounts, portfolioTokens);
+    return 0;
+  }
+
+  /**
+   * @notice Calculates the minimum ratio among all deposit amounts and their corresponding vault balances.
+   * @dev This function iterates through all tokens and calculates the ratio of deposit amount to vault balance,
+   * then returns the minimum ratio found.
+   * @param amountLength The number of tokens to process.
+   * @param depositAmounts An array of deposit amounts for each token.
+   * @param tokenBalancesBefore An array of token balances in the vault before the deposit.
+   * @return uint256 The minimum ratio found among all tokens.
+   */
+  function _calculateMinRatio(
+    uint256 amountLength,
+    uint256[] calldata depositAmounts,
+    uint256[] memory tokenBalancesBefore
+  ) private pure returns (uint256) {
+    uint256 _minRatio = type(uint256).max;
     for (uint256 i = 0; i < amountLength; i++) {
       uint256 _currentRatio = _getDepositToVaultBalanceRatio(
         depositAmounts[i],
@@ -656,24 +831,47 @@ abstract contract VaultManager is
       );
       _minRatio = MathUtils._min(_currentRatio, _minRatio);
     }
+    return _minRatio;
+  }
 
-    uint256 transferAmount;
+  /**
+   * @notice Executes token transfers from the user to the vault based on the calculated minimum ratio.
+   * @dev This function transfers tokens, updates balances, and calculates the new minimum ratio after transfers.
+   * @param _from The address from which tokens are transferred.
+   * @param amountLength The number of tokens to process.
+   * @param portfolioTokens An array of token addresses in the portfolio.
+   * @param tokenBalancesBefore An array of token balances before the transfer.
+   * @param _minRatio The minimum ratio calculated before transfers.
+   * @param usePermit A boolean indicating whether to use permit for transfers.
+   * @param controllersData An array of controller data for balance calculations.
+   * @return uint256 The new minimum ratio after all transfers are completed.
+   */
+  function _executeTransfers(
+    address _from,
+    uint256 amountLength,
+    address[] memory portfolioTokens,
+    uint256[] memory tokenBalancesBefore,
+    uint256 _minRatio,
+    bool usePermit,
+    TokenBalanceLibrary.ControllerData[] memory controllersData
+  ) private returns (uint256) {
+    uint256[] memory depositedAmounts = new uint256[](amountLength);
     uint256 _minRatioAfterTransfer = type(uint256).max;
+
     for (uint256 i; i < amountLength; i++) {
       address token = portfolioTokens[i];
       uint256 tokenBalanceBefore = tokenBalancesBefore[i];
-      transferAmount = (_minRatio * tokenBalanceBefore) / ONE_ETH_IN_WEI;
+      uint256 transferAmount = (_minRatio * tokenBalanceBefore) /
+        ONE_ETH_IN_WEI;
       depositedAmounts[i] = transferAmount;
-      if (usePermit) {
-        _transferToVaultWithPermit(_from, token, transferAmount);
-      } else {
-        _transferToVault(_from, token, transferAmount);
-      }
+
+      _transferToken(_from, token, transferAmount, usePermit);
 
       uint256 tokenBalanceAfter = TokenBalanceLibrary._getTokenBalanceOf(
         token,
         vault,
-        _protocolConfig
+        _protocolConfig,
+        controllersData
       );
       uint256 currentRatio = _getDepositToVaultBalanceRatio(
         tokenBalanceAfter - tokenBalanceBefore,
@@ -684,7 +882,29 @@ abstract contract VaultManager is
         _minRatioAfterTransfer
       );
     }
+
     emit UserDepositedAmounts(depositedAmounts, portfolioTokens);
     return _minRatioAfterTransfer;
+  }
+
+  /**
+   * @notice Transfers a specified amount of tokens from a user to the vault.
+   * @dev This function chooses between permit and regular transfer based on the usePermit parameter.
+   * @param _from The address from which tokens are transferred.
+   * @param token The address of the token to transfer.
+   * @param amount The amount of tokens to transfer.
+   * @param usePermit A boolean indicating whether to use permit for the transfer.
+   */
+  function _transferToken(
+    address _from,
+    address token,
+    uint256 amount,
+    bool usePermit
+  ) private {
+    if (usePermit) {
+      _transferToVaultWithPermit(_from, token, amount);
+    } else {
+      _transferToVault(_from, token, amount);
+    }
   }
 }

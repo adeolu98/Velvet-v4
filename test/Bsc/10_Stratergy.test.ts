@@ -265,11 +265,7 @@ describe.only("Tests for Deposit", () => {
         iaddress.usdtAddress,
       ]);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 
@@ -653,12 +649,12 @@ describe.only("Tests for Deposit", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [1, 1],
+            _amount1Min: [1, 1],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           },
           {
             value: "1000000000000000000",
@@ -736,12 +732,12 @@ describe.only("Tests for Deposit", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [1, 1],
+            _amount1Min: [1, 1],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 
@@ -817,12 +813,12 @@ describe.only("Tests for Deposit", () => {
             _portfolioTokenIndex: portfolioTokenIndex,
             _index0: index0,
             _index1: index1,
-            _amount0Min: 1,
-            _amount1Min: 1,
+            _amount0Min: [1, 1],
+            _amount1Min: [1, 1],
             _isExternalPosition: isExternalPosition,
-            _tokenIn: ZERO_ADDRESS,
-            _tokenOut: ZERO_ADDRESS,
-            _amountIn: "0",
+            _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
+            _amountIn: ["0", "0"],
           }
         );
 

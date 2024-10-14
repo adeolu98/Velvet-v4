@@ -141,11 +141,7 @@ describe.only("Tests for Portfolio Config", () => {
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 

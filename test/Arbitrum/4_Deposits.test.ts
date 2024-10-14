@@ -137,11 +137,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 

@@ -146,11 +146,7 @@ describe.only("Tests for Deposit", () => {
 
       await protocolConfig.enableRewardTarget(addresses.venus_RewardToken);
 
-      const Rebalancing = await ethers.getContractFactory("Rebalancing", {
-        libraries: {
-          TokenBalanceLibrary: tokenBalanceLibrary.address,
-        },
-      });
+      const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
       await rebalancingDefult.deployed();
 

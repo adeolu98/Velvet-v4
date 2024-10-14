@@ -14,7 +14,6 @@ import "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import { IThena } from "../core/interfaces/IThena.sol";
 import { IVenusPool } from "../core/interfaces/IVenusPool.sol";
 import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
-import { TokenBalanceLibrary } from "../core/calculations/TokenBalanceLibrary.sol";
 import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
 import { FunctionParameters } from "../FunctionParameters.sol";
 import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
@@ -559,8 +558,8 @@ contract Rebalancing is
 
     // Retrieve the list of all tokens in the portfolio and their balances before the claim operation
     address[] memory tokens = portfolio.getTokens();
-    uint256[] memory tokenBalancesInVaultBefore = TokenBalanceLibrary
-      .getTokenBalancesOf(tokens, _vault, protocolConfig);
+    uint256[] memory tokenBalancesInVaultBefore = getTokenBalancesOf(tokens, _vault);
+
 
     uint256 rewardTokenBalanceBefore = _getTokenBalanceOf(
       _tokenToBeClaimed,
@@ -570,8 +569,7 @@ contract Rebalancing is
     // Execute the claim operation using the provided calldata on the target contract
     portfolio.vaultInteraction(_target, _claimCalldata);
 
-    uint256[] memory tokenBalancesInVaultAfter = TokenBalanceLibrary
-      .getTokenBalancesOf(tokens, _vault, protocolConfig);
+    uint256[] memory tokenBalancesInVaultAfter = getTokenBalancesOf(tokens, _vault);
 
     // Fetch the new balance of the reward token in the vault after the claim operation
     uint256 rewardTokenBalanceAfter = _getTokenBalanceOf(

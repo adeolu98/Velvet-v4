@@ -212,13 +212,18 @@ abstract contract VaultManagerV3_2 is
         uint256[] memory userWithdrawalAmounts = new uint256[](
             portfolioTokenLength
         );
+
+        //Get controllers data for the vault
+        TokenBalanceLibrary.ControllerData[] memory controllersData = TokenBalanceLibrary.getControllersData(vault, _protocolConfig);
+
         for (uint256 i; i < portfolioTokenLength; i++) {
             address _token = portfolioTokens[i];
             // Calculate the proportion of each token to return based on the burned portfolio tokens.
             uint256 tokenBalance = TokenBalanceLibrary._getTokenBalanceOf(
                 portfolioTokens[i],
                 vault,
-                _protocolConfig
+                _protocolConfig,
+                controllersData
             );
             userWithdrawalAmounts[i] = tokenBalance;
             tokenBalance =
@@ -320,8 +325,14 @@ abstract contract VaultManagerV3_2 is
         }
 
         // Get current token balances in the vault for ratio calculations
-        uint256[] memory tokenBalancesBefore = TokenBalanceLibrary
-            .getTokenBalancesOf(portfolioTokens, vault, _protocolConfig);
+       (
+            uint256[] memory tokenBalancesBefore,
+            TokenBalanceLibrary.ControllerData[] memory controllersData
+        ) = TokenBalanceLibrary.getTokenBalancesOf(
+            portfolioTokens,
+            vault,
+            _protocolConfig
+        );
 
         // If the vault is empty, accept the deposits and return zero as the initial ratio
         if (totalSupply() == 0) {
@@ -353,7 +364,8 @@ abstract contract VaultManagerV3_2 is
             uint256 tokenBalanceAfter = TokenBalanceLibrary._getTokenBalanceOf(
                 token,
                 vault,
-                _protocolConfig
+                _protocolConfig,
+                controllersData
             );
             uint256 currentRatio = _getDepositToVaultBalanceRatio(
                 tokenBalanceAfter - tokenBalanceBefore,
