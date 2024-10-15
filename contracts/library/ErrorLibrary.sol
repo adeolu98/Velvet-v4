@@ -109,6 +109,8 @@ library ErrorLibrary {
   error BalanceOfHandlerShouldBeZero();
   /// @notice Throws when balance of selltoken in handler after swap is exceeding dust
   error BalanceOfHandlerShouldNotExceedDust();
+  /// @notice Throws when balance of selltoken in vault after swap is exceeding dust
+  error BalanceOfVaultShouldNotExceedDust();
   /// @notice Throws when swap return value in handler is less then min buy amounts
   error ReturnValueLessThenExpected();
   /// @notice Throws when non portfolio token balance in not zero after rebalance

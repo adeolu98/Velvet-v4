@@ -198,7 +198,7 @@ contract Rebalancing is
         uint256 dustValue = (rebalanceData._sellAmounts[i] *
           protocolConfig.allowedDustTolerance()) / TOTAL_WEIGHT;
         if (_getTokenBalanceOf(_portfolioToken, _vault) > dustValue)
-          revert ErrorLibrary.BalanceOfHandlerShouldNotExceedDust();
+          revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
       }
       delete tokensMapping[_portfolioToken];
     }

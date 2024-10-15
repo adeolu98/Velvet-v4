@@ -1927,7 +1927,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           })
         ).to.be.revertedWithCustomError(
           rebalancing,
-          "BalanceOfHandlerShouldNotExceedDust"
+          "BalanceOfVaultShouldNotExceedDust"
         );
       });
 
