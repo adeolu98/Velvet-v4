@@ -125,21 +125,6 @@ contract AmountCalculationsAlgebra {
     ratio = (amount0 * 1 ether) / amount1;
   }
 
-  function getRatioForTicks(
-    IPositionWrapper _positionWrapper,
-    int24 _tickLower,
-    int24 _tickUpper
-  ) external returns (uint256 ratio) {
-    (uint256 amount0, uint256 amount1) = _getUnderlyingAmounts(
-      _positionWrapper,
-      _tickLower,
-      _tickUpper,
-      1 ether
-    );
-
-    ratio = amount0 == 0 ? 0 : (amount0 * 1 ether) / amount1;
-  }
-
   function getRatioAmountsForTicks(
     IPositionWrapper _positionWrapper,
     int24 _tickLower,
