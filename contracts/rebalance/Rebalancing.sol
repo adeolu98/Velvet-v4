@@ -450,7 +450,7 @@ contract Rebalancing is
             // Use unchecked block to save gas by skipping overflow/underflow checks
            // This is safe here because we're only incrementing by small amounts
             unchecked {
-                assembly {
+                assembly ("memory-safe") {
                     // Set the length of newTokens to currentTokens.length + 1
                     mstore(newTokens, add(mload(currentTokens), 1))
 

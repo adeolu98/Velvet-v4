@@ -108,7 +108,7 @@ contract RebalancingConfig is AccessRoles, Initializable {
         address[] memory currentTokens
     ) internal pure returns (bool) {
         bool result;
-        assembly {
+        assembly ("memory-safe") {
             // Get the length of the currentTokens array
             let len := mload(currentTokens)
 

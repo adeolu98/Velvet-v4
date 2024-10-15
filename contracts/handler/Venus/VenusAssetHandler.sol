@@ -193,7 +193,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         // Resize the arrays to remove unused entries
         uint256 unusedLend = assetsCount - lendCount;
         uint256 unusedBorrow = assetsCount - borrowCount;
-        assembly {
+        assembly ("memory-safe") {
             mstore(lendTokens, sub(mload(lendTokens), unusedLend))
             mstore(borrowTokens, sub(mload(borrowTokens), unusedBorrow))
         }
@@ -503,7 +503,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
      * @param size The size to resize the array to.
      */
     function resizeArray(address[] memory array, uint size) internal pure {
-        assembly {
+        assembly ("memory-safe") {
             mstore(array, sub(mload(array), size)) // Resize the array by adjusting its length
         }
     }
@@ -537,7 +537,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
             }
         }
         uint256 spaceToRemove = assetsCount - count;
-        assembly {
+        assembly ("memory-safe") {
             mstore(borrowedTokens, sub(mload(borrowedTokens), spaceToRemove))
         }
     }
@@ -760,7 +760,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         }
         // Resize the transactions array to remove unused entries
         uint unusedLength = ((tokenLength * 2) - count);
-        assembly {
+        assembly ("memory-safe") {
             mstore(transactions, sub(mload(transactions), unusedLength))
         }
     }
