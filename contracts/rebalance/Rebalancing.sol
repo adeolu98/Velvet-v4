@@ -29,22 +29,25 @@ contract Rebalancing is
   UUPSUpgradeable,
   RebalancingConfig
 {
-    /// @notice Emitted when weights are successfully updated after a swap operation.
-    event UpdatedWeights();
-    event UpdatedTokens(address[] newTokens);
-    event PortfolioTokenRemoved(
-        address indexed token,
-        address indexed vault,
-        uint256 indexed balance,
-        uint256 atSnapshotId
-    );
-    event TokenRepayed(FunctionParameters.RepayParams);
-    event DirectTokenRepayed(
-        address indexed _debtToken,
-        address indexed _protocolToken,
-        uint256 indexed _repayAmount
-    );
-    event Borrowed(address indexed _tokenToBorrow, uint256 indexed _amountToBorrow);
+  /// @notice Emitted when weights are successfully updated after a swap operation.
+  event UpdatedWeights();
+  event UpdatedTokens(address[] newTokens);
+  event PortfolioTokenRemoved(
+    address indexed token,
+    address indexed vault,
+    uint256 indexed balance,
+    uint256 atSnapshotId
+  );
+  event TokenRepayed(FunctionParameters.RepayParams);
+  event DirectTokenRepayed(
+    address indexed _debtToken,
+    address indexed _protocolToken,
+    uint256 indexed _repayAmount
+  );
+  event Borrowed(
+    address indexed _tokenToBorrow,
+    uint256 indexed _amountToBorrow
+  );
 
   uint256 public constant TOTAL_WEIGHT = 10_000; // Represents 100% in basis points.
   IBorrowManager internal borrowManager;
@@ -192,8 +195,10 @@ contract Rebalancing is
     for (uint256 i; i < tokenLength; i++) {
       address _portfolioToken = _tokens[i];
       if (tokensMapping[_portfolioToken]) {
-        if (_getTokenBalanceOf(_portfolioToken, _vault) != 0)
-          revert ErrorLibrary.NonPortfolioTokenBalanceIsNotZero();
+        uint256 dustValue = (rebalanceData._sellAmounts[i] *
+          protocolConfig.allowedDustTolerance()) / TOTAL_WEIGHT;
+        if (_getTokenBalanceOf(_portfolioToken, _vault) > dustValue)
+          revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
       }
       delete tokensMapping[_portfolioToken];
     }
@@ -201,92 +206,92 @@ contract Rebalancing is
     emit UpdatedTokens(_newTokens);
   }
 
-    /**
-     * @notice Executes a flash loan to repay debt and rebalance the portfolio.
-     * @param repayData Struct containing all necessary parameters for executing the flash loan and rebalancing.
-     * @dev This function is called by the asset manager to manage debts and portfolio balance.
-     * The flash loan is obtained from the specified pool, and the function handles token swaps and repayments.
-     */
-    function repay(
-        address _controller,
-        FunctionParameters.RepayParams calldata repayData
-    ) external onlyAssetManager nonReentrant protocolNotPaused {
-        borrowManager.repayVault(_controller, repayData);
-        emit TokenRepayed(repayData);
+  /**
+   * @notice Executes a flash loan to repay debt and rebalance the portfolio.
+   * @param repayData Struct containing all necessary parameters for executing the flash loan and rebalancing.
+   * @dev This function is called by the asset manager to manage debts and portfolio balance.
+   * The flash loan is obtained from the specified pool, and the function handles token swaps and repayments.
+   */
+  function repay(
+    address _controller,
+    FunctionParameters.RepayParams calldata repayData
+  ) external onlyAssetManager nonReentrant protocolNotPaused {
+    borrowManager.repayVault(_controller, repayData);
+    emit TokenRepayed(repayData);
+  }
+
+  /**
+   * @notice Repays a debt directly by transferring the debt token and repaying the debt.
+   * @param _debtToken The address of the debt token to be repaid.
+   * @param _protocolToken The address of the protocol token used to repay the debt.
+   * @param _repayAmount The amount of the debt token to be repaid.
+   * @dev This function is used to repay a debt directly by transferring the debt token and repaying the debt.
+   * It is called by the asset manager to repay a debt directly.
+   */
+  function directDebtRepayment(
+    address _debtToken, // Address of the debt token
+    address _protocolToken, // Address of the protocol token to which the debt token is to be transferred
+    uint256 _repayAmount // Amount of debt token to be repaid and type(uint256).max for full repayment
+  ) external onlyAssetManager nonReentrant protocolNotPaused {
+    if (_debtToken == address(0) || _protocolToken == address(0))
+      revert ErrorLibrary.InvalidAddress();
+    if (_repayAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
+
+    IAssetHandler assetHandler = IAssetHandler(
+      protocolConfig.assetHandlers(_protocolToken)
+    );
+
+    portfolio.vaultInteraction(
+      _debtToken,
+      assetHandler.approve(_protocolToken, 0)
+    );
+
+    // Approve the protocol token to spend the debt token
+    portfolio.vaultInteraction(
+      _debtToken,
+      assetHandler.approve(_protocolToken, _repayAmount)
+    );
+
+    // Repay the debt
+    portfolio.vaultInteraction(
+      _protocolToken,
+      assetHandler.repay(_repayAmount)
+    );
+
+    //Check balance not zero
+    if (_getTokenBalanceOf(_debtToken, _vault) == 0)
+      revert ErrorLibrary.BalanceOfVaultCannotNotBeZero(_debtToken);
+
+    //Remove approval
+    portfolio.vaultInteraction(
+      _debtToken,
+      assetHandler.approve(_protocolToken, 0)
+    );
+
+    //Events
+    emit DirectTokenRepayed(_debtToken, _protocolToken, _repayAmount);
+  }
+
+  /**
+   * @notice Removes an portfolio token from the portfolio. Can only be called by the asset manager.
+   * @param _token The address of the token to be removed from the portfolio.
+   */
+  function removePortfolioToken(
+    address _token
+  ) external onlyAssetManager nonReentrant protocolNotPaused {
+    address[] memory currentTokens = _getCurrentTokens();
+    if (!_isPortfolioToken(_token, currentTokens))
+      revert ErrorLibrary.NotPortfolioToken();
+
+    uint256 tokensLength = currentTokens.length;
+    address[] memory newTokens = new address[](tokensLength - 1);
+    uint256 j = 0;
+    for (uint256 i; i < tokensLength; i++) {
+      address token = currentTokens[i];
+      if (token != _token) {
+        newTokens[j++] = token;
+      }
     }
-
-    /**
-     * @notice Repays a debt directly by transferring the debt token and repaying the debt.
-     * @param _debtToken The address of the debt token to be repaid.
-     * @param _protocolToken The address of the protocol token used to repay the debt.
-     * @param _repayAmount The amount of the debt token to be repaid.
-     * @dev This function is used to repay a debt directly by transferring the debt token and repaying the debt.
-     * It is called by the asset manager to repay a debt directly.
-     */
-    function directDebtRepayment(
-        address _debtToken, // Address of the debt token
-        address _protocolToken, // Address of the protocol token to which the debt token is to be transferred
-        uint256 _repayAmount // Amount of debt token to be repaid and type(uint256).max for full repayment
-    ) external onlyAssetManager nonReentrant protocolNotPaused {
-        if (_debtToken == address(0) || _protocolToken == address(0))
-            revert ErrorLibrary.InvalidAddress();
-        if (_repayAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
-
-        IAssetHandler assetHandler = IAssetHandler(
-            protocolConfig.assetHandlers(_protocolToken)
-        );
-
-        portfolio.vaultInteraction(
-            _debtToken,
-            assetHandler.approve(_protocolToken, 0)
-        );
-
-        // Approve the protocol token to spend the debt token
-        portfolio.vaultInteraction(
-            _debtToken,
-            assetHandler.approve(_protocolToken, _repayAmount)
-        );
-
-        // Repay the debt
-        portfolio.vaultInteraction(
-            _protocolToken,
-            assetHandler.repay(_repayAmount)
-        );
-
-        //Check balance not zero
-        if (_getTokenBalanceOf(_debtToken, _vault) == 0)
-            revert ErrorLibrary.BalanceOfVaultCannotNotBeZero(_debtToken);
-
-        //Remove approval
-        portfolio.vaultInteraction(
-            _debtToken,
-            assetHandler.approve(_protocolToken, 0)
-        );
-
-        //Events
-        emit DirectTokenRepayed(_debtToken, _protocolToken, _repayAmount);
-    }
-
-    /**
-     * @notice Removes an portfolio token from the portfolio. Can only be called by the asset manager.
-     * @param _token The address of the token to be removed from the portfolio.
-     */
-    function removePortfolioToken(
-        address _token
-    ) external onlyAssetManager nonReentrant protocolNotPaused {
-        address[] memory currentTokens = _getCurrentTokens();
-        if (!_isPortfolioToken(_token, currentTokens))
-            revert ErrorLibrary.NotPortfolioToken();
-
-        uint256 tokensLength = currentTokens.length;
-        address[] memory newTokens = new address[](tokensLength - 1);
-        uint256 j = 0;
-        for (uint256 i; i < tokensLength; i++) {
-            address token = currentTokens[i];
-            if (token != _token) {
-                newTokens[j++] = token;
-            }
-        }
 
     portfolio.updateTokenList(newTokens);
 
@@ -294,33 +299,33 @@ contract Rebalancing is
     _tokenRemoval(_token, tokenBalance);
   }
 
-    /**
-     * @notice Removes a non-portfolio token from the portfolio. Can only be called by the asset manager.
-     * @param _token The address of the token to be removed.
-     */
-    function removeNonPortfolioToken(
-        address _token
-    ) external onlyAssetManager protocolNotPaused nonReentrant {
-        if (_isPortfolioToken(_token, _getCurrentTokens()))
-            revert ErrorLibrary.IsPortfolioToken();
+  /**
+   * @notice Removes a non-portfolio token from the portfolio. Can only be called by the asset manager.
+   * @param _token The address of the token to be removed.
+   */
+  function removeNonPortfolioToken(
+    address _token
+  ) external onlyAssetManager protocolNotPaused nonReentrant {
+    if (_isPortfolioToken(_token, _getCurrentTokens()))
+      revert ErrorLibrary.IsPortfolioToken();
 
     uint256 tokenBalance = IERC20Upgradeable(_token).balanceOf(_vault);
     _tokenRemoval(_token, tokenBalance);
   }
 
-    /**
-     * @notice Removes a portion of a portfolio token from the portfolio. Can only be called by the asset manager.
-     * @param _token The address of the token to be partially removed from the portfolio.
-     * @param _percentage The percentage of the token balance to be removed from the portfolio.
-     * @dev This function allows the asset manager to remove a specified percentage of a token from the portfolio.
-     * It reverts if the token is not part of the portfolio.
-     */
-    function removePortfolioTokenPartially(
-        address _token,
-        uint256 _percentage
-    ) external onlyAssetManager protocolNotPaused nonReentrant {
-        if (!_isPortfolioToken(_token, _getCurrentTokens()))
-            revert ErrorLibrary.NotPortfolioToken();
+  /**
+   * @notice Removes a portion of a portfolio token from the portfolio. Can only be called by the asset manager.
+   * @param _token The address of the token to be partially removed from the portfolio.
+   * @param _percentage The percentage of the token balance to be removed from the portfolio.
+   * @dev This function allows the asset manager to remove a specified percentage of a token from the portfolio.
+   * It reverts if the token is not part of the portfolio.
+   */
+  function removePortfolioTokenPartially(
+    address _token,
+    uint256 _percentage
+  ) external onlyAssetManager protocolNotPaused nonReentrant {
+    if (!_isPortfolioToken(_token, _getCurrentTokens()))
+      revert ErrorLibrary.NotPortfolioToken();
 
     uint256 tokenBalanceToRemove = _getTokenBalanceForPartialRemoval(
       _token,
@@ -330,159 +335,153 @@ contract Rebalancing is
     _tokenRemoval(_token, tokenBalanceToRemove);
   }
 
-    /**
-     * @notice Removes a non-portfolio token partially from the portfolio. Can only be called by the asset manager.
-     * @param _token The address of the token to be removed.
-     */
-    function removeNonPortfolioTokenPartially(
-        address _token,
-        uint256 _percentage
-    ) external onlyAssetManager protocolNotPaused nonReentrant {
-        if (_isPortfolioToken(_token, _getCurrentTokens()))
-            revert ErrorLibrary.IsPortfolioToken();
+  /**
+   * @notice Removes a non-portfolio token partially from the portfolio. Can only be called by the asset manager.
+   * @param _token The address of the token to be removed.
+   */
+  function removeNonPortfolioTokenPartially(
+    address _token,
+    uint256 _percentage
+  ) external onlyAssetManager protocolNotPaused nonReentrant {
+    if (_isPortfolioToken(_token, _getCurrentTokens()))
+      revert ErrorLibrary.IsPortfolioToken();
 
-      uint256 tokenBalanceToRemove = _getTokenBalanceForPartialRemoval(
-        _token,
-        _percentage
+    uint256 tokenBalanceToRemove = _getTokenBalanceForPartialRemoval(
+      _token,
+      _percentage
+    );
+
+    _tokenRemoval(_token, tokenBalanceToRemove);
+  }
+
+  /**
+   * @notice Enables specified tokens as collateral in the lending protocol.
+   * @dev This function allows the asset manager to designate certain tokens as collateral,
+   *      which can then be used to borrow other assets or increase borrowing capacity.
+   *      It interacts with the lending protocol through the AssetHandler contract.
+   * @param _tokens An array of token addresses to be enabled as collateral.
+   * @param _controller The address of the lending protocol's controller contract.
+   */
+  function enableCollateralTokens(
+    address[] memory _tokens,
+    address _controller
+  ) external onlyAssetManager {
+    if (!protocolConfig.isSupportedControllers(_controller))
+      revert ErrorLibrary.InvalidAddress();
+    IAssetHandler assetHandler = IAssetHandler(
+      protocolConfig.assetHandlers(_controller)
+    );
+    portfolio.vaultInteraction(_controller, assetHandler.enterMarket(_tokens));
+  }
+
+  /**
+   * @notice Disables specified tokens as collateral in the lending protocol.
+   * @dev This function allows the asset manager to remove certain tokens from being used as collateral.
+   *      It interacts with the lending protocol through the AssetHandler contract for each token.
+   * @param _tokens An array of token addresses to be disabled as collateral.
+   *@param _controller The address of the lending protocol's controller contract.
+   */
+  function disableCollateralTokens(
+    address[] memory _tokens,
+    address _controller
+  ) external onlyAssetManager {
+    uint256 tokensLength = _tokens.length;
+    if (!protocolConfig.isSupportedControllers(_controller))
+      revert ErrorLibrary.InvalidAddress();
+    IAssetHandler assetHandler = IAssetHandler(
+      protocolConfig.assetHandlers(_controller)
+    );
+    for (uint256 i; i < tokensLength; i++) {
+      address token = _tokens[i];
+      portfolio.vaultInteraction(
+        protocolConfig.marketControllers(token),
+        assetHandler.exitMarket(token)
       );
-
-        _tokenRemoval(_token, tokenBalanceToRemove);
     }
+  }
 
-    /**
-     * @notice Enables specified tokens as collateral in the lending protocol.
-     * @dev This function allows the asset manager to designate certain tokens as collateral,
-     *      which can then be used to borrow other assets or increase borrowing capacity.
-     *      It interacts with the lending protocol through the AssetHandler contract.
-     * @param _tokens An array of token addresses to be enabled as collateral.
-     * @param _controller The address of the lending protocol's controller contract.
-     */
-    function enableCollateralTokens(
-        address[] memory _tokens,
-        address _controller
-    ) external onlyAssetManager {
-        if (!protocolConfig.isSupportedControllers(_controller))
-            revert ErrorLibrary.InvalidAddress();
-        IAssetHandler assetHandler = IAssetHandler(
-            protocolConfig.assetHandlers(_controller)
-        );
-        portfolio.vaultInteraction(
-            _controller,
-            assetHandler.enterMarket(_tokens)
-        );
-    }
+  /**
+   * @notice Executes a borrow operation using the specified pool and collateral.
+   * @param _pool Address of the pool to borrow from.
+   * @param _tokens Address of the token to set as collateral.
+   * @param _tokenToBorrow Address of the token to borrow.
+   * @param _amountToBorrow Amount of the token to borrow.
+   * @dev Checks the pool address for validity and performs the borrow operation.
+   * Updates the portfolio with the new token list after the borrow operation.
+   */
+  function borrow(
+    address _pool, // pool address to borrow from
+    address[] memory _tokens, // tokens to set collateral
+    address _tokenToBorrow, // token to borrow
+    address _controller, // controller address
+    uint256 _amountToBorrow
+  ) external onlyAssetManager protocolNotPaused {
+    // Check for _pool address validity, prevent malicious address input
+    if (
+      _pool == address(0) ||
+      _tokenToBorrow == address(0) ||
+      !protocolConfig.isBorrowableToken(_pool) ||
+      !protocolConfig.isSupportedControllers(_controller)
+    ) revert ErrorLibrary.InvalidAddress();
 
-    /**
-     * @notice Disables specified tokens as collateral in the lending protocol.
-     * @dev This function allows the asset manager to remove certain tokens from being used as collateral.
-     *      It interacts with the lending protocol through the AssetHandler contract for each token.
-     * @param _tokens An array of token addresses to be disabled as collateral.
-     *@param _controller The address of the lending protocol's controller contract.
-     */
-    function disableCollateralTokens(
-        address[] memory _tokens,
-        address _controller
-    ) external onlyAssetManager {
-        uint256 tokensLength = _tokens.length;
-        if (!protocolConfig.isSupportedControllers(_controller))
-            revert ErrorLibrary.InvalidAddress();
-        IAssetHandler assetHandler = IAssetHandler(
-            protocolConfig.assetHandlers(_controller)
-        );
-        for (uint256 i; i < tokensLength; i++) {
-            address token = _tokens[i];
-            portfolio.vaultInteraction(
-                protocolConfig.marketControllers(token),
-                assetHandler.exitMarket(token)
-            );
+    IAssetHandler assetHandler = IAssetHandler(
+      protocolConfig.assetHandlers(_controller)
+    );
+
+    uint256 balanceBefore = _getTokenBalanceOf(_tokenToBorrow, _vault);
+
+    // Setting token as collateral
+    portfolio.vaultInteraction(_controller, assetHandler.enterMarket(_tokens));
+
+    // Borrow
+    portfolio.vaultInteraction(
+      _pool,
+      assetHandler.borrow(_pool, _tokenToBorrow, _amountToBorrow)
+    );
+
+    // Get the current list of tokens in the portfolio
+    address[] memory currentTokens = _getCurrentTokens();
+    // Check if the borrowed token is not already in the portfolio
+    if (!_isPortfolioToken(_tokenToBorrow, currentTokens)) {
+      uint256 length = currentTokens.length;
+      // Create a new array with space for one additional token
+      address[] memory newTokens = new address[](length + 1);
+      // Use unchecked block to save gas by skipping overflow/underflow checks
+      // This is safe here because we're only incrementing by small amounts
+      unchecked {
+        assembly {
+          // Set the length of newTokens to currentTokens.length + 1
+          mstore(newTokens, add(mload(currentTokens), 1))
+
+          // Set pointers to the start of the token data in both arrays
+          let srcPtr := add(currentTokens, 0x20)
+          let destPtr := add(newTokens, 0x20)
+
+          // Calculate the size of data to copy (32 bytes per token)
+          let size := mul(length, 0x20)
+
+          // Copy all tokens from currentTokens to newTokens
+          for {
+            let i := 0
+          } lt(i, size) {
+            i := add(i, 0x20)
+          } {
+            mstore(add(destPtr, i), mload(add(srcPtr, i)))
+          }
+
+          // Add the new token at the end of newTokens
+          mstore(add(destPtr, size), _tokenToBorrow)
         }
+      }
+      // Update the portfolio with the new token list
+      portfolio.updateTokenList(newTokens);
     }
 
-    /**
-     * @notice Executes a borrow operation using the specified pool and collateral.
-     * @param _pool Address of the pool to borrow from.
-     * @param _tokens Address of the token to set as collateral.
-     * @param _tokenToBorrow Address of the token to borrow.
-     * @param _amountToBorrow Amount of the token to borrow.
-     * @dev Checks the pool address for validity and performs the borrow operation.
-     * Updates the portfolio with the new token list after the borrow operation.
-     */
-    function borrow(
-        address _pool, // pool address to borrow from
-        address[] memory _tokens, // tokens to set collateral
-        address _tokenToBorrow, // token to borrow
-        address _controller, // controller address
-        uint256 _amountToBorrow
-    ) external onlyAssetManager protocolNotPaused {
-        // Check for _pool address validity, prevent malicious address input
-        if (
-            _pool == address(0) ||
-            _tokenToBorrow == address(0) ||
-            !protocolConfig.isBorrowableToken(_pool) ||
-            !protocolConfig.isSupportedControllers(_controller)
-        ) revert ErrorLibrary.InvalidAddress();
+    if (_getTokenBalanceOf(_tokenToBorrow, _vault) <= balanceBefore)
+      revert ErrorLibrary.BorrowFailed();
 
-        IAssetHandler assetHandler = IAssetHandler(
-            protocolConfig.assetHandlers(_controller)
-        );
-
-        uint256 balanceBefore = _getTokenBalanceOf(_tokenToBorrow, _vault);
-
-        // Setting token as collateral
-        portfolio.vaultInteraction(
-            _controller,
-            assetHandler.enterMarket(_tokens)
-        );
-
-        // Borrow
-        portfolio.vaultInteraction(
-            _pool,
-            assetHandler.borrow(_pool, _tokenToBorrow, _amountToBorrow)
-        );
-
-        // Get the current list of tokens in the portfolio
-        address[] memory currentTokens = _getCurrentTokens();
-        // Check if the borrowed token is not already in the portfolio
-        if (!_isPortfolioToken(_tokenToBorrow, currentTokens)) {
-            uint256 length = currentTokens.length;
-            // Create a new array with space for one additional token
-            address[] memory newTokens = new address[](length + 1);
-            // Use unchecked block to save gas by skipping overflow/underflow checks
-           // This is safe here because we're only incrementing by small amounts
-            unchecked {
-                assembly {
-                    // Set the length of newTokens to currentTokens.length + 1
-                    mstore(newTokens, add(mload(currentTokens), 1))
-
-                    // Set pointers to the start of the token data in both arrays
-                    let srcPtr := add(currentTokens, 0x20)
-                    let destPtr := add(newTokens, 0x20)
-
-                    // Calculate the size of data to copy (32 bytes per token)
-                    let size := mul(length, 0x20)
-
-                    // Copy all tokens from currentTokens to newTokens
-                    for {
-                        let i := 0
-                    } lt(i, size) {
-                        i := add(i, 0x20)
-                    } {
-                        mstore(add(destPtr, i), mload(add(srcPtr, i)))
-                    }
-
-                    // Add the new token at the end of newTokens
-                    mstore(add(destPtr, size), _tokenToBorrow)
-                }
-            }
-            // Update the portfolio with the new token list
-            portfolio.updateTokenList(newTokens);
-        }
-
-        if (_getTokenBalanceOf(_tokenToBorrow, _vault) <= balanceBefore)
-            revert ErrorLibrary.BorrowFailed();
-
-        emit Borrowed(_tokenToBorrow, _amountToBorrow);
-    }
+    emit Borrowed(_tokenToBorrow, _amountToBorrow);
+  }
 
   function _getTokenBalanceForPartialRemoval(
     address _token,
@@ -558,8 +557,10 @@ contract Rebalancing is
 
     // Retrieve the list of all tokens in the portfolio and their balances before the claim operation
     address[] memory tokens = portfolio.getTokens();
-    uint256[] memory tokenBalancesInVaultBefore = getTokenBalancesOf(tokens, _vault);
-
+    uint256[] memory tokenBalancesInVaultBefore = getTokenBalancesOf(
+      tokens,
+      _vault
+    );
 
     uint256 rewardTokenBalanceBefore = _getTokenBalanceOf(
       _tokenToBeClaimed,
@@ -569,7 +570,10 @@ contract Rebalancing is
     // Execute the claim operation using the provided calldata on the target contract
     portfolio.vaultInteraction(_target, _claimCalldata);
 
-    uint256[] memory tokenBalancesInVaultAfter = getTokenBalancesOf(tokens, _vault);
+    uint256[] memory tokenBalancesInVaultAfter = getTokenBalancesOf(
+      tokens,
+      _vault
+    );
 
     // Fetch the new balance of the reward token in the vault after the claim operation
     uint256 rewardTokenBalanceAfter = _getTokenBalanceOf(

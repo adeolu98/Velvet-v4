@@ -1930,7 +1930,7 @@ describe.only("Tests for Deposit", () => {
           })
         ).to.be.revertedWithCustomError(
           rebalancing,
-          "NonPortfolioTokenBalanceIsNotZero"
+          "BalanceOfVaultShouldNotExceedDust"
         );
       });
 
