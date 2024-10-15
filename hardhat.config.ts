@@ -61,11 +61,10 @@ const chainIds = {
 };
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.17",
   gasReporter: {
     enabled: true,
-    currency: 'USD',
-    gasPrice: 21
+    currency: "USD",
+    gasPrice: 21,
   },
   networks: {
     hardhat: {
@@ -181,10 +180,12 @@ const config: HardhatUserConfig = {
     timeout: 400000,
   },
   etherscan: {
-    apiKey:{
-      mainnet : process.env.ETHERSCAN_API_KEY ? process.env.ETHERSCAN_API_KEY : "",
-      bsc: process.env.BSCSCAN_API_KEY ? process.env.BSCSCAN_API_KEY : ""
-    } ,
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY
+        ? process.env.ETHERSCAN_API_KEY
+        : "",
+      bsc: process.env.BSCSCAN_API_KEY ? process.env.BSCSCAN_API_KEY : "",
+    },
   },
   abiExporter: {
     path: "./abi",
