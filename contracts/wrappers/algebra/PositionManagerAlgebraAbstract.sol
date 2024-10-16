@@ -426,6 +426,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       _params._tickUpper,
       _params._token0,
       _params._token1,
+      tokenIn,
       balanceTokenInBeforeSwap,
       IERC20Upgradeable(tokenIn).balanceOf(address(this))
     );

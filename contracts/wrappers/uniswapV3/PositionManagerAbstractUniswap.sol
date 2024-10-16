@@ -445,6 +445,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       _params._tickUpper,
       _params._token0,
       _params._token1,
+      _params._tokenIn,
       balanceTokenInBeforeSwap,
       balanceTokenInAfterSwap
     );

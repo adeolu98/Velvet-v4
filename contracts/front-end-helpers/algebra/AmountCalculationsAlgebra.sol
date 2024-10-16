@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { LiquidityAmounts } from "./LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../wrappers/abstract/LiquidityAmounts.sol";
 import { INonfungiblePositionManager } from "../../wrappers/algebra/INonfungiblePositionManager.sol";
 
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
@@ -123,21 +123,6 @@ contract AmountCalculationsAlgebra {
       liquidity
     );
     ratio = (amount0 * 1 ether) / amount1;
-  }
-
-  function getRatioForTicks(
-    IPositionWrapper _positionWrapper,
-    int24 _tickLower,
-    int24 _tickUpper
-  ) external returns (uint256 ratio) {
-    (uint256 amount0, uint256 amount1) = _getUnderlyingAmounts(
-      _positionWrapper,
-      _tickLower,
-      _tickUpper,
-      1 ether
-    );
-
-    ratio = amount0 == 0 ? 0 : (amount0 * 1 ether) / amount1;
   }
 
   function getRatioAmountsForTicks(

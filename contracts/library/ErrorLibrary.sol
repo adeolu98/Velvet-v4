@@ -203,4 +203,6 @@ library ErrorLibrary {
   error InvalidSwap();
   // @notice Thrown when controller data is not found
   error ControllerDataNotFound();
+  // @notice Thrown when the input token used for swapping is invalid
+  error InvalidSwapToken();
 }

@@ -94,13 +94,21 @@ library SwapVerificationLibrary {
     int24 _tickUpper,
     address _token0,
     address _token1,
+    address _tokenIn,
     uint256 _balanceBeforeSwap,
     uint256 _balanceAfterSwap
   ) external returns (uint256 balance0, uint256 balance1) {
     // Calculate the ratio after the swap and the expected pool ratio
     uint256 ratioAfterSwap;
     uint256 poolRatio;
-    (balance0, balance1, ratioAfterSwap, poolRatio) = calculateRatios(
+    address tokenZeroBalance;
+    (
+      balance0,
+      balance1,
+      ratioAfterSwap,
+      poolRatio,
+      tokenZeroBalance
+    ) = calculateRatios(
       _positionWrapper,
       _nftManager,
       _tickLower,
@@ -111,6 +119,7 @@ library SwapVerificationLibrary {
 
     // If the pool ratio is zero, verify using a one-sided check, otherwise use a standard ratio check
     if (poolRatio == 0) {
+      if (_tokenIn != tokenZeroBalance) revert ErrorLibrary.InvalidSwapToken();
       verifyOneSidedRatio(
         _protocolConfig,
         _balanceBeforeSwap,
@@ -133,7 +142,7 @@ library SwapVerificationLibrary {
     WrapperFunctionParameters.SwapParams memory _params,
     address _nftManager
   ) public {
-    (, , uint256 ratioAfterSwap, uint256 poolRatio) = calculateRatios(
+    (, , uint256 ratioAfterSwap, uint256 poolRatio, ) = calculateRatios(
       _params._positionWrapper,
       _nftManager,
       _params._tickLower,
@@ -168,7 +177,8 @@ library SwapVerificationLibrary {
       uint256 balance0,
       uint256 balance1,
       uint256 ratioAfterSwap,
-      uint256 poolRatio
+      uint256 poolRatio,
+      address tokenZeroBalance
     )
   {
     balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
@@ -178,12 +188,15 @@ library SwapVerificationLibrary {
       ? 0
       : (balance0 * 1e18) / balance1;
 
-    poolRatio = LiquidityAmountsCalculations.getRatioForTicks(
-      _positionWrapper,
-      getFactoryAddress(_nftManager),
-      _tickLower,
-      _tickUpper
-    );
+    (poolRatio, tokenZeroBalance) = LiquidityAmountsCalculations
+      .getRatioForTicks(
+        _positionWrapper,
+        getFactoryAddress(_nftManager),
+        _token0,
+        _token1,
+        _tickLower,
+        _tickUpper
+      );
   }
 
   /**
@@ -219,13 +232,25 @@ library SwapVerificationLibrary {
     }
   }
 
+  /**
+   * @notice Verifies the ratio for a one-sided swap
+   * @dev This function checks if the balance after a swap is within an acceptable range
+   * @param _protocolConfig The protocol configuration contract
+   * @param _balanceBeforeSwap The balance of the tokenIn before the swap
+   * @param _balanceAfterSwap The balance of the tokenIn after the swap
+   * @custom:throws ErrorLibrary.InvalidSwapAmount if the balance after swap exceeds the allowed dust amount
+   */
   function verifyOneSidedRatio(
     IProtocolConfig _protocolConfig,
     uint256 _balanceBeforeSwap,
     uint256 _balanceAfterSwap
   ) public view {
+    // @todo make sure tokenIn is the zero token
+
     uint256 allowedRatioDeviationBps = _protocolConfig
       .allowedRatioDeviationBps();
+    // Calculate the maximum allowed balance after swap based on the deviation
+    // This ensures that most of the tokenIn has been sold, leaving only a small dust value
     uint256 dustAllowance = (_balanceBeforeSwap *
       (TOTAL_WEIGHT - allowedRatioDeviationBps)) / TOTAL_WEIGHT;
 

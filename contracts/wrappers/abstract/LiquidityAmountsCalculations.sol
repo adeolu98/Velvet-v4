@@ -10,7 +10,7 @@ import "@cryptoalgebra/integral-core/contracts/libraries/Constants.sol";
 
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 
-import { LiquidityAmounts } from "../../front-end-helpers/algebra/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "./LiquidityAmounts.sol";
 
 library LiquidityAmountsCalculations {
   function _getUnderlyingAmounts(
@@ -39,9 +39,11 @@ library LiquidityAmountsCalculations {
   function getRatioForTicks(
     IPositionWrapper _positionWrapper,
     address _factory,
+    address _token0,
+    address _token1,
     int24 _tickLower,
     int24 _tickUpper
-  ) internal returns (uint256 ratio) {
+  ) internal returns (uint256 ratio, address tokenZeroBalance) {
     uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(_tickLower);
     uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(_tickUpper);
 
@@ -53,6 +55,14 @@ library LiquidityAmountsCalculations {
       1 ether
     );
 
-    ratio = amount0 == 0 ? 0 : (amount0 * 1e18) / amount1;
+    if (amount0 == 0) {
+      ratio = 0;
+      tokenZeroBalance = _token0;
+    } else if (amount1 == 0) {
+      ratio = 0;
+      tokenZeroBalance = _token1;
+    } else {
+      ratio = (amount0 * 1e18) / amount1;
+    }
   }
 }
