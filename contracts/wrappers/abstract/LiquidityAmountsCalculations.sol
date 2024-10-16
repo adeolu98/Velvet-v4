@@ -10,7 +10,7 @@ import "@cryptoalgebra/integral-core/contracts/libraries/Constants.sol";
 
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 
-import { LiquidityAmounts } from "../../front-end-helpers/algebra/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "./LiquidityAmounts.sol";
 
 library LiquidityAmountsCalculations {
   function _getUnderlyingAmounts(

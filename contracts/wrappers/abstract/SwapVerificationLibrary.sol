@@ -119,8 +119,7 @@ library SwapVerificationLibrary {
 
     // If the pool ratio is zero, verify using a one-sided check, otherwise use a standard ratio check
     if (poolRatio == 0) {
-      if (_tokenIn != address(0) && _tokenIn != tokenZeroBalance)
-        revert ErrorLibrary.InvalidSwapToken();
+      if (_tokenIn != tokenZeroBalance) revert ErrorLibrary.InvalidSwapToken();
       verifyOneSidedRatio(
         _protocolConfig,
         _balanceBeforeSwap,

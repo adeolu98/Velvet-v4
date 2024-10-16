@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { LiquidityAmounts } from "./LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../wrappers/abstract/LiquidityAmounts.sol";
 import { INonfungiblePositionManager } from "../../wrappers/algebra/INonfungiblePositionManager.sol";
 
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";

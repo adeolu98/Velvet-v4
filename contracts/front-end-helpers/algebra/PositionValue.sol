@@ -5,7 +5,7 @@ import "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 import "@cryptoalgebra/integral-core/contracts/libraries/Constants.sol";
 import { INonfungiblePositionManager } from "../../wrappers/algebra/INonfungiblePositionManager.sol";
-import { LiquidityAmounts } from "./LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../../wrappers/abstract/LiquidityAmounts.sol";
 import { PoolAddress } from "./PoolAddress.sol";
 
 import "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
