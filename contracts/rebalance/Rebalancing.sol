@@ -12,6 +12,7 @@ import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
 import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
 import { FunctionParameters } from "../FunctionParameters.sol";
 import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
+import "hardhat/console.sol";
 
 /**
  * @title RebalancingCore
@@ -187,16 +188,18 @@ contract Rebalancing is
 
     uint256 newTokensLength = _newTokens.length;
     for (uint256 i; i < newTokensLength; i++) {
-      tokensMapping[_newTokens[i]] = false;
+      delete tokensMapping[_newTokens[i]];
     }
 
+    uint256 sellIndex;
     for (uint256 i; i < tokenLength; i++) {
       address _portfolioToken = _tokens[i];
       if (tokensMapping[_portfolioToken]) {
-        uint256 dustValue = (rebalanceData._sellAmounts[i] *
+        uint256 dustValue = (rebalanceData._sellAmounts[sellIndex] *
           protocolConfig.allowedDustTolerance()) / TOTAL_WEIGHT;
         if (_getTokenBalanceOf(_portfolioToken, _vault) > dustValue)
           revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
+        sellIndex++;
       }
       delete tokensMapping[_portfolioToken];
     }
