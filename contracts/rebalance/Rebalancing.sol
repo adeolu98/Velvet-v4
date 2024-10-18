@@ -12,7 +12,6 @@ import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
 import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
 import { FunctionParameters } from "../FunctionParameters.sol";
 import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
-import "hardhat/console.sol";
 
 /**
  * @title RebalancingCore
