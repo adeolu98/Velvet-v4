@@ -191,15 +191,13 @@ contract Rebalancing is
       delete tokensMapping[_newTokens[i]];
     }
 
-    uint256 sellIndex;
     for (uint256 i; i < tokenLength; i++) {
       address _portfolioToken = _tokens[i];
       if (tokensMapping[_portfolioToken]) {
-        uint256 dustValue = (rebalanceData._sellAmounts[sellIndex] *
+        uint256 dustValue = (rebalanceData._sellAmounts[i] *
           protocolConfig.allowedDustTolerance()) / TOTAL_WEIGHT;
         if (_getTokenBalanceOf(_portfolioToken, _vault) > dustValue)
           revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
-        sellIndex++;
       }
       delete tokensMapping[_portfolioToken];
     }
