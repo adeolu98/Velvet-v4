@@ -44,9 +44,6 @@ abstract contract TokenWhitelistManagement is
     protocolConfig = IProtocolConfig(_protocolConfig);
     tokenWhitelistingEnabled = _tokenWhitelistingEnabled;
 
-    if (tokenWhitelistingEnabled && _whitelistTokens.length == 0) {
-      revert ErrorLibrary.InvalidTokenWhitelistLength();
-    }
     if (tokenWhitelistingEnabled) {
       if (_whitelistTokens.length == 0)
         revert ErrorLibrary.InvalidTokenWhitelistLength();
