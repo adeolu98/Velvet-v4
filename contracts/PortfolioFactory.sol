@@ -596,10 +596,10 @@ contract PortfolioFactory is
     address _newGnosisSafeProxyFactory
   ) external virtual onlyOwner {
     if (
-      _newGnosisSingleton != address(0) ||
-      _newGnosisFallbackLibrary != address(0) ||
-      _newGnosisMultisendLibrary != address(0) ||
-      _newGnosisSafeProxyFactory != address(0)
+      _newGnosisSingleton == address(0) ||
+      _newGnosisFallbackLibrary == address(0) ||
+      _newGnosisMultisendLibrary == address(0) ||
+      _newGnosisSafeProxyFactory == address(0)
     ) revert ErrorLibrary.InvalidAddress();
     gnosisSingleton = _newGnosisSingleton;
     gnosisFallbackLibrary = _newGnosisFallbackLibrary;

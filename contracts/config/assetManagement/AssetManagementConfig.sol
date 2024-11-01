@@ -43,13 +43,15 @@ contract AssetManagementConfig is
     __Ownable_init();
     __UUPSUpgradeable_init();
 
+    address protocolConfig = initData._protocolConfig;
+
     accessController = IAccessController(initData._accessController);
 
     // init parents
     __TreasuryManagement_init(initData._assetManagerTreasury);
 
     __PortfolioSettings_init(
-      initData._protocolConfig,
+      protocolConfig,
       initData._initialPortfolioAmount,
       initData._minPortfolioTokenHoldingAmount,
       initData._publicPortfolio,
@@ -63,11 +65,11 @@ contract AssetManagementConfig is
       initData._basePositionManager,
       initData._whitelistTokens,
       initData._externalPositionManagementWhitelisted,
-      initData._protocolConfig
+      protocolConfig
     );
 
     __FeeManagement_init(
-      initData._protocolConfig,
+      protocolConfig,
       initData._managementFee,
       initData._performanceFee,
       initData._entryFee,
@@ -75,7 +77,7 @@ contract AssetManagementConfig is
       initData._feeModule
     );
 
-    __UserWhitelistManagement_init(initData._protocolConfig);
+    __UserWhitelistManagement_init(protocolConfig);
   }
 
   // Override the onlyOwner modifier to specify it overrides from OwnableUpgradeable.

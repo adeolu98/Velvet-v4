@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 contract UniswapV3SwapHandler {
@@ -20,12 +20,13 @@ contract UniswapV3SwapHandler {
     uint24 poolFee,
     uint amountIn
   ) external returns (uint amountOut) {
-    IERC20Upgradeable(tokenIn).transferFrom(
+    TransferHelper.safeTransferFrom(
+      tokenIn,
       msg.sender,
       address(this),
       amountIn
     );
-    IERC20Upgradeable(tokenIn).approve(address(router), amountIn);
+    TransferHelper.safeApprove(tokenIn, address(router), amountIn);
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
       .ExactInputSingleParams({

@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/IERC20Upgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {IVelvetSafeModule} from "../../vault/IVelvetSafeModule.sol";
-import {IAssetManagementConfig} from "../../config/assetManagement/IAssetManagementConfig.sol";
-import {IPortfolio} from "../interfaces/IPortfolio.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/IERC20Upgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { IVelvetSafeModule } from "../../vault/IVelvetSafeModule.sol";
+import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManagementConfig.sol";
+import { IPortfolio } from "../interfaces/IPortfolio.sol";
 
-import {FeeManager} from "./FeeManager.sol";
-import {VaultConfig, ErrorLibrary} from "../config/VaultConfig.sol";
-import {VaultCalculations, Dependencies} from "../calculations/VaultCalculations.sol";
-import {MathUtils} from "../calculations/MathUtils.sol";
-import {PortfolioToken} from "../token/PortfolioToken.sol";
-import {IAllowanceTransfer} from "../interfaces/IAllowanceTransfer.sol";
+import { FeeManager } from "./FeeManager.sol";
+import { VaultConfig, ErrorLibrary } from "../config/VaultConfig.sol";
+import { VaultCalculations, Dependencies } from "../calculations/VaultCalculations.sol";
+import { MathUtils } from "../calculations/MathUtils.sol";
+import { PortfolioToken } from "../token/PortfolioToken.sol";
+import { IAllowanceTransfer } from "../interfaces/IAllowanceTransfer.sol";
 
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
-import {FunctionParameters} from "../../FunctionParameters.sol";
-import {TokenBalanceLibrary} from "../calculations/TokenBalanceLibrary.sol";
-import {IBorrowManager} from "../interfaces/IBorrowManager.sol";
-import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
+import { TokenBalanceLibrary } from "../calculations/TokenBalanceLibrary.sol";
+import { IBorrowManager } from "../interfaces/IBorrowManager.sol";
+import { IAssetHandler } from "../interfaces/IAssetHandler.sol";
 
 /**
  * @title VaultManager
@@ -347,11 +347,19 @@ abstract contract VaultManager is
       feeModule().resetHighWaterMark();
     } else {
       // Calculate the amount of portfolio tokens to mint based on the deposit.
-      tokenAmount = _getTokenAmountToMint(_depositRatio, _totalSupply,_assetManagementConfig);
+      tokenAmount = _getTokenAmountToMint(
+        _depositRatio,
+        _totalSupply,
+        _assetManagementConfig
+      );
     }
 
     // Mint the calculated portfolio tokens to the user, applying any cooldown periods.
-    tokenAmount = _mintTokenAndSetCooldown(_depositFor, tokenAmount,_assetManagementConfig);
+    tokenAmount = _mintTokenAndSetCooldown(
+      _depositFor,
+      tokenAmount,
+      _assetManagementConfig
+    );
 
     // Ensure the minted amount meets the user's minimum expectation to mitigate slippage.
     _verifyUserMintedAmount(tokenAmount, _minMintAmount);
@@ -589,16 +597,16 @@ abstract contract VaultManager is
    * @notice Processes multi-token deposits by calculating the minimum deposit ratio.
    * @dev Ensures that the deposited token amounts align with the current vault token ratios.
    * @param depositAmounts Array of amounts for each token the user wants to deposit.
-   *  @param _permit Batch permit data for token allowance.
+   * @param _permit Batch permit data for token allowance.
    * @param _signature Signature corresponding to the permit batch.
-   * @param _from The address from which the tokens are transferred.
+   * @param _depositFor The address that will receive the portfolio tokens when investing on their behalf.
    * @return The minimum deposit ratio after deposits.
    */
   function _multiTokenTransferWithPermit(
     uint256[] calldata depositAmounts,
     IAllowanceTransfer.PermitBatch calldata _permit,
     bytes calldata _signature,
-    address _from
+    address _depositFor
   ) internal returns (uint256) {
     // Validate deposit amounts and get initial token balances
     (
@@ -626,7 +634,7 @@ abstract contract VaultManager is
     // Handles the token transfer and minRatio calculations
     return
       _handleTokenTransfer(
-        _from,
+        _depositFor,
         amountLength,
         depositAmounts,
         portfolioTokens,
@@ -790,10 +798,8 @@ abstract contract VaultManager is
       _transferToken(_from, token, depositAmount, usePermit);
 
       if (
-        TokenBalanceLibrary._getTokenBalanceOf(
-          token,
-          vault
-        ) <= tokenBalancesBefore[i]
+        TokenBalanceLibrary._getTokenBalanceOf(token, vault) <=
+        tokenBalancesBefore[i]
       ) {
         revert ErrorLibrary.TransferFailed();
       }
