@@ -357,7 +357,7 @@ describe("Coverage test", async () => {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, nonReentrantTest.address, reEntrantData.data || " ", token1Amount, token2Amount, user.address, false)).to.revertedWithCustomError(metaAggregatorTestSwapContract, "ReentrancyGuardReentrantCall")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, nonReentrantTest.address, reEntrantData.data || " ", token1Amount, token2Amount, user.address, false)).to.revertedWith("ReentrancyGuard: reentrant call")
     })
     it("should fail if ETH to token was tried to swap on manager contract", async () => {
         const { token1, token2, aggregator, metaAggregatorTestManager, user, nativeToken } = await loadFixture(setupTest);
@@ -575,7 +575,7 @@ describe("Coverage test", async () => {
 
         await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, nonReentrantTest.address, reEntrantData.data || "", token1Amount, nativeTokenAmount, user.address, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "ReentrancyGuardReentrantCall")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, nonReentrantTest.address, reEntrantData.data || "", token1Amount, nativeTokenAmount, user.address, false)).to.be.revertedWith("ReentrancyGuard: reentrant call")
     })
     it("should fail when re-entrancy attack is made on swapETH method", async () => {
         const { token2, ensoAggregator, metaAggregatorTestSwapContract, nativeToken, user, receiver, ensoHelper, nonReentrantTest } = await loadFixture(setupTest);
@@ -594,7 +594,7 @@ describe("Coverage test", async () => {
 
 
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, nonReentrantTest.address, reEntrantData.data || "", nativeTokenAmount, token2Amount, user.address, false, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "ReentrancyGuardReentrantCall")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, nonReentrantTest.address, reEntrantData.data || "", nativeTokenAmount, token2Amount, user.address, false, { value: nativeTokenAmount })).to.be.revertedWith("ReentrancyGuard: reentrant call")
     })
     it("should fail when call to enso fails", async () => {
         const { token2, ensoAggregator, metaAggregatorTestSwapContract, nativeToken, user, ensoHelper } = await loadFixture(setupTest);
