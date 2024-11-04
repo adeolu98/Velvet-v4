@@ -30,4 +30,20 @@ To run the coverage of Bsc(set CHAIN_ID="56" in env), run the following command:
 
 ```
 $ npm run coverageBsc
+
 ```
+$npm run coverage:meta-aggregator 
+```
+
+To run the coverage for meta-aggregator
+
+```
+$npm run test:meta-aggregator
+```
+
+To run test case for meta-aggregator
+
+```
+$npm run deploy:meta-aggregator
+```
+To deploy meta aggregator on base
