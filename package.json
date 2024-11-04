@@ -33,7 +33,10 @@
     "prettier": "prettier -l --write . '**/*.{js,ts,json}'",
     "compile-types": "npx hardhat typechain && npx hardhat export-abi",
     "test:arb": "CHAIN_ID=42161 hardhat test test/Arbitrum",
-    "test:bsc": "CHAIN_ID=56 hardhat test test/Bsc"
+    "test:bsc": "CHAIN_ID=56 hardhat test test/Bsc",
+    "test:meta-aggregator": "npx hardhat test test/meta-aggregator-test/*test.*",
+    "coverage:meta-aggregator": "npx hardhat coverage --sources meta-aggregator  --testfiles \"test/meta-aggregator-test/*test.*\"",
+    "deploy:meta-aggregator": "npx hardhat run scripts/deployMetaAggregator.ts --network BaseMainnet"
   },
   "private": true,
   "devDependencies": {
@@ -110,7 +113,8 @@
     "prompt-sync": "^4.2.0",
     "solhint": "^3.3.6",
     "solmate": "^6.2.0",
-    "uniswap": "^0.0.1"
+    "uniswap": "^0.0.1",
+    "@openzeppelin/contracts-5.0.2": "npm:@openzeppelin/contracts@^5.0.2"
   },
   "lint-staged": {
     "*.sol": [
