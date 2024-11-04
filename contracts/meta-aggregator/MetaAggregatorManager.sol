@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts-5.0.2/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IMetaAggregatorSwapContract} from "./interfaces/IMetaAggregatorSwapContract.sol";
-import {IERC20} from "@openzeppelin/contracts-5.0.2/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IMetaAggregatorManager} from "./interfaces/IMetaAggregatorManager.sol";
 import {TransferHelper} from "./libraries/TransferHelper.sol";
 /**
