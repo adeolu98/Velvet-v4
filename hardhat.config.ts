@@ -6,6 +6,8 @@ import "@openzeppelin/hardhat-upgrades";
 import "hardhat-contract-sizer";
 import "solidity-coverage";
 import "hardhat-tracer";
+import "@nomicfoundation/hardhat-chai-matchers";
+
 
 import "hardhat-gas-reporter";
 import "hardhat-abi-exporter";
@@ -173,8 +175,7 @@ const config: HardhatUserConfig = {
             runs: 200,
           },
         },
-      },
-    ],
+      }],
   },
   mocha: {
     timeout: 400000,

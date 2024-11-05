@@ -9,7 +9,7 @@ import {
   AllowanceTransfer,
   MaxAllowanceTransferAmount,
   PermitBatch,
-} from "@uniswap/Permit2-sdk";
+} from "@uniswap/permit2-sdk";
 
 import {
   tokenAddresses,
