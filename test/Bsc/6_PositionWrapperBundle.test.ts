@@ -47,7 +47,7 @@ import {
   WithdrawManagerExternalPositions,
   DepositBatchExternalPositions,
   DepositManagerExternalPositions,
-  PositionManagerThena,
+  PositionManagerAlgebra,
   AssetManagementConfig,
   AmountCalculationsAlgebra,
   IFactory__factory,
@@ -91,7 +91,7 @@ describe.only("Tests for Deposit", () => {
   let owner: SignerWithAddress;
   let treasury: SignerWithAddress;
   let _assetManagerTreasury: SignerWithAddress;
-  let positionManager: PositionManagerThena;
+  let positionManager: PositionManagerAlgebra;
   let assetManagementConfig: AssetManagementConfig;
   let positionWrapper: any;
   let positionWrapper2: any;
@@ -283,7 +283,7 @@ describe.only("Tests for Deposit", () => {
       let whitelist = [owner.address];
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena",
+        "PositionManagerAlgebra",
         {
           libraries: {
             SwapVerificationLibrary: swapVerificationLibrary.address,
@@ -349,6 +349,11 @@ describe.only("Tests for Deposit", () => {
 
       portfolioFactory = PortfolioFactory.attach(
         portfolioFactoryInstance.address
+      );
+
+      await portfolioFactory.setPositionManagerAddresses(
+        "0xa51adb08cbe6ae398046a23bec013979816b77ab",
+        "0x327dd3208f0bcf590a66110acb6e5e6941a4efa0"
       );
 
       await withdrawManager.initialize(

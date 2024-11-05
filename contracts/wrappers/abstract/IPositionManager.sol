@@ -22,7 +22,9 @@ interface IPositionManager {
   function init(
     address _protocolConfig,
     address _assetManagerConfig,
-    address _accessController
+    address _accessController,
+    address _nftManager,
+    address _swapRouter
   ) external;
 
   /**

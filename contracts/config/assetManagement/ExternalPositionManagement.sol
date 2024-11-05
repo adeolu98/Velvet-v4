@@ -24,6 +24,9 @@ abstract contract ExternalPositionManagement is AccessRoles {
   address basePositionManager; // Address of the base implementation for position manager cloning.
   address accessControllerAddress; // Address of the access controller for role management.
 
+  address nftManagerAddress;
+  address swapRouterAddress;
+
   address private protocolConfig; // Address of the protocol config.
 
   // Flag to indicate if external position management is whitelisted
@@ -43,7 +46,9 @@ abstract contract ExternalPositionManagement is AccessRoles {
     address _protocolConfig,
     address _accessControllerAddress,
     address _basePositionManager,
-    bool _externalPositionManagementWhitelisted
+    bool _externalPositionManagementWhitelisted,
+    address _nftManagerAddress,
+    address _swapRouterAddress
   ) internal {
     accessControllerAddress = _accessControllerAddress;
     basePositionManager = _basePositionManager;
@@ -51,6 +56,9 @@ abstract contract ExternalPositionManagement is AccessRoles {
     externalPositionManagementWhitelisted = _externalPositionManagementWhitelisted;
 
     protocolConfig = _protocolConfig;
+
+    nftManagerAddress = _nftManagerAddress;
+    swapRouterAddress = _swapRouterAddress;
   }
 
   /**
@@ -76,6 +84,9 @@ abstract contract ExternalPositionManagement is AccessRoles {
       revert UniSwapV3WrapperAlreadyEnabled();
     }
 
+    if (nftManagerAddress == address(0) || swapRouterAddress == address(0))
+      revert ErrorLibrary.InvalidAddress();
+
     // Deploy and initialize the position manager.
     ERC1967Proxy positionManagerProxy = new ERC1967Proxy(
       basePositionManager,
@@ -83,7 +94,9 @@ abstract contract ExternalPositionManagement is AccessRoles {
         IPositionManager.init.selector,
         protocolConfig,
         address(this),
-        accessControllerAddress
+        accessControllerAddress,
+        nftManagerAddress,
+        swapRouterAddress
       )
     );
 
