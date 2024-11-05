@@ -23,7 +23,7 @@ contract PositionManagerCamelot is PositionManagerAbstractAlgebra {
 
     PositionManagerAbstractAlgebra_init(
       0x00c7f3082833e796A5b3e4Bd59f6642FF44DCD15,
-      0xE592427A0AEce92De3Edee1F18E0157C05861564, // Uniswap router for testing
+      0x1F721E2E82F6676FCE4eA07A5958cF098D339e18,
       _protocolConfig,
       _assetManagerConfig,
       _accessController
