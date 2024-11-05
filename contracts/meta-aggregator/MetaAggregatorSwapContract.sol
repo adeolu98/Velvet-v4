@@ -15,7 +15,7 @@ contract MetaAggregatorSwapContract is
     IMetaAggregatorSwapContract
 {
     address constant nativeToken = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address constant usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address immutable usdt;
     address immutable SWAP_TARGET;
 
     // Custom error definitions
@@ -32,6 +32,7 @@ contract MetaAggregatorSwapContract is
     error SwapFailed();
     error InvalidReceiver();
     error InvalidENSOAddress();
+    error InvalidUSDTAddress();
 
     event AmountSent(uint256 indexed amount, address indexed tokenOut);
 
@@ -39,11 +40,15 @@ contract MetaAggregatorSwapContract is
      * @dev Sets the swap target address.
      * @param _ensoSwapContract The address of the swap target contract.
      */
-    constructor(address _ensoSwapContract) {
+    constructor(address _ensoSwapContract, address _usdt) {
         if(_ensoSwapContract == address(0)) {
             revert InvalidENSOAddress();
         }
+        if(_usdt == address(0)) {
+            revert InvalidUSDTAddress();
+        }
         SWAP_TARGET = _ensoSwapContract;
+        usdt = _usdt;
     }
 
     /**

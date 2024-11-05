@@ -4,7 +4,8 @@ import { ethers } from "hardhat";
 // test setup
 export const setupTest = async () => {
     const [deployer, executor, user, receiver] = await ethers.getSigners(); // Get signers
-    const usdt = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+    const usdt = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
+
 
     // Deploy Token1
     const Token1 = await ethers.getContractFactory("TESTERC20");
@@ -33,7 +34,7 @@ export const setupTest = async () => {
 
     // Deploy MetaAggregatorTestSwapContract
     const MetaAggregatorTestSwapContract = await ethers.getContractFactory("MetaAggregatorSwapContract");
-    const metaAggregatorTestSwapContract = await MetaAggregatorTestSwapContract.deploy(ensoAggregator.address);
+    const metaAggregatorTestSwapContract = await MetaAggregatorTestSwapContract.deploy(ensoAggregator.address, usdt);
     await metaAggregatorTestSwapContract.deployed();
 
     // Deploy MetaAggregatorManager

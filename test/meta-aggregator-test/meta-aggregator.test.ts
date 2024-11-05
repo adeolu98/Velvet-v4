@@ -674,11 +674,19 @@ describe("Coverage test", async () => {
 
     })
     it("should fail when deploying swap contract with invalid enso aggregator contract", async () => {
-        const { zeroAddress } = await loadFixture(setupTest);
+        const { zeroAddress, usdt } = await loadFixture(setupTest);
 
         const MetaAggregatorTestSwapContract = await ethers.getContractFactory("MetaAggregatorSwapContract");
 
-        await expect(MetaAggregatorTestSwapContract.deploy(zeroAddress)).to.be.reverted;
+        await expect(MetaAggregatorTestSwapContract.deploy(zeroAddress, usdt)).to.be.reverted;
+
+    })
+    it("should fail when deploying swap contract with invalid usdt contract", async () => {
+        const { ensoAggregator, zeroAddress } = await loadFixture(setupTest);
+
+        const MetaAggregatorTestSwapContract = await ethers.getContractFactory("MetaAggregatorSwapContract");
+
+        await expect(MetaAggregatorTestSwapContract.deploy(ensoAggregator.address,zeroAddress)).to.be.reverted;
 
     })
 })
