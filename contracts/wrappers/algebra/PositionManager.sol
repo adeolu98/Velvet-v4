@@ -14,7 +14,8 @@ contract PositionManagerAlgebra is PositionManagerAbstractAlgebra {
     address _assetManagerConfig,
     address _accessController,
     address _nftManager,
-    address _swapRouter
+    address _swapRouter,
+    bytes32 _protocolId
   ) external initializer {
     // Add input validation
     if (
@@ -28,7 +29,8 @@ contract PositionManagerAlgebra is PositionManagerAbstractAlgebra {
       _swapRouter,
       _protocolConfig,
       _assetManagerConfig,
-      _accessController
+      _accessController,
+      _protocolId
     );
   }
 }

@@ -9,7 +9,7 @@ import { IPositionManager } from "../../wrappers/abstract/IPositionManager.sol";
 import { PositionWrapper } from "../../wrappers/abstract/PositionWrapper.sol";
 
 import { AccessRoles } from "../../access/AccessRoles.sol";
-
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManagementConfig.sol";
 
 /**
@@ -24,15 +24,15 @@ abstract contract ExternalPositionManagement is AccessRoles {
   address basePositionManager; // Address of the base implementation for position manager cloning.
   address accessControllerAddress; // Address of the access controller for role management.
 
-  address nftManagerAddress;
-  address swapRouterAddress;
-
   address private protocolConfig; // Address of the protocol config.
 
-  // Flag to indicate if external position management is whitelisted
-  bool externalPositionManagementWhitelisted;
+  // Mapping to track whitelisted protocols
+  mapping(bytes32 => bool) public whitelistedProtocols;
+
+  mapping(bytes32 => bool) public positionManagerEnabled;
 
   event UniswapV3ManagerEnabled();
+  event ProtocolManagerEnabled(bytes32 indexed protocolId);
 
   error UniSwapV3WrapperAlreadyEnabled(); // Custom error for preventing re-enabling the Uniswap V3 wrapper.
 
@@ -46,27 +46,28 @@ abstract contract ExternalPositionManagement is AccessRoles {
     address _protocolConfig,
     address _accessControllerAddress,
     address _basePositionManager,
-    bool _externalPositionManagementWhitelisted,
-    address _nftManagerAddress,
-    address _swapRouterAddress
+    bytes32[] calldata _witelistedProtocolIds
   ) internal {
     accessControllerAddress = _accessControllerAddress;
     basePositionManager = _basePositionManager;
 
-    externalPositionManagementWhitelisted = _externalPositionManagementWhitelisted;
+    whitelistProtocols(_witelistedProtocolIds);
 
     protocolConfig = _protocolConfig;
+  }
 
-    nftManagerAddress = _nftManagerAddress;
-    swapRouterAddress = _swapRouterAddress;
+  function whitelistProtocols(bytes32[] calldata protocolIds) internal {
+    for (uint256 i; i < protocolIds.length; i++) {
+      whitelistedProtocols[protocolIds[i]] = true;
+    }
   }
 
   /**
    * @notice Enables the Uniswap V3 wrapper if it is not already enabled and the caller has the asset manager role.
-   * @dev Clones a new position manager from a base implementation and initializes it. This function is restricted
-   *      to asset managers and can only be executed once to prevent re-initialization.
+     * @param protocolId The identifier for the protocol (e.g., keccak256("UNISWAP_V3"))
+
    */
-  function enableUniSwapV3Manager() external {
+  function enableUniSwapV3Manager(bytes32 protocolId) external {
     // Ensure the caller has the asset manager role.
     if (
       !IAccessController(accessControllerAddress).hasRole(
@@ -75,17 +76,22 @@ abstract contract ExternalPositionManagement is AccessRoles {
       )
     ) revert ErrorLibrary.CallerNotAssetManager();
 
-    if (!externalPositionManagementWhitelisted) {
-      revert ErrorLibrary.ExternalPositionManagementNotWhitelisted();
-    }
-
     // Prevent re-enabling if the wrapper is already enabled.
-    if (uniswapV3WrapperEnabled) {
-      revert UniSwapV3WrapperAlreadyEnabled();
-    }
+    if (positionManagerEnabled[protocolId])
+      revert ErrorLibrary.ProtocolManagerAlreadyEnabled(protocolId);
 
-    if (nftManagerAddress == address(0) || swapRouterAddress == address(0))
-      revert ErrorLibrary.InvalidAddress();
+    // Check if protocol is whitelisted in protocol config
+    if (!IProtocolConfig(protocolConfig).isProtocolEnabled(protocolId))
+      revert ErrorLibrary.ProtocolNotEnabled(protocolId);
+
+    // Check if protocol is whitelisted for this portfolio
+    if (!IAssetManagementConfig(address(this)).whitelistedProtocols(protocolId))
+      revert ErrorLibrary.ProtocolNotWhitelisted(protocolId);
+
+    // Get protocol addresses from config
+    (address nftManagerAddress, address swapRouterAddress) = IProtocolConfig(
+      protocolConfig
+    ).getProtocolAddresses(protocolId);
 
     // Deploy and initialize the position manager.
     ERC1967Proxy positionManagerProxy = new ERC1967Proxy(
@@ -96,7 +102,8 @@ abstract contract ExternalPositionManagement is AccessRoles {
         address(this),
         accessControllerAddress,
         nftManagerAddress,
-        swapRouterAddress
+        swapRouterAddress,
+        protocolId
       )
     );
 

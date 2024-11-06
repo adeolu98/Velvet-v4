@@ -248,10 +248,7 @@ contract PortfolioFactory is
           _transferable: initData._transferable,
           _transferableToPublic: initData._transferableToPublic,
           _whitelistTokens: initData._whitelistTokens,
-          _externalPositionManagementWhitelisted: initData
-            ._externalPositionManagementWhitelisted,
-          _nftManager: nftManagerAddress,
-          _swapRouterV3: swapRouterV3Address
+          _witelistedProtocolIds: initData._witelistedProtocolIds
         })
       )
     );

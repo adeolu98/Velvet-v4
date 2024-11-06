@@ -205,4 +205,10 @@ library ErrorLibrary {
   error ControllerDataNotFound();
   // @notice Thrown when the input token used for swapping is invalid
   error InvalidSwapToken();
+  // @notice Thrown when attempting to enable a protocol manager that is already enabled
+  error ProtocolManagerAlreadyEnabled(bytes32);
+  // @notice Thrown when attempting to use a protocol that is not whitelisted for the portfolio
+  error ProtocolNotWhitelisted(bytes32);
+  // @notice Thrown when attempting to use a protocol that is not enabled in protocol config
+  error ProtocolNotEnabled(bytes32);
 }

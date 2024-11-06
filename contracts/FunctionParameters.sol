@@ -101,7 +101,7 @@ library FunctionParameters {
     bool _transferable;
     bool _transferableToPublic;
     bool _whitelistTokens;
-    bool _externalPositionManagementWhitelisted;
+    bytes32[] _witelistedProtocolIds;
     string _name;
     string _symbol;
   }
@@ -136,14 +136,12 @@ library FunctionParameters {
     address _feeModule;
     address _assetManagerTreasury;
     address _basePositionManager;
-    address _nftManager;
-    address _swapRouterV3;
     address[] _whitelistedTokens;
     bool _publicPortfolio;
     bool _transferable;
     bool _transferableToPublic;
     bool _whitelistTokens;
-    bool _externalPositionManagementWhitelisted;
+    bytes32[] _witelistedProtocolIds;
   }
 
   /**

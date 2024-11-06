@@ -14,7 +14,8 @@ contract PositionManagerUniswap is PositionManagerAbstractUniswap {
     address _assetManagerConfig,
     address _accessController,
     address _nftManager,
-    address _swapRouter
+    address _swapRouter,
+    bytes32 _protocolId
   ) external initializer {
     // Add input validation
     if (
@@ -28,7 +29,8 @@ contract PositionManagerUniswap is PositionManagerAbstractUniswap {
       _swapRouter,
       _protocolConfig,
       _assetManagerConfig,
-      _accessController
+      _accessController,
+      _protocolId
     );
   }
 }

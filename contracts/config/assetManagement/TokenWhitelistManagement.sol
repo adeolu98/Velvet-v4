@@ -37,10 +37,8 @@ abstract contract TokenWhitelistManagement is
     address _accessControllerAddress,
     address _basePositionManager,
     bool _tokenWhitelistingEnabled,
-    bool _externalPositionManagementWhitelisted,
-    address _protocolConfig,
-    address _nftManager,
-    address _swapRouterV3
+    bytes32[] calldata _witelistedProtocolIds,
+    address _protocolConfig
   ) internal onlyInitializing {
     if (_protocolConfig == address(0)) revert ErrorLibrary.InvalidAddress();
     protocolConfig = IProtocolConfig(_protocolConfig);
@@ -57,9 +55,7 @@ abstract contract TokenWhitelistManagement is
       _protocolConfig,
       _accessControllerAddress,
       _basePositionManager,
-      _externalPositionManagementWhitelisted,
-      _nftManager,
-      _swapRouterV3
+      _witelistedProtocolIds
     );
   }
 

@@ -30,13 +30,15 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     address _swapRouter,
     address _protocolConfig,
     address _assetManagerConfig,
-    address _accessController
+    address _accessController,
+    bytes32 _protocolId
   ) internal {
     PositionManagerAbstract__init(
       _nonFungiblePositionManagerAddress,
       _protocolConfig,
       _assetManagerConfig,
-      _accessController
+      _accessController,
+      _protocolId
     );
 
     router = ISwapRouter(_swapRouter);

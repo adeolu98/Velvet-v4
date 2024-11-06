@@ -50,6 +50,9 @@ abstract contract PositionManagerAbstract is
   /// @notice List of addresses for all deployed position wrapper contracts.
   address[] public deployedPositionWrappers;
 
+  /// @notice The identifier for the protocol that this position manager supports.
+  bytes32 public protocolId;
+
   /// @notice Mapping to check if a given address is an officially deployed wrapper position.
   /// @dev Helps in validating whether interactions are with legitimate wrappers.
   mapping(address => bool) public isWrappedPosition;
@@ -105,7 +108,8 @@ abstract contract PositionManagerAbstract is
     address _nonFungiblePositionManagerAddress,
     address _protocolConfig,
     address _assetManagerConfig,
-    address _accessController
+    address _accessController,
+    bytes32 _protocolId
   ) internal {
     __UUPSUpgradeable_init();
 
@@ -115,6 +119,7 @@ abstract contract PositionManagerAbstract is
     protocolConfig = IProtocolConfig(_protocolConfig);
     assetManagementConfig = IAssetManagementConfig(_assetManagerConfig);
     accessController = IAccessController(_accessController);
+    protocolId = _protocolId;
   }
 
   /**
