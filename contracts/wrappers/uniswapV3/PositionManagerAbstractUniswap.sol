@@ -412,7 +412,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
         recipient: address(this),
         deadline: block.timestamp,
         amountIn: _params._amountIn,
-        amountOutMinimum: 0, // @todo add slippage control
+        amountOutMinimum: 0,
         sqrtPriceLimitX96: 0
       });
 

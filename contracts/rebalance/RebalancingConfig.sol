@@ -25,9 +25,6 @@ contract RebalancingConfig is AccessRoles, Initializable {
   IAccessController public accessController;
   IProtocolConfig public protocolConfig;
   ITokenExclusionManager internal tokenExclusionManager;
-
-  mapping(address => bool) public tokensMapping;
-
   address internal _vault;
 
   /**
