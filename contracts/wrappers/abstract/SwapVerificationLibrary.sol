@@ -245,7 +245,6 @@ library SwapVerificationLibrary {
     uint256 _balanceBeforeSwap,
     uint256 _balanceAfterSwap
   ) public view {
-    // @todo make sure tokenIn is the zero token
 
     uint256 allowedRatioDeviationBps = _protocolConfig
       .allowedRatioDeviationBps();
