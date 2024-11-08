@@ -11,6 +11,7 @@ import { PositionWrapper } from "../../wrappers/abstract/PositionWrapper.sol";
 import { AccessRoles } from "../../access/AccessRoles.sol";
 import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManagementConfig.sol";
+import { IExternalPositionStorage } from "../../wrappers/abstract/IExternalPositionStorage.sol";
 
 /**
  * @title External Position Management
@@ -19,6 +20,7 @@ import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManag
  */
 abstract contract ExternalPositionManagement is AccessRoles {
   IPositionManager public positionManager; // Interface to interact with the position manager.
+  IExternalPositionStorage public externalPositions; // Interface to interact with external positions.
   bool public uniswapV3WrapperEnabled; // Flag to indicate if the Uniswap V3 wrapper is enabled.
 
   address basePositionManager; // Address of the base implementation for position manager cloning.
@@ -109,8 +111,9 @@ abstract contract ExternalPositionManagement is AccessRoles {
 
     positionManager = IPositionManager(address(positionManagerProxy));
 
-    // Mark the wrapper as enabled.
-    uniswapV3WrapperEnabled = true;
+    // @todo add position manager role
+
+    // @todo set protocol id as enabled
 
     emit UniswapV3ManagerEnabled();
   }

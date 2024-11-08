@@ -89,6 +89,8 @@ contract ProtocolConfig is
     if (_newImpl == address(0)) {
       revert ErrorLibrary.InvalidAddress();
     }
+
+    // @todo set new implementation as base implemenation
     uint256 proxyLength = _proxy.length;
     for (uint256 i; i < proxyLength; i++) {
       address proxyAddress = _proxy[i];

@@ -18,6 +18,7 @@ import { AccessRoles } from "../../access/AccessRoles.sol";
 import { LiquidityAmountsCalculations } from "./LiquidityAmountsCalculations.sol";
 import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
 import { SwapVerificationLibrary } from "./SwapVerificationLibrary.sol";
+import { IExternalPositionStorage } from "./IExternalPositionStorage.sol";
 
 /**
  * @title PositionManagerAbstract
@@ -53,9 +54,8 @@ abstract contract PositionManagerAbstract is
   /// @notice The identifier for the protocol that this position manager supports.
   bytes32 public protocolId;
 
-  /// @notice Mapping to check if a given address is an officially deployed wrapper position.
-  /// @dev Helps in validating whether interactions are with legitimate wrappers.
-  mapping(address => bool) public isWrappedPosition;
+  /// @dev Contract for managing external positions, used to track and validate wrapped positions.
+  IExternalPositionStorage public externalPositionStorage;
 
   event NewPositionCreated(
     address indexed positionWrapper,

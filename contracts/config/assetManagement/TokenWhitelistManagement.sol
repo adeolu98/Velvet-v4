@@ -6,6 +6,8 @@ import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
 import { ExternalPositionManagement, ErrorLibrary } from "./ExternalPositionManagement.sol";
 
+import { IExternalPositionStorage } from "../../wrappers/abstract/IExternalPositionStorage.sol";
+
 /**
  * @title TokenWhitelistManagement
  * @dev Manages the whitelisting of tokens, determining which tokens are authorized for use within the system.
@@ -17,6 +19,7 @@ abstract contract TokenWhitelistManagement is
   Initializable
 {
   IProtocolConfig private protocolConfig; // Reference to the protocol configuration contract.
+  IExternalPositionStorage private externalPositionStorage; // Reference to the external position storage contract.
   mapping(address => bool) public whitelistedTokens; // Mapping to track whitelisted tokens.
   bool public tokenWhitelistingEnabled; // Flag to indicate if token whitelisting is enabled.
 
@@ -87,7 +90,6 @@ abstract contract TokenWhitelistManagement is
   function isTokenWhitelisted(address _token) external returns (bool) {
     return
       whitelistedTokens[_token] ||
-      (address(positionManager) != address(0) &&
-        positionManager.isWrappedPosition(_token));
+      externalPositionStorage.isWrappedPosition(_token);
   }
 }
