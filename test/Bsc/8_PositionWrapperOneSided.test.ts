@@ -53,7 +53,7 @@ import {
   DepositManagerExternalPositions,
   TokenBalanceLibrary,
   BorrowManager,
-  PositionManagerThena,
+  PositionManagerAlgebra,
   AssetManagementConfig,
   AmountCalculationsAlgebra,
 } from "../../typechain";
@@ -96,7 +96,7 @@ describe.only("Tests for Deposit", () => {
   let owner: SignerWithAddress;
   let treasury: SignerWithAddress;
   let _assetManagerTreasury: SignerWithAddress;
-  let positionManager: PositionManagerThena;
+  let positionManager: PositionManagerAlgebra;
   let assetManagementConfig: AssetManagementConfig;
   let positionWrapper: any;
   let positionWrapper2: any;
@@ -293,13 +293,13 @@ describe.only("Tests for Deposit", () => {
           addresses.vBNB_Address,
           addresses.vBTC_Address,
           addresses.vDAI_Address,
-          addresses.vUSDT_Address
+          addresses.vUSDT_Address,
         ],
         [
           addresses.corePool_controller,
           addresses.corePool_controller,
           addresses.corePool_controller,
-          addresses.corePool_controller
+          addresses.corePool_controller,
         ]
       );
 
@@ -322,7 +322,7 @@ describe.only("Tests for Deposit", () => {
       zeroAddress = "0x0000000000000000000000000000000000000000";
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena",
+        "PositionManagerAlgebra",
         {
           libraries: {
             SwapVerificationLibrary: swapVerificationLibrary.address,
@@ -388,6 +388,11 @@ describe.only("Tests for Deposit", () => {
 
       portfolioFactory = PortfolioFactory.attach(
         portfolioFactoryInstance.address
+      );
+
+      await portfolioFactory.setPositionManagerAddresses(
+        "0xa51adb08cbe6ae398046a23bec013979816b77ab",
+        "0x327dd3208f0bcf590a66110acb6e5e6941a4efa0"
       );
 
       await withdrawManager.initialize(

@@ -136,6 +136,8 @@ library FunctionParameters {
     address _feeModule;
     address _assetManagerTreasury;
     address _basePositionManager;
+    address _nftManager;
+    address _swapRouterV3;
     address[] _whitelistedTokens;
     bool _publicPortfolio;
     bool _transferable;

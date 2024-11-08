@@ -230,7 +230,7 @@ describe.only("Tests for Deposit", () => {
       await swapVerificationLibrary.deployed();
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena",
+        "PositionManagerAlgebra",
         {
           libraries: {
             SwapVerificationLibrary: swapVerificationLibrary.address,

@@ -202,7 +202,7 @@ describe.only("Tests for Portfolio Config", () => {
       await swapVerificationLibrary.deployed();
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena",
+        "PositionManagerAlgebra",
         {
           libraries: {
             SwapVerificationLibrary: swapVerificationLibrary.address,

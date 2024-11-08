@@ -15,36 +15,48 @@ async function main() {
   const chainId: any = process.env.CHAIN_ID;
   const addresses = chainIdToAddresses[chainId];
 
-   // Set maximum gas fee (in Gwei)
-   const MAX_GAS_FEE_GWEI = 10; // Adjust this value as needed
-  
-   // Get the current base fee
-   const feeData = await ethers.provider.getFeeData();
-   const baseFee = feeData.lastBaseFeePerGas;
-   
-   // Calculate priority fee (tip)
-   const priorityFee = ethers.utils.parseUnits("1.5", "gwei");
-   
-   // Ensure the priority fee is at least 1 Gwei
-   const minPriorityFee = ethers.utils.parseUnits("1", "gwei");
-   const adjustedPriorityFee = priorityFee.lt(minPriorityFee) ? minPriorityFee : priorityFee;
-   
-   // Calculate max fee per gas, but cap it at MAX_GAS_FEE_GWEI
-   const calculatedMaxFee = baseFee.mul(2).add(adjustedPriorityFee);
-   const maxFeePerGas = calculatedMaxFee.gt(ethers.utils.parseUnits(MAX_GAS_FEE_GWEI.toString(), "gwei"))
-     ? ethers.utils.parseUnits(MAX_GAS_FEE_GWEI.toString(), "gwei")
-     : calculatedMaxFee;
- 
-   // Use this for deployment transactions
-   const overrides = {
-     maxFeePerGas: maxFeePerGas,
-     maxPriorityFeePerGas: adjustedPriorityFee,
-     gasLimit: 35000000,  // Adjust this value based on your contract's complexity
-   };
- 
-   console.log("Base fee:", ethers.utils.formatUnits(baseFee, "gwei"), "Gwei");
-   console.log("Max fee per gas:", ethers.utils.formatUnits(maxFeePerGas, "gwei"), "Gwei");
-   console.log("Priority fee:", ethers.utils.formatUnits(adjustedPriorityFee, "gwei"), "Gwei");
+  // Set maximum gas fee (in Gwei)
+  const MAX_GAS_FEE_GWEI = 10; // Adjust this value as needed
+
+  // Get the current base fee
+  const feeData = await ethers.provider.getFeeData();
+  const baseFee = feeData.lastBaseFeePerGas;
+
+  // Calculate priority fee (tip)
+  const priorityFee = ethers.utils.parseUnits("1.5", "gwei");
+
+  // Ensure the priority fee is at least 1 Gwei
+  const minPriorityFee = ethers.utils.parseUnits("1", "gwei");
+  const adjustedPriorityFee = priorityFee.lt(minPriorityFee)
+    ? minPriorityFee
+    : priorityFee;
+
+  // Calculate max fee per gas, but cap it at MAX_GAS_FEE_GWEI
+  const calculatedMaxFee = baseFee.mul(2).add(adjustedPriorityFee);
+  const maxFeePerGas = calculatedMaxFee.gt(
+    ethers.utils.parseUnits(MAX_GAS_FEE_GWEI.toString(), "gwei")
+  )
+    ? ethers.utils.parseUnits(MAX_GAS_FEE_GWEI.toString(), "gwei")
+    : calculatedMaxFee;
+
+  // Use this for deployment transactions
+  const overrides = {
+    maxFeePerGas: maxFeePerGas,
+    maxPriorityFeePerGas: adjustedPriorityFee,
+    gasLimit: 35000000, // Adjust this value based on your contract's complexity
+  };
+
+  console.log("Base fee:", ethers.utils.formatUnits(baseFee, "gwei"), "Gwei");
+  console.log(
+    "Max fee per gas:",
+    ethers.utils.formatUnits(maxFeePerGas, "gwei"),
+    "Gwei"
+  );
+  console.log(
+    "Priority fee:",
+    ethers.utils.formatUnits(adjustedPriorityFee, "gwei"),
+    "Gwei"
+  );
 
   console.log("--------------- Contract Deployment Started ---------------");
 
@@ -52,7 +64,6 @@ async function main() {
   const priceOracle = await PriceOracle.deploy(addresses.WETH_Address);
 
   console.log("priceOracle address:", priceOracle.address);
-  
 
   await priceOracle.setFeeds(
     [addresses.WETH_Address, addresses.USDC_Address, addresses.DAI_Address],
@@ -100,9 +111,7 @@ async function main() {
 
   console.log("venusAssetHandler address:", venusAssetHandler.address);
 
-  const PositionWrapper = await ethers.getContractFactory(
-    "PositionWrapper"
-  );
+  const PositionWrapper = await ethers.getContractFactory("PositionWrapper");
   const positionWrapperBaseAddress = await PositionWrapper.deploy(overrides);
   await positionWrapperBaseAddress.deployed();
 
@@ -114,12 +123,10 @@ async function main() {
   });
 
   const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
-  const protocolConfig = await upgrades.deployProxy(ProtocolConfig, [
-    treasury.address,
-    priceOracle.address,
-    positionWrapperBaseAddress.address
-  ],
-  { kind: "uups" }
+  const protocolConfig = await upgrades.deployProxy(
+    ProtocolConfig,
+    [treasury.address, priceOracle.address, positionWrapperBaseAddress.address],
+    { kind: "uups" }
   );
 
   await tenderly.verify({
@@ -193,7 +200,7 @@ async function main() {
   });
 
   const PositionManager = await ethers.getContractFactory(
-    "PositionManagerThena"
+    "PositionManagerAlgebra"
   );
   const positionManagerBaseAddress = await PositionManager.deploy(overrides);
   await positionManagerBaseAddress.deployed(overrides);
@@ -201,7 +208,7 @@ async function main() {
   console.log("PositionManager address:", positionManagerBaseAddress.address);
 
   await tenderly.verify({
-    name: "PositionManagerThena",
+    name: "PositionManagerAlgebra",
     address: positionManagerBaseAddress.address,
   });
 
@@ -287,7 +294,9 @@ async function main() {
     address: borrowManager.address,
   });
 
-  const DepositBatch = await ethers.getContractFactory("DepositBatchExternalPositions");
+  const DepositBatch = await ethers.getContractFactory(
+    "DepositBatchExternalPositions"
+  );
   const depositBatch = await DepositBatch.deploy();
 
   console.log("depositBatch address:", depositBatch.address);
@@ -297,7 +306,9 @@ async function main() {
     address: depositBatch.address,
   });
 
-  const DepositManager = await ethers.getContractFactory("DepositManagerExternalPositions");
+  const DepositManager = await ethers.getContractFactory(
+    "DepositManagerExternalPositions"
+  );
   const depositManager = await DepositManager.deploy(depositBatch.address);
 
   console.log("depositManager address:", depositManager.address);
@@ -307,7 +318,9 @@ async function main() {
     address: depositManager.address,
   });
 
-  const WithdrawBatch = await ethers.getContractFactory("WithdrawBatchExternalPositions");
+  const WithdrawBatch = await ethers.getContractFactory(
+    "WithdrawBatchExternalPositions"
+  );
   const withdrawBatch = await WithdrawBatch.deploy();
 
   console.log("withdrawBatch address:", withdrawBatch.address);
@@ -360,7 +373,8 @@ async function main() {
         _protocolConfig: protocolConfig.address,
       },
     ],
-    { kind: "uups" },overrides
+    { kind: "uups" },
+    overrides
   );
 
   const portfolioFactory = PortfolioFactory.attach(
@@ -369,7 +383,9 @@ async function main() {
 
   console.log("portfolioFactory address:", portfolioFactory.address);
 
-  const WithdrawManager = await ethers.getContractFactory("WithdrawManagerExternalPositions");
+  const WithdrawManager = await ethers.getContractFactory(
+    "WithdrawManagerExternalPositions"
+  );
   const withdrawManager = await WithdrawManager.deploy();
 
   console.log("withdrawManager address:", withdrawManager.address);

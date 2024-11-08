@@ -220,7 +220,7 @@ describe.only("Tests for Upgradeability", () => {
       await swapVerificationLibrary.deployed();
 
       const PositionManager = await ethers.getContractFactory(
-        "PositionManagerThena",
+        "PositionManagerAlgebra",
         {
           libraries: {
             SwapVerificationLibrary: swapVerificationLibrary.address,
