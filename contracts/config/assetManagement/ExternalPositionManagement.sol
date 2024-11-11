@@ -27,7 +27,7 @@ abstract contract ExternalPositionManagement is AccessRoles {
   address nftManagerAddress;
   address swapRouterAddress;
 
-  address private protocolConfig; // Address of the protocol config.
+  address public protocolConfig; // Address of the protocol config.
 
   // Flag to indicate if external position management is whitelisted
   bool externalPositionManagementWhitelisted;
