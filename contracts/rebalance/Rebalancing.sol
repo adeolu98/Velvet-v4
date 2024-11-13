@@ -156,9 +156,10 @@ contract Rebalancing is
   }
 
   /**
-   * @notice Updates the token list and adjusts weights based on the provided rebalance data.
-   * @param rebalanceData Contains information about tokens to sell, new tokens to add, and sell amounts.
-   * @dev This function updates the portfolio's token list, checks balances, and ensures compliance with allowed limits.
+   * @notice Updates the portfolio’s token list, adjusts weights, and verifies token balances.
+   * @dev Uses a 256-slot bitmap to efficiently track up to 65,536 unique token addresses.
+   *      Each token address is mapped to a unique bit position in the bitmap using keccak256 hashing.
+   * @param rebalanceData Struct containing rebalance details including token lists and related data.
    */
   function updateTokens(
     FunctionParameters.RebalanceIntent calldata rebalanceData
@@ -170,7 +171,7 @@ contract Rebalancing is
     // Update the portfolio's token list with new tokens
     portfolio.updateTokenList(_newTokens);
 
-    // Perform token update and weights adjustment based on provided rebalance data.
+    // Perform token update and weights adjustment based on provided rebalance data
     _updateWeights(
       _sellTokens,
       _newTokens,
@@ -179,47 +180,56 @@ contract Rebalancing is
       rebalanceData._callData
     );
 
-    // Initialize a bitmap and store initial balances
-    uint256 tokenBitmap;
+    // Initialize a bitmap with 256 slots to handle up to 65,536 unique bit positions
+    uint256[256] memory tokenBitmap;
     uint256 tokenLength = _tokens.length;
     uint256[] memory initialBalances = new uint256[](tokenLength);
 
     unchecked {
-      // Create a bitmap of current tokens and store their initial balances
+      // Populate the bitmap with current tokens and store their initial balances
       for (uint256 i; i < tokenLength; i++) {
         address token = _tokens[i];
 
-        // Store the current balance of the token
+        // Store the current balance of the token for later verification
         initialBalances[i] = _getTokenBalanceOf(token, _vault);
 
-        // Calculate bit position for the current token address (0-255)
-        uint256 bitPos = uint256(uint160(token)) & 0xFF;
+        // Calculate a unique bit position for this token
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536; // Hash to get a unique bit position in the range 0-65,535
+        uint256 index = bitPos / 256; // Determine the specific uint256 slot in the array (0 to 255)
+        uint256 offset = bitPos % 256; // Determine the bit position within that uint256 slot (0 to 255)
 
-        // Set the corresponding bit in the tokenBitmap to mark this token as present
-        tokenBitmap |= 1 << bitPos;
+        // Set the bit for this token in the bitmap to mark it as present
+        tokenBitmap[index] |= (1 << offset);
       }
 
-      // Remove new tokens from the bitmap to avoid checking them later
+      // Remove new tokens from the bitmap to avoid unnecessary balance checks
       for (uint256 i; i < _newTokens.length; i++) {
-        uint256 bitPos = uint256(uint160(_newTokens[i])) & 0xFF;
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(_newTokens[i]))) %
+          65536;
+        uint256 index = bitPos / 256;
+        uint256 offset = bitPos % 256;
 
-        // Clear the corresponding bit in the bitmap for new tokens
-        tokenBitmap &= ~(1 << bitPos);
+        // Clear the bit for each new token to mark it as excluded from checks
+        tokenBitmap[index] &= ~(1 << offset);
       }
 
-      // Check balances for remaining tokens in the bitmap
+      // Verify balances for remaining tokens in the bitmap
       uint256 dustTolerance = protocolConfig.allowedDustTolerance();
       for (uint256 i; i < tokenLength; i++) {
         address token = _tokens[i];
 
-        // Determine if the token is still marked as present in the bitmap
-        uint256 bitPos = uint256(uint160(token)) & 0xFF;
-        if (tokenBitmap & (1 << bitPos) != 0) {
-          // Calculate the dust value based on the token's initial balance
+        // Calculate the bit position for this token to verify its presence
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536;
+        uint256 index = bitPos / 256;
+        uint256 offset = bitPos % 256;
+
+        // Check if the bit for this token is still set in the bitmap
+        if ((tokenBitmap[index] & (1 << offset)) != 0) {
+          // Calculate the allowable "dust" amount based on the initial balance
           uint256 dustValue = (initialBalances[i] * dustTolerance) /
             TOTAL_WEIGHT;
 
-          // Ensure the current balance does not exceed the allowed dust value
+          // Verify that the token's balance does not exceed the allowable dust tolerance
           if (_getTokenBalanceOf(token, _vault) > dustValue)
             revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
         }
