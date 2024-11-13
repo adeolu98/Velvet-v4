@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { IPositionWrapper } from "./IPositionWrapper.sol";
-import { IFactory } from "../algebra/IFactory.sol";
+import { IPositionWrapper } from "../abstract/IPositionWrapper.sol";
+import { IFactory } from "../uniswapV3/IFactory.sol";
 import { IPool } from "../interfaces/IPool.sol";
 
 import "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
@@ -10,7 +10,7 @@ import "@cryptoalgebra/integral-core/contracts/libraries/Constants.sol";
 
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 
-import { LiquidityAmounts } from "./LiquidityAmounts.sol";
+import { LiquidityAmounts } from "../abstract/LiquidityAmounts.sol";
 
 library LiquidityAmountsCalculations {
   function _getUnderlyingAmounts(
@@ -22,7 +22,11 @@ library LiquidityAmountsCalculations {
   ) internal returns (uint256 amount0, uint256 amount1) {
     IFactory factory = IFactory(_factory);
     IPool pool = IPool(
-      factory.poolByPair(_positionWrapper.token0(), _positionWrapper.token1())
+      factory.getPool(
+        _positionWrapper.token0(),
+        _positionWrapper.token1(),
+        _positionWrapper.initialFee()
+      )
     );
 
     int24 tick = pool.globalState().tick;

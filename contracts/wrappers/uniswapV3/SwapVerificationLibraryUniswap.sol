@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
 import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
 
-import { IPositionWrapper } from "./IPositionWrapper.sol";
+import { IPositionWrapper } from "../abstract/IPositionWrapper.sol";
 
 import { WrapperFunctionParameters } from "../WrapperFunctionParameters.sol";
 
@@ -12,15 +12,15 @@ import { LiquidityAmountsCalculations } from "./LiquidityAmountsCalculations.sol
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from "../abstract/INonfungiblePositionManager.sol";
 
 import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 
 /**
- * @title SwapVerificationLibrary
+ * @title SwapVerificationLibraryUniswap
  * @notice Library for verifying swap operations using a price oracle
  */
-library SwapVerificationLibrary {
+library SwapVerificationLibraryUniswap {
   uint256 private constant TOTAL_WEIGHT = 10_000;
 
   /// @notice Minimum amount of fees in smallest token unit that must be collected before they can be reinvested.
@@ -245,7 +245,6 @@ library SwapVerificationLibrary {
     uint256 _balanceBeforeSwap,
     uint256 _balanceAfterSwap
   ) public view {
-
     uint256 allowedRatioDeviationBps = _protocolConfig
       .allowedRatioDeviationBps();
     // Calculate the maximum allowed balance after swap based on the deviation

@@ -190,7 +190,7 @@ describe.only("Tests for Portfolio Config", () => {
       let whitelist = [owner.address];
 
       const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
+        "SwapVerificationLibraryUniswap"
       );
       const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
       await swapVerificationLibrary.deployed();
@@ -199,7 +199,7 @@ describe.only("Tests for Portfolio Config", () => {
         "PositionManagerUniswap",
         {
           libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
+            SwapVerificationLibraryUniswap: swapVerificationLibrary.address,
           },
         }
       );
