@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { IPositionWrapper } from "../abstract/IPositionWrapper.sol";
 import { IFactory } from "../uniswapV3/IFactory.sol";
-import { IPool } from "../interfaces/IPool.sol";
+import { IPool } from "./IPool.sol";
 
 import "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
 import "@cryptoalgebra/integral-core/contracts/libraries/Constants.sol";
@@ -29,7 +29,7 @@ library LiquidityAmountsCalculations {
       )
     );
 
-    int24 tick = pool.globalState().tick;
+    int24 tick = pool.slot0().tick;
     uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
 
     (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(

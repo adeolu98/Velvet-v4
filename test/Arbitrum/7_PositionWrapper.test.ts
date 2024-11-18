@@ -43,6 +43,7 @@ import {
   swapTokensToLPTokens,
   increaseLiquidity,
   decreaseLiquidity,
+  calculateSwapAmountUpdateRange,
 } from "./IntentCalculations";
 
 var chai = require("chai");
@@ -967,6 +968,35 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           0,
           0,
           "100",
+          newTickLower,
+          newTickUpper
+        );
+
+        let totalSupplyAfter = await positionWrapper.totalSupply();
+        expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
+      });
+
+      it("owner should update the price range", async () => {
+        let totalSupplyBefore = await positionWrapper.totalSupply();
+
+        const newTickLower = -180;
+        const newTickUpper = 240;
+
+        let updateRangeData = await calculateSwapAmountUpdateRange(
+          positionManager.address,
+          position1,
+          newTickLower,
+          newTickUpper
+        );
+
+        await positionManager.updateRange(
+          position1,
+          updateRangeData.tokenIn,
+          updateRangeData.tokenOut,
+          updateRangeData.swapAmount.toString(),
+          0,
+          0,
+          100,
           newTickLower,
           newTickUpper
         );
