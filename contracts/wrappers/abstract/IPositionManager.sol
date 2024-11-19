@@ -20,6 +20,7 @@ interface IPositionManager {
    * @param _accessController Address of the access control contract.
    */
   function init(
+    address _externalPositionStorage,
     address _protocolConfig,
     address _assetManagerConfig,
     address _accessController,
@@ -84,4 +85,6 @@ interface IPositionManager {
    * @return The address of the protocol configuration contract.
    */
   function protocolConfig() external view returns (address);
+
+  function externalPositionStorage() external view returns (address);
 }

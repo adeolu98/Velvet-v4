@@ -20,7 +20,7 @@ import { IExternalPositionStorage } from "../../wrappers/abstract/IExternalPosit
  */
 abstract contract ExternalPositionManagement is AccessRoles {
   IPositionManager public positionManager; // Interface to interact with the position manager.
-  IExternalPositionStorage public externalPositions; // Interface to interact with external positions.
+  address public externalPositions; // Interface to interact with external positions.
   bool public uniswapV3WrapperEnabled; // Flag to indicate if the Uniswap V3 wrapper is enabled.
 
   address basePositionManager; // Address of the base implementation for position manager cloning.
@@ -48,8 +48,15 @@ abstract contract ExternalPositionManagement is AccessRoles {
     address _protocolConfig,
     address _accessControllerAddress,
     address _basePositionManager,
+    address _baseExternalPositionStorage,
     bytes32[] calldata _witelistedProtocolIds
   ) internal {
+    ERC1967Proxy externalPositionStorageProxy = new ERC1967Proxy(
+      _baseExternalPositionStorage,
+      ""
+    );
+
+    externalPositions = address(externalPositionStorageProxy);
     accessControllerAddress = _accessControllerAddress;
     basePositionManager = _basePositionManager;
 
@@ -100,12 +107,12 @@ abstract contract ExternalPositionManagement is AccessRoles {
       basePositionManager,
       abi.encodeWithSelector(
         IPositionManager.init.selector,
+        externalPositions,
         protocolConfig,
         address(this),
         accessControllerAddress,
         nftManagerAddress,
-        swapRouterAddress,
-        protocolId
+        swapRouterAddress
       )
     );
 

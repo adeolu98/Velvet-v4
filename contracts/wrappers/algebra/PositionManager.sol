@@ -10,6 +10,7 @@ import { PositionManagerAbstractAlgebra, ErrorLibrary } from "./PositionManagerA
  */
 contract PositionManagerAlgebra is PositionManagerAbstractAlgebra {
   function init(
+    address _externalPositionStorage,
     address _protocolConfig,
     address _assetManagerConfig,
     address _accessController,
@@ -25,6 +26,7 @@ contract PositionManagerAlgebra is PositionManagerAbstractAlgebra {
     ) revert ErrorLibrary.InvalidAddress();
 
     PositionManagerAbstractAlgebra_init(
+      _externalPositionStorage,
       _nftManager,
       _swapRouter,
       _protocolConfig,

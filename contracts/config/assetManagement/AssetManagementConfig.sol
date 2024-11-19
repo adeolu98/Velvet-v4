@@ -63,6 +63,7 @@ contract AssetManagementConfig is
       initData._whitelistedTokens,
       address(accessController),
       initData._basePositionManager,
+      initData._baseExternalPositionStorage,
       initData._whitelistTokens,
       initData._witelistedProtocolIds,
       protocolConfig

@@ -10,6 +10,7 @@ import { PositionManagerAbstractUniswap, ErrorLibrary } from "./PositionManagerA
  */
 contract PositionManagerUniswap is PositionManagerAbstractUniswap {
   function init(
+    address _externalPositionStorage,
     address _protocolConfig,
     address _assetManagerConfig,
     address _accessController,
@@ -25,6 +26,7 @@ contract PositionManagerUniswap is PositionManagerAbstractUniswap {
     ) revert ErrorLibrary.InvalidAddress();
 
     PositionManagerAbstractUniswap_init(
+      _externalPositionStorage,
       _nftManager,
       _swapRouter,
       _protocolConfig,

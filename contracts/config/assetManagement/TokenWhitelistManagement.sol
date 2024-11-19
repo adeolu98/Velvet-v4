@@ -39,6 +39,7 @@ abstract contract TokenWhitelistManagement is
     address[] calldata _whitelistTokens,
     address _accessControllerAddress,
     address _basePositionManager,
+    address _baseExternalPositionStorage,
     bool _tokenWhitelistingEnabled,
     bytes32[] calldata _witelistedProtocolIds,
     address _protocolConfig
@@ -58,6 +59,7 @@ abstract contract TokenWhitelistManagement is
       _protocolConfig,
       _accessControllerAddress,
       _basePositionManager,
+      _baseExternalPositionStorage,
       _witelistedProtocolIds
     );
   }

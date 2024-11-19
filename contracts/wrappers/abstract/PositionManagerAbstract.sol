@@ -105,6 +105,7 @@ abstract contract PositionManagerAbstract is
    * @dev Sets up the contract with required addresses and configuration for asset management and access control.
    */
   function PositionManagerAbstract__init(
+    address _externalPositionStorage,
     address _nonFungiblePositionManagerAddress,
     address _protocolConfig,
     address _assetManagerConfig,
@@ -112,6 +113,10 @@ abstract contract PositionManagerAbstract is
     bytes32 _protocolId
   ) internal {
     __UUPSUpgradeable_init();
+
+    externalPositionStorage = IExternalPositionStorage(
+      _externalPositionStorage
+    );
 
     uniswapV3PositionManager = INonfungiblePositionManager(
       _nonFungiblePositionManagerAddress

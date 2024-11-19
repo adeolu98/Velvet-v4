@@ -26,6 +26,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
    * @param _accessController Address of the access controller.
    */
   function PositionManagerAbstractAlgebra_init(
+    address _externalPositionStorage,
     address _nonFungiblePositionManagerAddress,
     address _swapRouter,
     address _protocolConfig,
@@ -34,6 +35,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     bytes32 _protocolId
   ) internal {
     PositionManagerAbstract__init(
+      _externalPositionStorage,
       _nonFungiblePositionManagerAddress,
       _protocolConfig,
       _assetManagerConfig,
@@ -234,7 +236,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
 
     // Register the new wrapper in the deployed position wrappers list and mark it as a valid wrapper.
     deployedPositionWrappers.push(address(positionWrapper));
-    isWrappedPosition[address(positionWrapper)] = true;
+    externalPositionStorage.addWrappedPosition(address(positionWrapper));
 
     emit NewPositionCreated(address(positionWrapper), _token0, _token1);
 

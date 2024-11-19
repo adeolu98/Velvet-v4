@@ -37,6 +37,7 @@ library FunctionParameters {
     address _baseTokenRemovalVaultImplementation;
     address _baseVelvetGnosisSafeModuleAddress;
     address _basePositionManager;
+    address _baseExternalPositionStorage;
     address _baseBorrowManager;
     address _gnosisSingleton;
     address _gnosisFallbackLibrary;
@@ -136,6 +137,7 @@ library FunctionParameters {
     address _feeModule;
     address _assetManagerTreasury;
     address _basePositionManager;
+    address _baseExternalPositionStorage;
     address[] _whitelistedTokens;
     bool _publicPortfolio;
     bool _transferable;
