@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import { ErrorLibrary } from "../library/ErrorLibrary.sol";
-import { IIntentHandler } from "../handler/IIntentHandler.sol";
-import { RebalancingConfig } from "./RebalancingConfig.sol";
-import { IAssetHandler } from "../core/interfaces/IAssetHandler.sol";
-import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
-import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
-import { FunctionParameters } from "../FunctionParameters.sol";
-import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import {ErrorLibrary} from "../library/ErrorLibrary.sol";
+import {IIntentHandler} from "../handler/IIntentHandler.sol";
+import {RebalancingConfig} from "./RebalancingConfig.sol";
+import {IAssetHandler} from "../core/interfaces/IAssetHandler.sol";
+import {IBorrowManager} from "../core/interfaces/IBorrowManager.sol";
+import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
+import {FunctionParameters} from "../FunctionParameters.sol";
+import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
 
 /**
  * @title RebalancingCore
@@ -156,9 +156,9 @@ contract Rebalancing is
   }
 
   /**
-   * @notice Updates the token list and adjusts weights based on provided rebalance data.
-   * @dev This function is called by the asset manager to rebalance the portfolio.
-   * @param rebalanceData The data required for rebalancing, including tokens to sell, new tokens, sell amounts, handler, and call data.
+   * @notice Updates the token list and adjusts weights based on the provided rebalance data.
+   * @param rebalanceData Contains information about tokens to sell, new tokens to add, and sell amounts.
+   * @dev This function updates the portfolio's token list, checks balances, and ensures compliance with allowed limits.
    */
   function updateTokens(
     FunctionParameters.RebalanceIntent calldata rebalanceData
@@ -167,7 +167,7 @@ contract Rebalancing is
     address[] calldata _newTokens = rebalanceData._newTokens;
     address[] memory _tokens = _getCurrentTokens();
 
-    //Need a check here to confirm _newTokens has buyTokens in it
+    // Update the portfolio's token list with new tokens
     portfolio.updateTokenList(_newTokens);
 
     // Perform token update and weights adjustment based on provided rebalance data.
@@ -179,28 +179,54 @@ contract Rebalancing is
       rebalanceData._callData
     );
 
-    // Update the internal mapping to reflect changes in the token list post-rebalance.
+    // Initialize a bitmap and store initial balances
+    uint256 tokenBitmap;
     uint256 tokenLength = _tokens.length;
-    for (uint256 i; i < tokenLength; i++) {
-      tokensMapping[_tokens[i]] = true;
-    }
+    uint256[] memory initialBalances = new uint256[](tokenLength);
 
-    uint256 newTokensLength = _newTokens.length;
-    for (uint256 i; i < newTokensLength; i++) {
-      delete tokensMapping[_newTokens[i]];
-    }
+    unchecked {
+      // Create a bitmap of current tokens and store their initial balances
+      for (uint256 i; i < tokenLength; i++) {
+        address token = _tokens[i];
 
-    for (uint256 i; i < tokenLength; i++) {
-      address _portfolioToken = _tokens[i];
-      if (tokensMapping[_portfolioToken]) {
-        uint256 dustValue = (rebalanceData._sellAmounts[i] *
-          protocolConfig.allowedDustTolerance()) / TOTAL_WEIGHT;
-        if (_getTokenBalanceOf(_portfolioToken, _vault) > dustValue)
-          revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
+        // Store the current balance of the token
+        initialBalances[i] = _getTokenBalanceOf(token, _vault);
+
+        // Calculate bit position for the current token address (0-255)
+        uint256 bitPos = uint256(uint160(token)) & 0xFF;
+
+        // Set the corresponding bit in the tokenBitmap to mark this token as present
+        tokenBitmap |= 1 << bitPos;
       }
-      delete tokensMapping[_portfolioToken];
+
+      // Remove new tokens from the bitmap to avoid checking them later
+      for (uint256 i; i < _newTokens.length; i++) {
+        uint256 bitPos = uint256(uint160(_newTokens[i])) & 0xFF;
+
+        // Clear the corresponding bit in the bitmap for new tokens
+        tokenBitmap &= ~(1 << bitPos);
+      }
+
+      // Check balances for remaining tokens in the bitmap
+      uint256 dustTolerance = protocolConfig.allowedDustTolerance();
+      for (uint256 i; i < tokenLength; i++) {
+        address token = _tokens[i];
+
+        // Determine if the token is still marked as present in the bitmap
+        uint256 bitPos = uint256(uint160(token)) & 0xFF;
+        if (tokenBitmap & (1 << bitPos) != 0) {
+          // Calculate the dust value based on the token's initial balance
+          uint256 dustValue = (initialBalances[i] * dustTolerance) /
+            TOTAL_WEIGHT;
+
+          // Ensure the current balance does not exceed the allowed dust value
+          if (_getTokenBalanceOf(token, _vault) > dustValue)
+            revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
+        }
+      }
     }
 
+    // Emit an event to signal that tokens have been updated
     emit UpdatedTokens(_sellTokens, _newTokens);
   }
 
@@ -592,7 +618,11 @@ contract Rebalancing is
       if (tokenBalancesInVaultAfter[i] < tokenBalancesInVaultBefore[i])
         revert ErrorLibrary.ClaimFailed();
     }
-    emit ClaimedRewardTokens(_tokenToBeClaimed, _target, rewardTokenBalanceAfter);
+    emit ClaimedRewardTokens(
+      _tokenToBeClaimed,
+      _target,
+      rewardTokenBalanceAfter
+    );
   }
 
   /**
