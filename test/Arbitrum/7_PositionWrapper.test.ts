@@ -85,6 +85,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   const chainId: any = process.env.CHAIN_ID;
   const addresses = chainIdToAddresses[chainId];
 
+  const uniswapV3ProtocolHash = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UNISWAP-V3")
+  );
+
   function delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -172,11 +176,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
@@ -184,6 +184,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
       await protocolConfig.setSupportedFactory(ensoHandler.address);
+
+      await protocolConfig.enableProtocol(
+        uniswapV3ProtocolHash,
+        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+        "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        positionWrapperBaseAddress.address
+      );
 
       const TokenExclusionManager = await ethers.getContractFactory(
         "TokenExclusionManager"
@@ -252,6 +259,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -271,6 +284,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -307,7 +321,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: true,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [uniswapV3ProtocolHash],
         });
 
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
@@ -321,7 +335,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       assetManagementConfig = AssetManagementConfig.attach(config);
 
-      await assetManagementConfig.enableUniSwapV3Manager();
+      await assetManagementConfig.enableUniSwapV3Manager(uniswapV3ProtocolHash);
 
       let positionManagerAddress =
         await assetManagementConfig.positionManager();
@@ -332,7 +346,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
     describe("Position Wrapper Tests", function () {
       it("non owner should not be able to enable the uniswapV3 position manager", async () => {
         await expect(
-          assetManagementConfig.connect(nonOwner).enableUniSwapV3Manager()
+          assetManagementConfig
+            .connect(nonOwner)
+            .enableUniSwapV3Manager(uniswapV3ProtocolHash)
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
           "CallerNotAssetManager"
@@ -341,10 +357,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       it("owner should not be able to enable the uniswapV3 position manager after it has already been enabled", async () => {
         await expect(
-          assetManagementConfig.enableUniSwapV3Manager()
+          assetManagementConfig.enableUniSwapV3Manager(uniswapV3ProtocolHash)
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "UniSwapV3WrapperAlreadyEnabled"
+          "ProtocolManagerAlreadyEnabled"
         );
       });
 
