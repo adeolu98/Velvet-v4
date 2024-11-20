@@ -53,7 +53,10 @@ abstract contract ExternalPositionManagement is AccessRoles {
   ) internal {
     ERC1967Proxy externalPositionStorageProxy = new ERC1967Proxy(
       _baseExternalPositionStorage,
-      ""
+      abi.encodeWithSelector(
+        IExternalPositionStorage.init.selector,
+        _accessControllerAddress
+      )
     );
 
     externalPositions = address(externalPositionStorageProxy);
@@ -112,15 +115,18 @@ abstract contract ExternalPositionManagement is AccessRoles {
         address(this),
         accessControllerAddress,
         nftManagerAddress,
-        swapRouterAddress
+        swapRouterAddress,
+        protocolId
       )
     );
 
     positionManager = IPositionManager(address(positionManagerProxy));
 
-    // @todo add position manager role
+    IAccessController(accessControllerAddress).setupPositionManagerRole(
+      address(positionManagerProxy)
+    );
 
-    // @todo set protocol id as enabled
+    positionManagerEnabled[protocolId] = true;
 
     emit UniswapV3ManagerEnabled();
   }

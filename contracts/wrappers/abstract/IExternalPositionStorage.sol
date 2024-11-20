@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 interface IExternalPositionStorage {
+  function init(address _accessController) external;
   /**
    * @notice Checks if a given address is a recognized and valid wrapped position.
    * @dev This function is typically used to verify if a particular contract address corresponds

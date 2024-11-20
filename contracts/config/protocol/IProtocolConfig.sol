@@ -235,8 +235,6 @@ interface IProtocolConfig {
    */
   function disableRewardTarget(address _rewardTargetAddress) external;
 
-  function positionWrapperBaseImplementation() external view returns (address);
-
   function allowedRatioDeviationBps() external view returns (uint256);
 
   function acceptedSlippageFeeReinvestment() external view returns (uint256);
@@ -287,4 +285,8 @@ interface IProtocolConfig {
   function getProtocolAddresses(
     bytes32 protocolId
   ) external view returns (address nftManager, address swapRouter);
+
+  function getPositionWrapperBaseImplementation(
+    bytes32 protocolId
+  ) external view returns (address);
 }

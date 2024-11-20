@@ -229,7 +229,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
 
     // Deploy and initialize the position wrapper.
     ERC1967Proxy positionWrapperProxy = new ERC1967Proxy(
-      protocolConfig.positionWrapperBaseImplementation(),
+      protocolConfig.getPositionWrapperBaseImplementation(protocolId),
       abi.encodeWithSelector(
         IPositionWrapper.init.selector,
         address(this),
@@ -415,7 +415,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
         recipient: address(this),
         deadline: block.timestamp,
         amountIn: _params._amountIn,
-        amountOutMinimum: 0, // @todo add slippage control
+        amountOutMinimum: 0,
         sqrtPriceLimitX96: 0
       });
 
