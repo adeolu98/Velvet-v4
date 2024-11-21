@@ -19,5 +19,5 @@ interface IBorrowManager {
   function repayVault(
     address _controller,
     FunctionParameters.RepayParams calldata repayData
-  ) external;
+  ) external returns(bool);
 }

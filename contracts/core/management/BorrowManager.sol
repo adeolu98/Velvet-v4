@@ -128,7 +128,7 @@ contract BorrowManager is
     function repayVault(
         address _controller,
         FunctionParameters.RepayParams calldata repayData
-    ) external onlyRebalancerContract {
+    ) external onlyRebalancerContract returns(bool){
         IAssetHandler assetHandler = IAssetHandler(
             _protocolConfig.assetHandlers(_controller)
         );
@@ -139,17 +139,31 @@ contract BorrowManager is
             repayData._bufferUnit
         );
 
+        // Get the number of borrowed tokens before the flash loan repayment
+        uint256 borrowedLengthBefore = (assetHandler.getBorrowedTokens(_vault,_controller)).length;
+
+        // Prepare the data for the flash loan execution
+        // This includes the function selector and parameters needed for the vault flash loan
         bytes memory data = abi.encodeWithSelector(
             IAssetHandler.executeVaultFlashLoan.selector,
             address(this),
             repayData
         );
 
-        // Perform the delegatecall
+        // Perform a delegatecall to the asset handler
+        // delegatecall allows the asset handler's code to be executed in the context of this contract
+        // maintaining this contract's storage while using the asset handler's logic
         (bool success, ) = address(assetHandler).delegatecall(data);
 
         // Check if the delegatecall was successful
         if (!success) revert ErrorLibrary.CallFailed();
+
+        // Get the number of borrowed tokens after the flash loan repayment
+        uint256 borrowedLengthAfter = (assetHandler.getBorrowedTokens(_vault,_controller)).length;
+
+        // Return true if we successfully reduced the number of borrowed tokens
+        // This indicates that at least one borrow position was fully repaid
+        return borrowedLengthAfter < borrowedLengthBefore;
     }
 
     /**

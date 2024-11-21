@@ -256,4 +256,6 @@ interface IProtocolConfig {
   function isSupportedFactory(
     address _factoryAddress
   ) external view returns (bool);
+
+  function MAX_BORROW_TOKEN_LIMIT() external pure returns(uint256);
 }
