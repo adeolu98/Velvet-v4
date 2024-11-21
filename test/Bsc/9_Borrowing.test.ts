@@ -1355,7 +1355,7 @@ describe.only("Tests for Deposit", () => {
       });
 
       it("repay should revert if buffer unit execeeds acceptable buffer unit", async () => {
-        let bufferUnit = 390; //Buffer unit for collateral amount in 1/100000
+        let bufferUnit = 1000; //Buffer unit for collateral amount in 1/100000
 
         await expect(
           rebalancing.repay(addresses.corePool_controller, {
@@ -1376,7 +1376,7 @@ describe.only("Tests for Deposit", () => {
         ).to.be.revertedWithCustomError(borrowManager, "InvalidBufferUnit");
       });
 
-      it("repay should revert if caller of clalback function is not poolAddress", async () => {
+      it("repay should revert if flashLoan is not active", async () => {
         let bufferUnit = 100; //Buffer unit for collateral amount in 1/100000
 
         const types = [
@@ -1410,15 +1410,15 @@ describe.only("Tests for Deposit", () => {
         const calldata = ethers.utils.defaultAbiCoder.encode(types, values);
 
         await expect(borrowManager.algebraFlashCallback("100", "100", calldata))
-          .to.be.reverted;
+          .to.be.revertedWithCustomError(borrowManager,"FlashLoanIsInactive");
       });
 
       it("should repay half of borrowed dai using flashLoan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
-        let flashloanBufferUnit = 24; //Flashloan buffer unit in 1/10000
-        let bufferUnit = 180; //Buffer unit for collateral amount in 1/100000
+        let flashloanBufferUnit = 30; //Flashloan buffer unit in 1/10000
+        let bufferUnit = 320; //Buffer unit for collateral amount in 1/100000
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
@@ -1536,7 +1536,7 @@ describe.only("Tests for Deposit", () => {
 
         let vault = await portfolio.vault();
 
-        let flashloanBufferUnit = 9; //Flashloan buffer unit in 1/10000
+        let flashloanBufferUnit = 10; //Flashloan buffer unit in 1/10000
         let bufferUnit = 250; //Buffer unit for collateral amount in 1/100000
 
         let flashLoanToken = addresses.USDT;
@@ -1721,7 +1721,7 @@ describe.only("Tests for Deposit", () => {
 
         const user = nonOwner;
 
-        let flashloanBufferUnit = 9; //Flashloan buffer unit in 1/10000.This value is used slightly increase the amount of flashLoanAmount, for any priceImpact (10000 = 100%)
+        let flashloanBufferUnit = 10; //Flashloan buffer unit in 1/10000.This value is used slightly increase the amount of flashLoanAmount, for any priceImpact (10000 = 100%)
         let bufferUnit = 250; //The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");

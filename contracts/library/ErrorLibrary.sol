@@ -209,5 +209,6 @@ library ErrorLibrary {
   error ExceedsBorrowLimit();
   // @notice Thrown when borrow token limit exceeds the max limit set by protocol owner
   error BorrowTokenLimitExceeded();
-
+  // @notice Thrown when flash loan functionality is not active for the portfolio
+  error FlashLoanIsInactive();
 }

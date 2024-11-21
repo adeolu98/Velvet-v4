@@ -34,6 +34,8 @@ contract BorrowManager is
     IProtocolConfig internal _protocolConfig;
     IPortfolio internal _portfolio;
 
+    bool _isFlashLoanActive;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers(); // Disables initializers to prevent misuse in the constructor
@@ -81,6 +83,9 @@ contract BorrowManager is
             repayData._solverHandler,
             repayData._bufferUnit
         );
+
+        // Set flash loan flag to true to allow callback execution and prevent unauthorized callbacks
+        _isFlashLoanActive = true;
 
         // Iterate through all controllers to repay borrows for each
         for (uint j; j < controllers.length; j++) {
@@ -150,6 +155,9 @@ contract BorrowManager is
             repayData
         );
 
+        // Set flash loan flag to true to allow callback execution and prevent unauthorized callbacks
+        _isFlashLoanActive = true;
+
         // Perform a delegatecall to the asset handler
         // delegatecall allows the asset handler's code to be executed in the context of this contract
         // maintaining this contract's storage while using the asset handler's logic
@@ -178,13 +186,14 @@ contract BorrowManager is
         uint256 fee1,
         bytes calldata data
     ) external override {
+        
+        //Ensure flash loan is active to prevent unauthorized callbacks
+        if(!_isFlashLoanActive) revert ErrorLibrary.FlashLoanIsInactive();
+
         FunctionParameters.FlashLoanData memory flashData = abi.decode(
             data,
             (FunctionParameters.FlashLoanData)
         ); // Decode the flash loan data
-
-        if (msg.sender != flashData.poolAddress)
-            revert ErrorLibrary.InvalidAddress();
 
         IAssetHandler assetHandler = IAssetHandler(
             _protocolConfig.assetHandlers(flashData.protocolTokens[0])
@@ -242,6 +251,9 @@ contract BorrowManager is
             _vault,
             IERC20Upgradeable(flashData.flashLoanToken).balanceOf(address(this))
         );
+
+        //Reset the flash loan state to prevent subsequent unauthorized callbacks
+        _isFlashLoanActive = false;
     }
 
     function beforeRepayVerification(
