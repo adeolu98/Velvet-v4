@@ -59,42 +59,47 @@ contract RebalancingConfig is AccessRoles, Initializable {
   }
 
   /**
-   * @notice Verifies that the new token list contains valid tokens and that their balances are not zero.
-   * @param _ensoBuyTokens The list of tokens that can be bought.
-   * @param _newTokens The new tokens to be added to the portfolio.
-   *   @dev This function ensures that each token in the new list has a non-zero balance and checks if
-   * the buy tokens are valid by using a bitmap for quick lookup.
+   * @notice Verifies that a list of tokens is present and has non-zero balances.
+   * @dev Uses a 256-slot bitmap to efficiently track up to 65,536 unique token addresses.
+   *      Each token address is mapped to a unique bit position in the bitmap using keccak256 hashing.
+   * @param _ensoBuyTokens Array of tokens expected to be present in the bitmap.
+   * @param _newTokens Array of new tokens to validate and mark in the bitmap.
    */
   function _verifyNewTokenList(
     address[] memory _ensoBuyTokens,
     address[] memory _newTokens
   ) internal view {
-    // Create a bitmap using a single uint256
-    // This limits us to 256 tokens, but that's a reasonable limit
-    uint256 tokenBitmap;
+    // Initialize a bitmap with 256 slots to handle up to 65,536 unique bit positions
+    uint256[256] memory tokenBitmap;
 
     unchecked {
-      // Iterate over each new token to validate their balances
+      // Mark each token in _newTokens in the bitmap and ensure non-zero balance
       for (uint256 i; i < _newTokens.length; i++) {
         address token = _newTokens[i];
 
-        // Ensure the token balance is not zero
+        // Verify that the token balance is non-zero
         if (_getTokenBalanceOf(token, _vault) == 0)
           revert ErrorLibrary.BalanceOfVaultCannotNotBeZero(token);
 
-        // Hash the token address to get a position in our bitmap (0-255)
-        uint256 bitPos = uint256(uint160(token)) & 0xFF;
+        // Calculate a unique bit position for this token
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536; // Hash to get a unique bit position in the range 0-65,535
+        uint256 index = bitPos / 256; // Determine the specific uint256 slot in the array (0 to 255)
+        uint256 offset = bitPos % 256; // Determine the bit position within that uint256 slot (0 to 255)
 
-        // Set the corresponding bit in the bitmap to mark this token as present
-        tokenBitmap |= 1 << bitPos;
+        // Set the bit in the bitmap for this token
+        tokenBitmap[index] |= (1 << offset);
       }
 
-      // Verify that each buy token is present in the bitmap
+      // Verify that each token in _ensoBuyTokens is marked in the bitmap
       for (uint256 i; i < _ensoBuyTokens.length; i++) {
-        uint256 bitPos = uint256(uint160(_ensoBuyTokens[i])) & 0xFF;
+        uint256 bitPos = uint256(
+          keccak256(abi.encodePacked(_ensoBuyTokens[i]))
+        ) % 65536;
+        uint256 index = bitPos / 256;
+        uint256 offset = bitPos % 256;
 
-        // Check if the token is present in the tokenBitmap
-        if ((tokenBitmap & (1 << bitPos)) == 0) {
+        // Check if the bit for this token is set; if not, revert
+        if ((tokenBitmap[index] & (1 << offset)) == 0) {
           revert ErrorLibrary.InvalidBuyTokenList();
         }
       }
