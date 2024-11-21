@@ -34,6 +34,7 @@ contract BorrowManager is
     IProtocolConfig internal _protocolConfig;
     IPortfolio internal _portfolio;
 
+    //Flag to track if a flash loan is currently in progress
     bool _isFlashLoanActive;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
