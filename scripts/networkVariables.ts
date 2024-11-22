@@ -311,6 +311,31 @@ export const BaseMainnet: ChainAddresses = {
   moduleProxyFactory: "0x76E2cFc1F5Fa8F6a5b3fC4c8F4788F0116861F9B",
 };
 
+export const LineaMainnet: ChainAddresses = {
+  PancakeSwapRouterAddress: "0x8cFe327CEc66d1C090Dd72bd0FF11d690C33a2Eb",
+  PancakeSwapV2RouterAddress: "0x8cFe327CEc66d1C090Dd72bd0FF11d690C33a2Eb",
+  WETH_Address: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
+  BUSD: "0x7d43AABC515C356145049227CeE54B608342c0ad",
+  USDT: "0xa219439258ca9da29e9cc4ce5596924745e12b93",
+
+  ETH_Address: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
+  DAI_Address: "0x4AF15ec2A0BD43Db75dd04E62FAA3B8EF36b00d5",
+  BTC_Address: "0x3aAB2285ddcDdaD8edf438C1bAB47e1a9D05a9b4",
+  LINK_Address: "0x5B16228B94b68C7cE33AF2ACc5663eBdE4dCFA2d",
+  CAKE_Address: "0x0D1E753a25eBda689453309112904807625bEFBe",
+  USDC_Address: "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+
+  MULTI_SEND_ADDRESS: "0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526",
+  SAFE_MASTER_COPY_ADDRESS: "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+  SAFE_PROXY_FACTORY_ADDRESS: "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+
+  //GnosisContracts
+  gnosisSingleton: "0x3E5c63644E683549055b9Be8653de26E0B4CD36E",
+  gnosisFallbackLibrary: "0xf48f2B2d2a534e402487b3ee7C18c33Aec0Fe5e4",
+  gnosisMultisendLibrary: "0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761",
+  gnosisSafeProxyFactory: "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2",
+};
+
 export const chainIdToAddresses: {
   [id: number]: { [contractName: string]: string };
 } = {
@@ -321,4 +346,5 @@ export const chainIdToAddresses: {
   250: { ...Fantom },
   42161: { ...ArbitrumOne },
   8453: { ...BaseMainnet },
+  59144: { ...LineaMainnet },
 };

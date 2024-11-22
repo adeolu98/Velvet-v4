@@ -8,13 +8,12 @@ import "solidity-coverage";
 import "hardhat-tracer";
 import "@nomicfoundation/hardhat-chai-matchers";
 
-
 import "hardhat-gas-reporter";
 import "hardhat-abi-exporter";
 require("dotenv").config();
 
 import { HardhatUserConfig } from "hardhat/types";
-import { chainIdToAddresses } from "./scripts/networkVariables";
+import { chainIdToAddresses, LineaMainnet } from "./scripts/networkVariables";
 
 import * as tdly from "@tenderly/hardhat-tenderly";
 
@@ -41,6 +40,7 @@ const forkingConfigs: ForkingConfigurations = {
   42161: process.env.ARB_RPC,
   56: process.env.BSC_RPC,
   8453: process.env.BASE_RPC,
+  59144: process.env.LINEA_RPC,
 };
 
 const forkNetwork = process.env.CHAIN_ID;
@@ -60,6 +60,7 @@ const chainIds = {
   ropsten: 3,
   ArbitrumOne: 42161,
   BaseMainnet: 8453,
+  LineaMainnet: 59144,
 };
 
 const config: HardhatUserConfig = {
@@ -156,6 +157,14 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       url: "https://1rpc.io/base",
     },
+    LineaMainnet: {
+      accounts: {
+        mnemonic,
+      },
+      chainId: chainIds["LineaMainnet"],
+      allowUnlimitedContractSize: true,
+      url: "wss://linea-rpc.publicnode.com",
+    },
     TenderlyArbitrum: {
       accounts: {
         mnemonic,
@@ -175,7 +184,8 @@ const config: HardhatUserConfig = {
             runs: 200,
           },
         },
-      }],
+      },
+    ],
   },
   mocha: {
     timeout: 400000,
