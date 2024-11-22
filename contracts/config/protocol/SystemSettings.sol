@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
 
-import {OwnableCheck} from "./OwnableCheck.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
+import { OwnableCheck } from "./OwnableCheck.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
 
 /**
  * @title SystemSettings
@@ -203,7 +203,7 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     if (assetLength != _controllers.length) revert ErrorLibrary.InvalidLength();
     for (uint256 i; i < assetLength; i++) {
       address token = _assets[i];
-      if(token == address(0)) revert ErrorLibrary.InvalidAddress();
+      if (token == address(0)) revert ErrorLibrary.InvalidAddress();
       marketControllers[token] = _controllers[i];
       isBorrowableToken[token] = true;
     }
@@ -234,9 +234,10 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     address[] memory _assets, //Third-Party Token Address
     address[] memory _handlers // Their respective handlers
   ) external onlyProtocolOwner {
+    if (_assets.length != _handlers.length) revert ErrorLibrary.InvalidLength();
     for (uint256 i; i < _assets.length; i++) {
       address token = _assets[i];
-      if(token == address(0)) revert ErrorLibrary.InvalidAddress();
+      if (token == address(0)) revert ErrorLibrary.InvalidAddress();
       assetHandlers[token] = _handlers[i];
     }
     emit AssetHandlersAdded(_assets, _handlers);
@@ -265,7 +266,7 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     for (uint256 i; i < _controllers.length; i++) {
       address controller = _controllers[i];
       if (!isSupportedControllers[controller]) {
-        if(controller == address(0)) revert ErrorLibrary.InvalidAddress();
+        if (controller == address(0)) revert ErrorLibrary.InvalidAddress();
         supportedControllers.push(controller);
         isSupportedControllers[controller] = true;
       }
@@ -326,8 +327,10 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
    * @notice Sets Supported FlashLoan Provider Factory Contract
    * @param _factoryAddress Address of factory contract address
    */
-  function setSupportedFactory(address _factoryAddress) external onlyProtocolOwner {
-    if(_factoryAddress == address(0)) revert ErrorLibrary.InvalidAddress();
+  function setSupportedFactory(
+    address _factoryAddress
+  ) external onlyProtocolOwner {
+    if (_factoryAddress == address(0)) revert ErrorLibrary.InvalidAddress();
     isSupportedFactory[_factoryAddress] = true;
   }
 
@@ -335,17 +338,21 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
    * @notice Removes Supported FlashLoan Provider Factory Contract
    * @param _factoryAddress Address of factory contract address
    */
-  function removeSupportedFactory(address _factoryAddress) external onlyProtocolOwner {
+  function removeSupportedFactory(
+    address _factoryAddress
+  ) external onlyProtocolOwner {
     isSupportedFactory[_factoryAddress] = false;
   }
 
   /**
- * @notice Updates the maximum allowed buffer unit for collateral calculations not more then 10%
- * @dev This function can only be called by the protocol owner
- * @param _newBufferUnit The new maximum buffer unit value to set
- */
-  function updateMaxCollateralBufferUnit(uint256 _newBufferUnit) external onlyProtocolOwner {
-    if(_newBufferUnit > 10000) revert ErrorLibrary.InvalidNewBufferUnit();
+   * @notice Updates the maximum allowed buffer unit for collateral calculations not more then 10%
+   * @dev This function can only be called by the protocol owner
+   * @param _newBufferUnit The new maximum buffer unit value to set
+   */
+  function updateMaxCollateralBufferUnit(
+    uint256 _newBufferUnit
+  ) external onlyProtocolOwner {
+    if (_newBufferUnit > 10000) revert ErrorLibrary.InvalidNewBufferUnit();
     MAX_COLLATERAL_BUFFER_UNIT = _newBufferUnit;
   }
 }

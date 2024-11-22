@@ -15,10 +15,7 @@ import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManag
 import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
 import { IAccessController } from "../../access/IAccessController.sol";
 import { AccessRoles } from "../../access/AccessRoles.sol";
-import { LiquidityAmountsCalculations } from "./LiquidityAmountsCalculations.sol";
 import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
-import { SwapVerificationLibrary } from "./SwapVerificationLibrary.sol";
-
 /**
  * @title PositionManagerAbstract
  * @notice Abstract contract for managing Uniswap V3 positions and representing them as ERC20 tokens.
@@ -523,11 +520,7 @@ abstract contract PositionManagerAbstract is
     if (_params._amountIn > 0) {
       (balance0, balance1) = _swapTokenToToken(_params);
     } else {
-      SwapVerificationLibrary.verifyZeroSwapAmount(
-        protocolConfig,
-        _params,
-        address(uniswapV3PositionManager)
-      );
+      _verifyZeroSwapAmount(protocolConfig, _params);
     }
   }
 
@@ -540,6 +533,11 @@ abstract contract PositionManagerAbstract is
   function _swapTokenToToken(
     WrapperFunctionParameters.SwapParams memory _params
   ) internal virtual returns (uint256, uint256);
+
+  function _verifyZeroSwapAmount(
+    IProtocolConfig protocolConfig,
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal virtual;
 
   /**
    * @notice Retrieves the current liquidity amount for a given position.

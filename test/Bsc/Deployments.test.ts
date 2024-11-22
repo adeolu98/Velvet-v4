@@ -50,70 +50,70 @@ export async function tokenAddresses(): Promise<IAddresses> {
   const wbnbInstance = new ethers.Contract(
     addresses.WETH_Address,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   wbnbAddress = wbnbInstance.address;
 
   const busdInstance = new ethers.Contract(
     addresses.BUSD,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   busdAddress = busdInstance.address;
 
   const daiInstance = new ethers.Contract(
     addresses.DAI_Address,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   daiAddress = daiInstance.address;
 
   const ethInstance = new ethers.Contract(
     addresses.ETH_Address,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   ethAddress = ethInstance.address;
 
   const btcInstance = new ethers.Contract(
     addresses.BTC_Address,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   btcAddress = btcInstance.address;
 
   const dogeInstance = new ethers.Contract(
     addresses.DOGE_Address,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   dogeAddress = dogeInstance.address;
 
   const linkInstance = new ethers.Contract(
     addresses.LINK_Address,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   linkAddress = linkInstance.address;
 
   const cakeInstance = new ethers.Contract(
     addresses.CAKE_Address,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   cakeAddress = cakeInstance.address;
 
   const usdcInstance = new ethers.Contract(
     addresses.USDC_Address,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   usdcAddress = usdcInstance.address;
 
   const usdtInstance = new ethers.Contract(
     addresses.USDT,
     IERC20Upgradeable__factory.abi,
-    ethers.getDefaultProvider(),
+    ethers.getDefaultProvider()
   );
   usdtAddress = usdtInstance.address;
 
@@ -145,7 +145,7 @@ before(async () => {
 
   const PriceOracle = await ethers.getContractFactory("PriceOracle");
   priceOracle = await PriceOracle.deploy(
-    "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+    "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
   );
   await priceOracle.deployed();
 
@@ -209,7 +209,7 @@ before(async () => {
       "0xa767f745331D267c7751297D982b050c93985627",
       "0xC78b99Ae87fF43535b0C782128DB3cB49c74A4d3",
       "0xC333eb0086309a16aa7c8308DfD32c8BBA0a2592",
-    ],
+    ]
   );
 });
 

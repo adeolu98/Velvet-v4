@@ -86,7 +86,7 @@ describe.only("Tests for Deposit", () => {
     ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
 
-  let swapVerificationLibrary: any;
+  let SwapVerificationLibraryAlgebra: any;
 
   const provider = ethers.provider;
   const chainId: any = process.env.CHAIN_ID;
@@ -135,7 +135,7 @@ describe.only("Tests for Deposit", () => {
       await withdrawManager.deployed();
 
       const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
+        "SwapVerificationLibraryAlgebra"
       );
       swapVerificationLibrary = await SwapVerificationLibrary.deploy();
       await swapVerificationLibrary.deployed();
@@ -303,7 +303,7 @@ describe.only("Tests for Deposit", () => {
         "PositionManagerAlgebra",
         {
           libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
+            SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
           },
         }
       );
