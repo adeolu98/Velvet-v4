@@ -86,7 +86,7 @@ describe.only("Tests for Deposit", () => {
     ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
 
-  let SwapVerificationLibraryAlgebra: any;
+  let swapVerificationLibrary: any;
 
   const provider = ethers.provider;
   const chainId: any = process.env.CHAIN_ID;
@@ -951,8 +951,8 @@ describe.only("Tests for Deposit", () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
-        let flashloanBufferUnit = 30; //Flashloan buffer unit in 1/10000
-        let bufferUnit = 320; //Buffer unit for collateral amount in 1/100000
+        let flashloanBufferUnit = 31; //Flashloan buffer unit in 1/10000
+        let bufferUnit = 350; //Buffer unit for collateral amount in 1/100000
         let borrowedToken = addresses.LINK_Address;
         let borrowedProtocolToken = addresses.vLINK_Address;
 
@@ -1054,10 +1054,6 @@ describe.only("Tests for Deposit", () => {
         console.log("balanceBorrowed after repay", balanceBorrowed);
       });
 
-      it("borrowed token limit should decrease after complete repayment", async () => {
-        expect(await rebalancing.tokensBorrowed()).to.be.equal(2);
-      })
-
 
       it("should swap tokens for user using native token", async () => {
         let tokens = await portfolio.getTokens();
@@ -1094,6 +1090,10 @@ describe.only("Tests for Deposit", () => {
 
         console.log("SupplyAfter", await portfolio.totalSupply());
       });
+
+      it("borrowed token limit should decrease after complete repayment", async () => {
+        expect(await rebalancing.tokensBorrowed()).to.be.equal(2);
+      })
 
       it("Repay half of borrowed amount directly using vault token", async () => {
         let vault = await portfolio.vault();
@@ -1536,8 +1536,8 @@ describe.only("Tests for Deposit", () => {
 
         let vault = await portfolio.vault();
 
-        let flashloanBufferUnit = 10; //Flashloan buffer unit in 1/10000
-        let bufferUnit = 250; //Buffer unit for collateral amount in 1/100000
+        let flashloanBufferUnit = 11; //Flashloan buffer unit in 1/10000
+        let bufferUnit = 300; //Buffer unit for collateral amount in 1/100000
 
         let flashLoanToken = addresses.USDT;
         let flashLoanProtocolToken = addresses.vUSDT_Address;
@@ -1721,8 +1721,8 @@ describe.only("Tests for Deposit", () => {
 
         const user = nonOwner;
 
-        let flashloanBufferUnit = 10; //Flashloan buffer unit in 1/10000.This value is used slightly increase the amount of flashLoanAmount, for any priceImpact (10000 = 100%)
-        let bufferUnit = 250; //The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
+        let flashloanBufferUnit = 11; //Flashloan buffer unit in 1/10000.This value is used slightly increase the amount of flashLoanAmount, for any priceImpact (10000 = 100%)
+        let bufferUnit = 300; //The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         const tokens = await portfolio.getTokens();
