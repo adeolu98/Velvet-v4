@@ -21,6 +21,8 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   uint256 public lastUnpausedByUser;
   uint256 public lastEmergencyPaused;
 
+  uint256 public MAX_BORROW_TOKEN_LIMIT;
+
   //Maximum allowed buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
   uint256 public MAX_COLLATERAL_BUFFER_UNIT;
 
@@ -66,7 +68,8 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     assetLimit = 15;
     whitelistLimit = 300;
     allowedDustTolerance = 10; // equivalent to 0.01%
-    MAX_COLLATERAL_BUFFER_UNIT = 300; // equivalent to 0.03%
+    MAX_COLLATERAL_BUFFER_UNIT = 400; // equivalent to 0.04%
+    MAX_BORROW_TOKEN_LIMIT = 5;
   }
 
   /**
@@ -354,5 +357,16 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   ) external onlyProtocolOwner {
     if (_newBufferUnit > 10000) revert ErrorLibrary.InvalidNewBufferUnit();
     MAX_COLLATERAL_BUFFER_UNIT = _newBufferUnit;
+  }
+
+  /**
+   * @notice Updates the maximum number of tokens that can be borrowed simultaneously by assetManagers
+   * @dev This function can only be called by the protocol owner
+   * @param _newBorrowTokenLimit The new maximum limit for simultaneous token borrowing (must not exceed 20)
+   * @dev Reverts with ErrorLibrary.ExceedsBorrowLimit() if the new limit is greater than 20
+   */
+  function updateMaxBorrowTokenLimit(uint256 _newBorrowTokenLimit) external onlyProtocolOwner {
+    if(_newBorrowTokenLimit > 20) revert ErrorLibrary.ExceedsBorrowLimit();
+    MAX_BORROW_TOKEN_LIMIT = _newBorrowTokenLimit;
   }
 }

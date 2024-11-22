@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {ErrorLibrary} from "../library/ErrorLibrary.sol";
-import {IIntentHandler} from "../handler/IIntentHandler.sol";
-import {RebalancingConfig} from "./RebalancingConfig.sol";
-import {IAssetHandler} from "../core/interfaces/IAssetHandler.sol";
-import {IBorrowManager} from "../core/interfaces/IBorrowManager.sol";
-import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
-import {FunctionParameters} from "../FunctionParameters.sol";
-import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import { ErrorLibrary } from "../library/ErrorLibrary.sol";
+import { IIntentHandler } from "../handler/IIntentHandler.sol";
+import { RebalancingConfig } from "./RebalancingConfig.sol";
+import { IAssetHandler } from "../core/interfaces/IAssetHandler.sol";
+import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
+import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
+import { FunctionParameters } from "../FunctionParameters.sol";
+import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
 
 /**
  * @title RebalancingCore
@@ -48,6 +48,8 @@ contract Rebalancing is
   event ClaimedRewardTokens(address _token, address _target, uint256 _amount);
 
   uint256 public constant TOTAL_WEIGHT = 10_000; // Represents 100% in basis points.
+  uint256 public tokensBorrowed;
+
   IBorrowManager internal borrowManager;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
@@ -250,7 +252,13 @@ contract Rebalancing is
     address _controller,
     FunctionParameters.RepayParams calldata repayData
   ) external onlyAssetManager nonReentrant protocolNotPaused {
-    borrowManager.repayVault(_controller, repayData);
+    // Attempt to repay the debt through the borrowManager
+    // Returns true if the token's debt is fully repaid, false if partial repayment
+    bool isTokenFullyRepaid = borrowManager.repayVault(_controller, repayData);
+
+    // If the token's debt is fully repaid, decrement the count of borrowed token types
+    // This helps maintain an accurate count for the MAX_BORROW_TOKEN_LIMIT check
+    if (isTokenFullyRepaid) tokensBorrowed--;
     emit TokenRepayed(repayData);
   }
 
@@ -461,11 +469,22 @@ contract Rebalancing is
 
     if (_amountToBorrow == 0) revert ErrorLibrary.AmountCannotBeZero();
 
+    //Ensures the number of different borrowed token types doesn't exceed protocol limits
+    if (tokensBorrowed > protocolConfig.MAX_BORROW_TOKEN_LIMIT()) {
+      revert ErrorLibrary.BorrowTokenLimitExceeded();
+    }
+
     IAssetHandler assetHandler = IAssetHandler(
       protocolConfig.assetHandlers(_controller)
     );
 
     uint256 balanceBefore = _getTokenBalanceOf(_tokenToBorrow, _vault);
+
+    // Get the number of borrowed tokens before the new borrow operation
+    // This will be used to determine if we're borrowing a new token type
+    uint256 borrowedLengthBefore = (
+      assetHandler.getBorrowedTokens(_vault, _controller)
+    ).length;
 
     // Setting token as collateral
     portfolio.vaultInteraction(_controller, assetHandler.enterMarket(_tokens));
@@ -475,6 +494,18 @@ contract Rebalancing is
       _pool,
       assetHandler.borrow(_pool, _tokenToBorrow, _amountToBorrow)
     );
+
+    // Get the number of borrowed tokens after the borrow operation
+    // If this number is larger than before, it means we borrowed a new token type
+    uint256 borrowedLengthAfter = (
+      assetHandler.getBorrowedTokens(_vault, _controller)
+    ).length;
+
+    // Increment the total number of borrowed token types if we borrowed a new token type
+    // We only increment if the length increased, meaning this is a new token type being borrowed
+    if (borrowedLengthAfter > borrowedLengthBefore) {
+      tokensBorrowed++;
+    }
 
     // Get the current list of tokens in the portfolio
     address[] memory currentTokens = _getCurrentTokens();

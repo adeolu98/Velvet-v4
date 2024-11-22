@@ -50,4 +50,6 @@ interface IRebalancing {
     function allowToken(address _token) external;
 
     function removeNonPortfolioToken(address _token) external;
+
+    function tokensBorrowed() external pure returns(uint256);
 }
