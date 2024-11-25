@@ -28,7 +28,7 @@ let accounts;
 let velvetSafeModule: VelvetSafeModule;
 
 const forkChainId: any = process.env.FORK_CHAINID;
-const chainId: any = forkChainId ? forkChainId : 56;
+const chainId: any = forkChainId ? forkChainId : 59144;
 const addresses = chainIdToAddresses[chainId];
 
 export type IAddresses = {

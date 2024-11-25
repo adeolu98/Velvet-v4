@@ -49,7 +49,7 @@ import {
   DepositManagerExternalPositions,
   PositionManagerAlgebra,
   AssetManagementConfig,
-  AmountCalculationsAlgebra,
+  AmountCalculationsLynex,
   IFactory__factory,
   INonfungiblePositionManager__factory,
   IPool__factory,
@@ -106,7 +106,7 @@ describe.only("Tests for Deposit", () => {
 
   let zeroAddress: any;
 
-  let amountCalculationsAlgebra: AmountCalculationsAlgebra;
+  let amountCalculationsLynex: AmountCalculationsLynex;
 
   const assetManagerHash = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("ASSET_MANAGER")
@@ -265,7 +265,7 @@ describe.only("Tests for Deposit", () => {
 
       swapHandler.init(addresses.PancakeSwapRouterAddress);
 
-      //await protocolConfig.setSupportedFactory(addresses.thena_factory);
+      await protocolConfig.setSupportedFactory(addresses.thena_factory);
 
       let whitelistedTokens = [
         iaddress.usdcAddress,
@@ -291,11 +291,11 @@ describe.only("Tests for Deposit", () => {
       const positionManagerBaseAddress = await PositionManager.deploy();
       await positionManagerBaseAddress.deployed();
 
-      const AmountCalculationsAlgebra = await ethers.getContractFactory(
-        "AmountCalculationsAlgebra"
+      const AmountCalculationsLynex = await ethers.getContractFactory(
+        "AmountCalculationsLynex"
       );
-      amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
-      await amountCalculationsAlgebra.deployed();
+      amountCalculationsLynex = await AmountCalculationsLynex.deploy();
+      await amountCalculationsLynex.deployed();
 
       const FeeModule = await ethers.getContractFactory("FeeModule");
       const feeModule = await FeeModule.deploy();
@@ -596,7 +596,7 @@ describe.only("Tests for Deposit", () => {
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
-        const tokenToSwap = iaddress.ethAddress;
+        const tokenToSwap = iaddress.usdcAddress;
 
         await swapHandler.swapETHToTokens("800", tokenToSwap, owner.address, {
           value: "1000000000000000000",
@@ -793,7 +793,7 @@ describe.only("Tests for Deposit", () => {
         ).toString();
 
         // get underlying amounts of position
-        let percentage = await amountCalculationsAlgebra.getPercentage(
+        let percentage = await amountCalculationsLynex.getPercentage(
           sellTokenBalance,
           await removedPosition.totalSupply()
         );
@@ -1082,7 +1082,7 @@ describe.only("Tests for Deposit", () => {
             const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
-            let percentage = await amountCalculationsAlgebra.getPercentage(
+            let percentage = await amountCalculationsLynex.getPercentage(
               withdrawalAmounts[i],
               await positionWrapperCurrent.totalSupply()
             );
@@ -1205,7 +1205,7 @@ describe.only("Tests for Deposit", () => {
             const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
-            let percentage = await amountCalculationsAlgebra.getPercentage(
+            let percentage = await amountCalculationsLynex.getPercentage(
               withdrawalAmounts[i],
               await positionWrapperCurrent.totalSupply()
             );
@@ -1512,7 +1512,7 @@ describe.only("Tests for Deposit", () => {
             const positionWrapperCurrent = PositionWrapper.attach(
               positionWrappers[wrapperIndex]
             );
-            let percentage = await amountCalculationsAlgebra.getPercentage(
+            let percentage = await amountCalculationsLynex.getPercentage(
               withdrawalAmounts[i],
               await positionWrapperCurrent.totalSupply()
             );

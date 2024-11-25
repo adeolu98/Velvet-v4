@@ -10,6 +10,7 @@ import { ISwapRouter } from "./ISwapRouter.sol";
 import { LiquidityAmountsCalculations } from "../abstract/LiquidityAmountsCalculations.sol";
 import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
 import { SwapVerificationLibrary } from "../abstract/SwapVerificationLibrary.sol";
+import "hardhat/console.sol";
 /**
  * @title PositionManagerAbstractAlgebra
  * @dev Extension of PositionManagerAbstract for managing Algebra V3 positions with added features like custom token swapping.
@@ -437,6 +438,8 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     address _token0,
     address _token1
   ) internal view returns (address token0, address token1) {
+    console.log("uniswapv3 manager");
+    console.log(address(uniswapV3PositionManager));
     IFactory factory = IFactory(
       SwapVerificationLibrary.getFactoryAddress(
         address(uniswapV3PositionManager)

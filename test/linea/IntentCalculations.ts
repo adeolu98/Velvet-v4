@@ -339,14 +339,14 @@ export async function calculateOutputAmounts(
   _positionWrapperAddress: any,
   _percentage: any
 ): Promise<any> {
-  const AmountCalculationsAlgebra = await ethers.getContractFactory(
-    "AmountCalculationsAlgebra"
+  const AmountCalculationsLynex = await ethers.getContractFactory(
+    "AmountCalculationsLynex"
   );
-  const amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
-  await amountCalculationsAlgebra.deployed();
+  const amountCalculationsLynex = await AmountCalculationsLynex.deploy();
+  await amountCalculationsLynex.deployed();
 
   let result =
-    await amountCalculationsAlgebra.callStatic.getLiquidityAmountsForPartialWithdrawal(
+    await amountCalculationsLynex.callStatic.getLiquidityAmountsForPartialWithdrawal(
       _positionWrapperAddress,
       _percentage
     );
@@ -363,11 +363,11 @@ export async function calculateSwapAmountUpdateRange(
   newTickLower: any,
   newTickUpper: any
 ): Promise<any> {
-  const AmountCalculationsAlgebra = await ethers.getContractFactory(
-    "AmountCalculationsAlgebra"
+  const AmountCalculationsLynex = await ethers.getContractFactory(
+    "AmountCalculationsLynex"
   );
-  const amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
-  await amountCalculationsAlgebra.deployed();
+  const amountCalculationsLynex = await AmountCalculationsLynex.deploy();
+  await amountCalculationsLynex.deployed();
 
   const PositionWrapper = await ethers.getContractFactory("PositionWrapper");
   const positionWrapper = PositionWrapper.attach(position);
@@ -405,7 +405,7 @@ export async function calculateSwapAmountUpdateRange(
 
   // Get amounts for new price range (to calculate the ratio)
   let amounts =
-    await amountCalculationsAlgebra.callStatic.getRatioAmountsForTicks(
+    await amountCalculationsLynex.callStatic.getRatioAmountsForTicks(
       position,
       newTickLower,
       newTickUpper
@@ -428,7 +428,7 @@ export async function calculateSwapAmountUpdateRange(
   // Get the token balances before the swap
   const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
   let underlyingBalances =
-    await amountCalculationsAlgebra.callStatic.getUnderlyingAmounts(position);
+    await amountCalculationsLynex.callStatic.getUnderlyingAmounts(position);
 
   // in production: add fees earned
   let token0BalanceBefore = BigNumber.from(
@@ -471,15 +471,15 @@ export async function calculateDepositAmounts(
   newTickUpper: any,
   inputAmount: any
 ): Promise<any> {
-  const AmountCalculationsAlgebra = await ethers.getContractFactory(
-    "AmountCalculationsAlgebra"
+  const AmountCalculationsLynex = await ethers.getContractFactory(
+    "AmountCalculationsLynex"
   );
-  const amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
-  await amountCalculationsAlgebra.deployed();
+  const amountCalculationsLynex = await AmountCalculationsLynex.deploy();
+  await amountCalculationsLynex.deployed();
 
   // Get amounts for new price range (to calculate the ratio)
   let amounts =
-    await amountCalculationsAlgebra.callStatic.getRatioAmountsForTicks(
+    await amountCalculationsLynex.callStatic.getRatioAmountsForTicks(
       position,
       newTickLower,
       newTickUpper
