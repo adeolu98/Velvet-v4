@@ -127,6 +127,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
      * @return data The encoded data for repaying the specified amount.
      */
     function repay(
+        address,
         uint256 borrowAmount
     ) public pure returns (bytes memory data) {
         data = abi.encodeWithSelector(
@@ -805,7 +806,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
             transactions[count].txData = abi.encodeWithSelector(
                 bytes4(keccak256("vaultInteraction(address,bytes)")),
                 flashData.protocolTokens[i],
-                repay(amountToRepay)
+                repay(flashData.debtToken[i], amountToRepay)
             );
             count++;
             unchecked { ++i; }
