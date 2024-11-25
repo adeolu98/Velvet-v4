@@ -26,7 +26,7 @@ abstract contract ExternalPositionManagement is AccessRoles {
   address basePositionManager; // Address of the base implementation for position manager cloning.
   address accessControllerAddress; // Address of the access controller for role management.
 
-  address private protocolConfig; // Address of the protocol config.
+  address public protocolConfig; // Address of the protocol config.
 
   // Mapping to track whitelisted protocols
   mapping(bytes32 => bool) public whitelistedProtocols;
