@@ -43,6 +43,7 @@ import {
   swapTokensToLPTokens,
   increaseLiquidity,
   decreaseLiquidity,
+  calculateSwapAmountUpdateRange,
 } from "./IntentCalculations";
 
 var chai = require("chai");
@@ -113,7 +114,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const provider = ethers.getDefaultProvider();
 
       const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
+        "SwapVerificationLibraryUniswap"
       );
       swapVerificationLibrary = await SwapVerificationLibrary.deploy();
       await swapVerificationLibrary.deployed();
@@ -157,7 +158,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         "PositionManagerUniswap",
         {
           libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
+            SwapVerificationLibraryUniswap: swapVerificationLibrary.address,
           },
         }
       );
@@ -975,6 +976,35 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
       });
 
+      it("owner should update the price range", async () => {
+        let totalSupplyBefore = await positionWrapper.totalSupply();
+
+        const newTickLower = -180;
+        const newTickUpper = 240;
+
+        let updateRangeData = await calculateSwapAmountUpdateRange(
+          positionManager.address,
+          position1,
+          newTickLower,
+          newTickUpper
+        );
+
+        await positionManager.updateRange(
+          position1,
+          updateRangeData.tokenIn,
+          updateRangeData.tokenOut,
+          updateRangeData.swapAmount.toString(),
+          0,
+          0,
+          100,
+          newTickLower,
+          newTickUpper
+        );
+
+        let totalSupplyAfter = await positionWrapper.totalSupply();
+        expect(totalSupplyAfter).to.be.equals(totalSupplyBefore);
+      });
+
       it("should withdraw in multitoken by nonwOwner", async () => {
         await ethers.provider.send("evm_increaseTime", [70]);
 
@@ -1119,7 +1149,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           "PositionManagerUniswap",
           {
             libraries: {
-              SwapVerificationLibrary: swapVerificationLibrary.address,
+              SwapVerificationLibraryUniswap: swapVerificationLibrary.address,
             },
           }
         );
@@ -1143,7 +1173,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           "PositionManagerUniswap",
           {
             libraries: {
-              SwapVerificationLibrary: swapVerificationLibrary.address,
+              SwapVerificationLibraryUniswap: swapVerificationLibrary.address,
             },
           }
         );
@@ -1161,7 +1191,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           "PositionManagerUniswap",
           {
             libraries: {
-              SwapVerificationLibrary: swapVerificationLibrary.address,
+              SwapVerificationLibraryUniswap: swapVerificationLibrary.address,
             },
           }
         );

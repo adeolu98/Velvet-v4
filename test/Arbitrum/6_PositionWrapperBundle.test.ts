@@ -136,7 +136,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const provider = ethers.getDefaultProvider();
 
       const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
+        "SwapVerificationLibraryUniswap"
       );
       swapVerificationLibrary = await SwapVerificationLibrary.deploy();
       await swapVerificationLibrary.deployed();
@@ -261,7 +261,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         "PositionManagerUniswap",
         {
           libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
+            SwapVerificationLibraryUniswap: swapVerificationLibrary.address,
           },
         }
       );

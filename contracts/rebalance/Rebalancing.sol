@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {ErrorLibrary} from "../library/ErrorLibrary.sol";
-import {IIntentHandler} from "../handler/IIntentHandler.sol";
-import {RebalancingConfig} from "./RebalancingConfig.sol";
-import {IAssetHandler} from "../core/interfaces/IAssetHandler.sol";
-import {IBorrowManager} from "../core/interfaces/IBorrowManager.sol";
-import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
-import {FunctionParameters} from "../FunctionParameters.sol";
-import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import { ErrorLibrary } from "../library/ErrorLibrary.sol";
+import { IIntentHandler } from "../handler/IIntentHandler.sol";
+import { RebalancingConfig } from "./RebalancingConfig.sol";
+import { IAssetHandler } from "../core/interfaces/IAssetHandler.sol";
+import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
+import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
+import { FunctionParameters } from "../FunctionParameters.sol";
+import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
 
 /**
  * @title RebalancingCore
@@ -48,6 +48,8 @@ contract Rebalancing is
   event ClaimedRewardTokens(address _token, address _target, uint256 _amount);
 
   uint256 public constant TOTAL_WEIGHT = 10_000; // Represents 100% in basis points.
+  uint256 public tokensBorrowed;
+
   IBorrowManager internal borrowManager;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
@@ -156,9 +158,10 @@ contract Rebalancing is
   }
 
   /**
-   * @notice Updates the token list and adjusts weights based on the provided rebalance data.
-   * @param rebalanceData Contains information about tokens to sell, new tokens to add, and sell amounts.
-   * @dev This function updates the portfolio's token list, checks balances, and ensures compliance with allowed limits.
+   * @notice Updates the portfolio’s token list, adjusts weights, and verifies token balances.
+   * @dev Uses a 256-slot bitmap to efficiently track up to 65,536 unique token addresses.
+   *      Each token address is mapped to a unique bit position in the bitmap using keccak256 hashing.
+   * @param rebalanceData Struct containing rebalance details including token lists and related data.
    */
   function updateTokens(
     FunctionParameters.RebalanceIntent calldata rebalanceData
@@ -170,7 +173,7 @@ contract Rebalancing is
     // Update the portfolio's token list with new tokens
     portfolio.updateTokenList(_newTokens);
 
-    // Perform token update and weights adjustment based on provided rebalance data.
+    // Perform token update and weights adjustment based on provided rebalance data
     _updateWeights(
       _sellTokens,
       _newTokens,
@@ -179,47 +182,56 @@ contract Rebalancing is
       rebalanceData._callData
     );
 
-    // Initialize a bitmap and store initial balances
-    uint256 tokenBitmap;
+    // Initialize a bitmap with 256 slots to handle up to 65,536 unique bit positions
+    uint256[256] memory tokenBitmap;
     uint256 tokenLength = _tokens.length;
     uint256[] memory initialBalances = new uint256[](tokenLength);
 
     unchecked {
-      // Create a bitmap of current tokens and store their initial balances
+      // Populate the bitmap with current tokens and store their initial balances
       for (uint256 i; i < tokenLength; i++) {
         address token = _tokens[i];
 
-        // Store the current balance of the token
+        // Store the current balance of the token for later verification
         initialBalances[i] = _getTokenBalanceOf(token, _vault);
 
-        // Calculate bit position for the current token address (0-255)
-        uint256 bitPos = uint256(uint160(token)) & 0xFF;
+        // Calculate a unique bit position for this token
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536; // Hash to get a unique bit position in the range 0-65,535
+        uint256 index = bitPos / 256; // Determine the specific uint256 slot in the array (0 to 255)
+        uint256 offset = bitPos % 256; // Determine the bit position within that uint256 slot (0 to 255)
 
-        // Set the corresponding bit in the tokenBitmap to mark this token as present
-        tokenBitmap |= 1 << bitPos;
+        // Set the bit for this token in the bitmap to mark it as present
+        tokenBitmap[index] |= (1 << offset);
       }
 
-      // Remove new tokens from the bitmap to avoid checking them later
+      // Remove new tokens from the bitmap to avoid unnecessary balance checks
       for (uint256 i; i < _newTokens.length; i++) {
-        uint256 bitPos = uint256(uint160(_newTokens[i])) & 0xFF;
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(_newTokens[i]))) %
+          65536;
+        uint256 index = bitPos / 256;
+        uint256 offset = bitPos % 256;
 
-        // Clear the corresponding bit in the bitmap for new tokens
-        tokenBitmap &= ~(1 << bitPos);
+        // Clear the bit for each new token to mark it as excluded from checks
+        tokenBitmap[index] &= ~(1 << offset);
       }
 
-      // Check balances for remaining tokens in the bitmap
+      // Verify balances for remaining tokens in the bitmap
       uint256 dustTolerance = protocolConfig.allowedDustTolerance();
       for (uint256 i; i < tokenLength; i++) {
         address token = _tokens[i];
 
-        // Determine if the token is still marked as present in the bitmap
-        uint256 bitPos = uint256(uint160(token)) & 0xFF;
-        if (tokenBitmap & (1 << bitPos) != 0) {
-          // Calculate the dust value based on the token's initial balance
+        // Calculate the bit position for this token to verify its presence
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536;
+        uint256 index = bitPos / 256;
+        uint256 offset = bitPos % 256;
+
+        // Check if the bit for this token is still set in the bitmap
+        if ((tokenBitmap[index] & (1 << offset)) != 0) {
+          // Calculate the allowable "dust" amount based on the initial balance
           uint256 dustValue = (initialBalances[i] * dustTolerance) /
             TOTAL_WEIGHT;
 
-          // Ensure the current balance does not exceed the allowed dust value
+          // Verify that the token's balance does not exceed the allowable dust tolerance
           if (_getTokenBalanceOf(token, _vault) > dustValue)
             revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
         }
@@ -240,7 +252,13 @@ contract Rebalancing is
     address _controller,
     FunctionParameters.RepayParams calldata repayData
   ) external onlyAssetManager nonReentrant protocolNotPaused {
-    borrowManager.repayVault(_controller, repayData);
+    // Attempt to repay the debt through the borrowManager
+    // Returns true if the token's debt is fully repaid, false if partial repayment
+    bool isTokenFullyRepaid = borrowManager.repayVault(_controller, repayData);
+
+    // If the token's debt is fully repaid, decrement the count of borrowed token types
+    // This helps maintain an accurate count for the MAX_BORROW_TOKEN_LIMIT check
+    if (isTokenFullyRepaid) tokensBorrowed--;
     emit TokenRepayed(repayData);
   }
 
@@ -451,11 +469,22 @@ contract Rebalancing is
 
     if (_amountToBorrow == 0) revert ErrorLibrary.AmountCannotBeZero();
 
+    //Ensures the number of different borrowed token types doesn't exceed protocol limits
+    if (tokensBorrowed > protocolConfig.MAX_BORROW_TOKEN_LIMIT()) {
+      revert ErrorLibrary.BorrowTokenLimitExceeded();
+    }
+
     IAssetHandler assetHandler = IAssetHandler(
       protocolConfig.assetHandlers(_controller)
     );
 
     uint256 balanceBefore = _getTokenBalanceOf(_tokenToBorrow, _vault);
+
+    // Get the number of borrowed tokens before the new borrow operation
+    // This will be used to determine if we're borrowing a new token type
+    uint256 borrowedLengthBefore = (
+      assetHandler.getBorrowedTokens(_vault, _controller)
+    ).length;
 
     // Setting token as collateral
     portfolio.vaultInteraction(_controller, assetHandler.enterMarket(_tokens));
@@ -465,6 +494,18 @@ contract Rebalancing is
       _pool,
       assetHandler.borrow(_pool, _tokenToBorrow, _amountToBorrow)
     );
+
+    // Get the number of borrowed tokens after the borrow operation
+    // If this number is larger than before, it means we borrowed a new token type
+    uint256 borrowedLengthAfter = (
+      assetHandler.getBorrowedTokens(_vault, _controller)
+    ).length;
+
+    // Increment the total number of borrowed token types if we borrowed a new token type
+    // We only increment if the length increased, meaning this is a new token type being borrowed
+    if (borrowedLengthAfter > borrowedLengthBefore) {
+      tokensBorrowed++;
+    }
 
     // Get the current list of tokens in the portfolio
     address[] memory currentTokens = _getCurrentTokens();

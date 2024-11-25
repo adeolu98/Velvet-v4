@@ -525,7 +525,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         borrowedTokens = new address[](assetsCount);
         for (uint i = 0; i < assetsCount;) {
             IVenusPool asset = IVenusPool(assets[i]);
-
             // Read the balances and exchange rate from the vToken
             (
                 oErr,

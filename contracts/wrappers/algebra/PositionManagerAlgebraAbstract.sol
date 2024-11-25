@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable } from "../abstract/PositionManagerAbstract.sol";
+import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable, IProtocolConfig } from "../abstract/PositionManagerAbstract.sol";
 import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IFactory } from "./IFactory.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { ISwapRouter } from "./ISwapRouter.sol";
-import { LiquidityAmountsCalculations } from "../abstract/LiquidityAmountsCalculations.sol";
 import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
-import { SwapVerificationLibrary } from "../abstract/SwapVerificationLibrary.sol";
-import "hardhat/console.sol";
+import { SwapVerificationLibraryAlgebra } from "./SwapVerificationLibraryAlgebra.sol";
 /**
  * @title PositionManagerAbstractAlgebra
  * @dev Extension of PositionManagerAbstract for managing Algebra V3 positions with added features like custom token swapping.
@@ -351,7 +349,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       (uint128 tokensOwed0, uint128 tokensOwed1) = _getTokensOwed(
         _params._tokenId
       );
-      SwapVerificationLibrary.verifyZeroSwapAmountForReinvestFees(
+      SwapVerificationLibraryAlgebra.verifyZeroSwapAmountForReinvestFees(
         protocolConfig,
         _params,
         address(uniswapV3PositionManager),
@@ -403,7 +401,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
 
     router.exactInputSingle(params);
 
-    SwapVerificationLibrary.verifySwap(
+    SwapVerificationLibraryAlgebra.verifySwap(
       tokenIn,
       tokenOut,
       _params._amountIn,
@@ -413,7 +411,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       IPriceOracle(protocolConfig.oracle())
     );
 
-    (balance0, balance1) = SwapVerificationLibrary.verifyRatioAfterSwap(
+    (balance0, balance1) = SwapVerificationLibraryAlgebra.verifyRatioAfterSwap(
       protocolConfig,
       _params._positionWrapper,
       address(uniswapV3PositionManager),
@@ -424,6 +422,17 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       tokenIn,
       balanceTokenInBeforeSwap,
       IERC20Upgradeable(tokenIn).balanceOf(address(this))
+    );
+  }
+
+  function _verifyZeroSwapAmount(
+    IProtocolConfig protocolConfig,
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal override {
+    SwapVerificationLibraryAlgebra.verifyZeroSwapAmount(
+      protocolConfig,
+      _params,
+      address(uniswapV3PositionManager)
     );
   }
 
@@ -438,10 +447,8 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     address _token0,
     address _token1
   ) internal view returns (address token0, address token1) {
-    console.log("uniswapv3 manager");
-    console.log(address(uniswapV3PositionManager));
     IFactory factory = IFactory(
-      SwapVerificationLibrary.getFactoryAddress(
+      SwapVerificationLibraryAlgebra.getFactoryAddress(
         address(uniswapV3PositionManager)
       )
     );

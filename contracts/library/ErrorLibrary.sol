@@ -205,4 +205,10 @@ library ErrorLibrary {
   error ControllerDataNotFound();
   // @notice Thrown when the input token used for swapping is invalid
   error InvalidSwapToken();
+  // @notice Thrown when protocol owner sets new borrow token limit more then max limit(20)
+  error ExceedsBorrowLimit();
+  // @notice Thrown when borrow token limit exceeds the max limit set by protocol owner
+  error BorrowTokenLimitExceeded();
+  // @notice Thrown when flash loan functionality is not active for the portfolio
+  error FlashLoanIsInactive();
 }
