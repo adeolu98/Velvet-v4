@@ -154,7 +154,7 @@ describe.only("Tests for Deposit", () => {
       const provider = ethers.getDefaultProvider();
 
       const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
+        "SwapVerificationLibraryAlgebra"
       );
       swapVerificationLibrary = await SwapVerificationLibrary.deploy();
       await swapVerificationLibrary.deployed();
@@ -270,7 +270,7 @@ describe.only("Tests for Deposit", () => {
         "PositionManagerAlgebra",
         {
           libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
+            SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
           },
         }
       );
@@ -1447,7 +1447,7 @@ describe.only("Tests for Deposit", () => {
           "PositionManagerAlgebra",
           {
             libraries: {
-              SwapVerificationLibrary: swapVerificationLibrary.address,
+              SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
             },
           }
         );
@@ -1471,7 +1471,7 @@ describe.only("Tests for Deposit", () => {
           "PositionManagerAlgebra",
           {
             libraries: {
-              SwapVerificationLibrary: swapVerificationLibrary.address,
+              SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
             },
           }
         );
@@ -1489,7 +1489,7 @@ describe.only("Tests for Deposit", () => {
           "PositionManagerAlgebra",
           {
             libraries: {
-              SwapVerificationLibrary: swapVerificationLibrary.address,
+              SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
             },
           }
         );
