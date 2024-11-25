@@ -368,7 +368,7 @@ describe.only("Tests for Deposit", () => {
       let whitelist = [owner.address];
 
       const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
+        "SwapVerificationLibraryAlgebra"
       );
       const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
       await swapVerificationLibrary.deployed();
@@ -377,7 +377,7 @@ describe.only("Tests for Deposit", () => {
         "PositionManagerAlgebra",
         {
           libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
+            SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
           },
         }
       );

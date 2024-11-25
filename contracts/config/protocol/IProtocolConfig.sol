@@ -289,4 +289,5 @@ interface IProtocolConfig {
   function getPositionWrapperBaseImplementation(
     bytes32 protocolId
   ) external view returns (address);
+  function MAX_BORROW_TOKEN_LIMIT() external pure returns(uint256);
 }

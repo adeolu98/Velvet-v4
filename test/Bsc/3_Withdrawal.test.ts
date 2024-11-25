@@ -209,7 +209,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       zeroAddress = "0x0000000000000000000000000000000000000000";
 
       const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
+        "SwapVerificationLibraryAlgebra"
       );
       const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
       await swapVerificationLibrary.deployed();
@@ -218,7 +218,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         "PositionManagerAlgebra",
         {
           libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
+            SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
           },
         }
       );

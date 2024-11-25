@@ -17,7 +17,6 @@ abstract contract TokenWhitelistManagement is
   ExternalPositionManagement,
   Initializable
 {
-  IProtocolConfig private protocolConfig; // Reference to the protocol configuration contract.
   mapping(address => bool) public whitelistedTokens; // Mapping to track whitelisted tokens.
   bool public tokenWhitelistingEnabled; // Flag to indicate if token whitelisting is enabled.
 
@@ -43,15 +42,7 @@ abstract contract TokenWhitelistManagement is
     address _protocolConfig
   ) internal onlyInitializing {
     if (_protocolConfig == address(0)) revert ErrorLibrary.InvalidAddress();
-    protocolConfig = IProtocolConfig(_protocolConfig);
     tokenWhitelistingEnabled = _tokenWhitelistingEnabled;
-
-    if (tokenWhitelistingEnabled) {
-      if (_whitelistTokens.length == 0)
-        revert ErrorLibrary.InvalidTokenWhitelistLength();
-
-      _addTokensToWhitelist(_whitelistTokens);
-    }
 
     ExternalPositionManagement__init(
       _protocolConfig,
@@ -60,6 +51,13 @@ abstract contract TokenWhitelistManagement is
       _baseExternalPositionStorage,
       _witelistedProtocolIds
     );
+
+    if (tokenWhitelistingEnabled) {
+      if (_whitelistTokens.length == 0)
+        revert ErrorLibrary.InvalidTokenWhitelistLength();
+
+      _addTokensToWhitelist(_whitelistTokens);
+    }
   }
 
   /**
@@ -68,7 +66,7 @@ abstract contract TokenWhitelistManagement is
    */
   function _addTokensToWhitelist(address[] calldata _tokens) internal {
     uint256 tokensLength = _tokens.length;
-    if (tokensLength > protocolConfig.whitelistLimit()) {
+    if (tokensLength > IProtocolConfig(protocolConfig).whitelistLimit()) {
       revert ErrorLibrary.InvalidWhitelistLimit();
     }
 

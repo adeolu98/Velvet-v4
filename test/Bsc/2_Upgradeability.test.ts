@@ -210,7 +210,7 @@ describe.only("Tests for Upgradeability", () => {
       zeroAddress = "0x0000000000000000000000000000000000000000";
 
       const SwapVerificationLibrary = await ethers.getContractFactory(
-        "SwapVerificationLibrary"
+        "SwapVerificationLibraryAlgebra"
       );
       const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
       await swapVerificationLibrary.deployed();
@@ -219,7 +219,7 @@ describe.only("Tests for Upgradeability", () => {
         "PositionManagerAlgebra",
         {
           libraries: {
-            SwapVerificationLibrary: swapVerificationLibrary.address,
+            SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
           },
         }
       );

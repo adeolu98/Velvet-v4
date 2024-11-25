@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, INonfungiblePositionManager, ErrorLibrary, IERC20Upgradeable, TransferHelper } from "../abstract/PositionManagerAbstract.sol";
+import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, INonfungiblePositionManager, ErrorLibrary, IERC20Upgradeable, TransferHelper, IProtocolConfig } from "../abstract/PositionManagerAbstract.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IFactory } from "./IFactory.sol";
 import { IPool } from "../interfaces/IPool.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IPriceOracle } from "../../oracle/IPriceOracle.sol";
-import { SwapVerificationLibrary } from "../abstract/SwapVerificationLibrary.sol";
+import { SwapVerificationLibraryUniswap } from "./SwapVerificationLibraryUniswap.sol";
 /**
  * @title PositionManagerAbstractUniswap
  * @dev Extension of PositionManagerAbstract for managing Uniswap V3 positions with added features like custom token swapping.
@@ -365,7 +365,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       (uint128 tokensOwed0, uint128 tokensOwed1) = _getTokensOwed(
         _params._tokenId
       );
-      SwapVerificationLibrary.verifyZeroSwapAmountForReinvestFees(
+      SwapVerificationLibraryUniswap.verifyZeroSwapAmountForReinvestFees(
         protocolConfig,
         _params,
         address(uniswapV3PositionManager),
@@ -421,7 +421,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
 
     router.exactInputSingle(params);
 
-    SwapVerificationLibrary.verifySwap(
+    SwapVerificationLibraryUniswap.verifySwap(
       _params._tokenIn,
       _params._tokenOut,
       _params._amountIn,
@@ -434,7 +434,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     uint256 balanceTokenInAfterSwap = IERC20Upgradeable(_params._tokenIn)
       .balanceOf(address(this));
 
-    (balance0, balance1) = SwapVerificationLibrary.verifyRatioAfterSwap(
+    (balance0, balance1) = SwapVerificationLibraryUniswap.verifyRatioAfterSwap(
       protocolConfig,
       _params._positionWrapper,
       address(uniswapV3PositionManager),
@@ -445,6 +445,17 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       _params._tokenIn,
       balanceTokenInBeforeSwap,
       balanceTokenInAfterSwap
+    );
+  }
+
+  function _verifyZeroSwapAmount(
+    IProtocolConfig protocolConfig,
+    WrapperFunctionParameters.SwapParams memory _params
+  ) internal override {
+    SwapVerificationLibraryUniswap.verifyZeroSwapAmount(
+      protocolConfig,
+      _params,
+      address(uniswapV3PositionManager)
     );
   }
 

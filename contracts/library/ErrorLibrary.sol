@@ -211,4 +211,10 @@ library ErrorLibrary {
   error ProtocolNotWhitelisted(bytes32);
   // @notice Thrown when attempting to use a protocol that is not enabled in protocol config
   error ProtocolNotEnabled(bytes32);
+  // @notice Thrown when protocol owner sets new borrow token limit more then max limit(20)
+  error ExceedsBorrowLimit();
+  // @notice Thrown when borrow token limit exceeds the max limit set by protocol owner
+  error BorrowTokenLimitExceeded();
+  // @notice Thrown when flash loan functionality is not active for the portfolio
+  error FlashLoanIsInactive();
 }
