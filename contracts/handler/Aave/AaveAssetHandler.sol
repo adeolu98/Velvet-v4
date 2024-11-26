@@ -6,8 +6,17 @@ import {FunctionParameters} from "../../FunctionParameters.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
 import {IPoolLogic} from "./IPoolLogic.sol";
 import {IPoolDataProvider} from "./IPoolDataProvider.sol";
+import {IAaveToken} from "./IAaveToken.sol";
+import {IPriceOracle} from "./IPriceOracle.sol";
+import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 
 contract AaveAssetHandler is IAssetHandler {
+  address immutable DATA_PROVIDER_ADDRESS =
+    0x7F23D86Ee20D869112572136221e173428DD740B;
+
+  address immutable PRICE_ORACLE_ADDRESS =
+    0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
+
   /**
    * @notice Returns the balance of the specified asset in the given pool.
    * @param pool The address of the pool to query the balance from.
@@ -65,7 +74,7 @@ contract AaveAssetHandler is IAssetHandler {
     address,
     address asset,
     uint256 borrowAmount
-  ) external pure returns (bytes memory data) {
+  ) external view returns (bytes memory data) {
     data = abi.encodeWithSelector(
       bytes4(keccak256("borrow(address,uint256,uint256,uint16,address)")),
       asset, // Encode the data to borrow the specified amount
@@ -84,7 +93,7 @@ contract AaveAssetHandler is IAssetHandler {
   function repay(
     address asset,
     uint256 borrowAmount
-  ) public pure returns (bytes memory data) {
+  ) public view returns (bytes memory data) {
     data = abi.encodeWithSelector(
       bytes4(keccak256("repayBorrow(address,uint256,uint256,address)")),
       asset,
@@ -144,8 +153,10 @@ contract AaveAssetHandler is IAssetHandler {
         ,
         ,
 
-      ) = IPoolDataProvider(0x7F23D86Ee20D869112572136221e173428DD740B)
-          .getUserReserveData(assets[i], account);
+      ) = IPoolDataProvider(DATA_PROVIDER_ADDRESS).getUserReserveData(
+          assets[i],
+          account
+        );
       if (currentATokenBalance > 0) {
         lendTokens[lendCount++] = address(asset); // Add the asset to the lend tokens if there is a balance
       }
@@ -210,18 +221,9 @@ contract AaveAssetHandler is IAssetHandler {
 
     for (uint i = 0; i < assetsCount; ) {
       address asset = assets[i];
-      (
-        uint currentATokenBalance,
-        ,
-        uint currentVariableDebt,
-        ,
-        ,
-        ,
-        ,
-        ,
-
-      ) = IPoolDataProvider(0x7F23D86Ee20D869112572136221e173428DD740B)
-          .getUserReserveData(assets[i], account);
+      (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
+        DATA_PROVIDER_ADDRESS
+      ).getUserReserveData(assets[i], account);
       if (currentVariableDebt > 0) {
         borrowedTokens[borrowCount++] = address(asset); // Add the asset to the borrow tokens if there is a balance
       }
@@ -266,288 +268,480 @@ contract AaveAssetHandler is IAssetHandler {
     return (tokenBalance * unusedCollateralPercentage) / 10 ** 18; // Calculate and return the investible balance
   }
 
-      /**
-     * @notice Processes a loan by handling swaps, transfers, repayments, and withdrawals.
-     * @param vault The address of the vault.
-     * @param executor The address of the executor.
-     * @param controller The address of the Venus Comptroller.
-     * @param receiver The address of the receiver.
-     * @param lendTokens The array of addresses representing lent assets.
-     * @param totalCollateral The total collateral value.
-     * @param fee The fee for the transaction.
-     * @param flashData A struct containing flash loan data.
-     * @return transactions An array of transactions to execute.
-     * @return The total amount of flash loan used.
-     */
-    function loanProcessing(
-        address vault,
-        address executor,
-        address controller,
-        address receiver,
-        address[] memory lendTokens,
-        uint256 totalCollateral,
-        uint fee,
-        FunctionParameters.FlashLoanData memory flashData
-    ) external view returns (MultiTransaction[] memory transactions, uint256) {
-        // Process swaps and transfers during the loan
-        (
-            MultiTransaction[] memory swapTransactions,
-            uint256 totalFlashAmount
-        ) = swapAndTransferTransactions(vault, flashData);
+  /**
+   * @notice Processes a loan by handling swaps, transfers, repayments, and withdrawals.
+   * @param vault The address of the vault.
+   * @param executor The address of the executor.
+   * @param controller The address of the Venus Comptroller.
+   * @param receiver The address of the receiver.
+   * @param lendTokens The array of addresses representing lent assets.
+   * @param totalCollateral The total collateral value.
+   * @param fee The fee for the transaction.
+   * @param flashData A struct containing flash loan data.
+   * @return transactions An array of transactions to execute.
+   * @return The total amount of flash loan used.
+   */
+  function loanProcessing(
+    address vault,
+    address executor,
+    address controller,
+    address receiver,
+    address[] memory lendTokens,
+    uint256 totalCollateral,
+    uint fee,
+    FunctionParameters.FlashLoanData memory flashData
+  ) external view returns (MultiTransaction[] memory transactions, uint256) {
+    // Process swaps and transfers during the loan
+    (
+      MultiTransaction[] memory swapTransactions,
+      uint256 totalFlashAmount
+    ) = swapAndTransferTransactions(vault, flashData);
 
-        // Handle repayment transactions
-        MultiTransaction[] memory repayLoanTransaction = repayTransactions(
-            executor,
-            flashData
+    // Handle repayment transactions
+    MultiTransaction[] memory repayLoanTransaction = repayTransactions(
+      executor,
+      flashData
+    );
+
+    // Handle withdrawal transactions
+    MultiTransaction[] memory withdrawTransaction = withdrawTransactions(
+      executor,
+      vault,
+      controller,
+      receiver,
+      lendTokens,
+      totalCollateral,
+      fee,
+      flashData
+    );
+
+    // Combine all transactions into one array
+    transactions = new MultiTransaction[](
+      swapTransactions.length +
+        repayLoanTransaction.length +
+        withdrawTransaction.length
+    );
+    uint256 count;
+
+    // Add swap transactions to the final array
+    for (uint i = 0; i < swapTransactions.length; ) {
+      transactions[count].to = swapTransactions[i].to;
+      transactions[count].txData = swapTransactions[i].txData;
+      count++;
+      unchecked {
+        ++i;
+      }
+    }
+
+    // Add repay transactions to the final array
+    for (uint i = 0; i < repayLoanTransaction.length; ) {
+      transactions[count].to = repayLoanTransaction[i].to;
+      transactions[count].txData = repayLoanTransaction[i].txData;
+      count++;
+      unchecked {
+        ++i;
+      }
+    }
+
+    // Add withdrawal transactions to the final array
+    for (uint i = 0; i < withdrawTransaction.length; ) {
+      transactions[count].to = withdrawTransaction[i].to;
+      transactions[count].txData = withdrawTransaction[i].txData;
+      count++;
+      unchecked {
+        ++i;
+      }
+    }
+
+    return (transactions, totalFlashAmount); // Return the final array of transactions and total flash loan amount
+  }
+
+  /**
+   * @notice Internal function to handle swaps and transfers during loan processing.
+   * @param vault The address of the vault.
+   * @param flashData A struct containing flash loan data.
+   * @return transactions An array of transactions to execute.
+   * @return totalFlashAmount The total amount of flash loan used.
+   */
+  function swapAndTransferTransactions(
+    address vault,
+    FunctionParameters.FlashLoanData memory flashData
+  )
+    internal
+    pure
+    returns (MultiTransaction[] memory transactions, uint256 totalFlashAmount)
+  {
+    uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
+    transactions = new MultiTransaction[](tokenLength * 2); // Initialize the transactions array
+    uint count;
+
+    // Loop through the debt tokens to handle swaps and transfers
+    for (uint i; i < tokenLength; ) {
+      // Check if the flash loan token is different from the debt token
+      if (flashData.flashLoanToken != flashData.debtToken[i]) {
+        // Transfer the flash loan token to the solver handler
+        transactions[count].to = flashData.flashLoanToken;
+        transactions[count].txData = abi.encodeWithSelector(
+          bytes4(keccak256("transfer(address,uint256)")),
+          flashData.solverHandler, // recipient
+          flashData.flashLoanAmount[i]
         );
+        count++;
 
-        // Handle withdrawal transactions
-        MultiTransaction[] memory withdrawTransaction = withdrawTransactions(
-            executor,
-            vault,
-            controller,
-            receiver,
-            lendTokens,
-            totalCollateral,
-            fee,
-            flashData
+        // Swap the token using the solver handler
+        transactions[count].to = flashData.solverHandler;
+        transactions[count].txData = abi.encodeWithSelector(
+          bytes4(keccak256("multiTokenSwapAndTransfer(address,bytes)")),
+          vault,
+          flashData.firstSwapData[i]
         );
-
-        // Combine all transactions into one array
-        transactions = new MultiTransaction[](
-            swapTransactions.length +
-                repayLoanTransaction.length +
-                withdrawTransaction.length
+        count++;
+      }
+      // Handle the case where the flash loan token is the same as the debt token
+      else {
+        // Transfer the token directly to the vault
+        transactions[count].to = flashData.flashLoanToken;
+        transactions[count].txData = abi.encodeWithSelector(
+          bytes4(keccak256("transfer(address,uint256)")),
+          vault, // recipient
+          flashData.flashLoanAmount[i]
         );
-        uint256 count;
+        count++;
+      }
 
-        // Add swap transactions to the final array
-        for (uint i = 0; i < swapTransactions.length;) {
-            transactions[count].to = swapTransactions[i].to;
-            transactions[count].txData = swapTransactions[i].txData;
-            count++;
-            unchecked { ++i; }
+      totalFlashAmount += flashData.flashLoanAmount[i]; // Update the total flash loan amount
+      unchecked {
+        ++i;
+      }
+    }
+    // Resize the transactions array to remove unused entries
+    uint unusedLength = ((tokenLength * 2) - count);
+    assembly {
+      mstore(transactions, sub(mload(transactions), unusedLength))
+    }
+  }
+
+  /**
+   * @notice Internal function to handle repayment transactions during loan processing.
+   * @param executor The address of the executor.
+   * @param flashData A struct containing flash loan data.
+   * @return transactions An array of transactions to execute.
+   */
+  function repayTransactions(
+    address executor,
+    FunctionParameters.FlashLoanData memory flashData
+  ) internal view returns (MultiTransaction[] memory transactions) {
+    uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
+    transactions = new MultiTransaction[](tokenLength * 2); // Initialize the transactions array
+    uint256 count;
+    uint256 amountToRepay = flashData.isMaxRepayment
+      ? type(uint256).max // If it's a max repayment, repay the max amount
+      : flashData.debtRepayAmount[0]; // Otherwise, repay the debt amount
+    // Loop through the debt tokens to handle repayments
+    for (uint i = 0; i < tokenLength; ) {
+      // Approve the debt token for the protocol
+      transactions[count].to = executor;
+      transactions[count].txData = abi.encodeWithSelector(
+        bytes4(keccak256("vaultInteraction(address,bytes)")),
+        flashData.debtToken[i],
+        approve(flashData.protocolTokens[i], amountToRepay)
+      );
+      count++;
+
+      // Repay the debt using the protocol token
+      transactions[count].to = executor;
+      transactions[count].txData = abi.encodeWithSelector(
+        bytes4(keccak256("vaultInteraction(address,bytes)")),
+        flashData.protocolTokens[i],
+        repay(flashData.debtToken[i], amountToRepay)
+      );
+      count++;
+      unchecked {
+        ++i;
+      }
+    }
+  }
+
+  /**
+   * @notice Internal function to handle withdrawal transactions during loan processing.
+   * @param executor The address of the executor.
+   * @param user The address of the user account.
+   * @param controller The address of the Venus Comptroller.
+   * @param receiver The address of the receiver.
+   * @param lendingTokens The array of addresses representing lent assets.
+   * @param totalCollateral The total collateral value.
+   * @param fee The fee for the transaction.
+   * @param flashData A struct containing flash loan data.
+   * @return transactions An array of transactions to execute.
+   */
+  function withdrawTransactions(
+    address executor,
+    address user,
+    address controller,
+    address receiver,
+    address[] memory lendingTokens,
+    uint256 totalCollateral,
+    uint256 fee,
+    FunctionParameters.FlashLoanData memory flashData
+  ) internal view returns (MultiTransaction[] memory transactions) {
+    uint256 amountLength = flashData.debtRepayAmount.length; // Get the number of repayment amounts
+    transactions = new MultiTransaction[](
+      amountLength * 2 * lendingTokens.length
+    ); // Initialize the transactions array
+    uint256 count; // Count for the transactions
+    uint256 swapDataCount; // Count for the swap data
+    // Loop through the repayment amounts to handle withdrawals
+    for (uint i = 0; i < amountLength; ) {
+      // Get the amounts to sell based on the collateral
+      uint256[] memory sellAmounts = getCollateralAmountToSell(
+        user,
+        controller,
+        flashData.protocolTokens[i],
+        lendingTokens,
+        flashData.debtRepayAmount[i],
+        fee,
+        totalCollateral,
+        flashData.bufferUnit
+      );
+
+      // Loop through the lending tokens to process each one
+      for (uint j = 0; j < lendingTokens.length; ) {
+        // Pull the token from the vault
+        transactions[count].to = executor;
+        transactions[count].txData = abi.encodeWithSelector(
+          bytes4(keccak256("pullFromVault(address,uint256,address)")),
+          lendingTokens[j], // The address of the lending token
+          sellAmounts[j], // The amount to sell
+          flashData.solverHandler // The solver handler address
+        );
+        count++;
+        // Swap the token and transfer it to the receiver
+        transactions[count].to = flashData.solverHandler;
+        transactions[count].txData = abi.encodeWithSelector(
+          bytes4(keccak256("multiTokenSwapAndTransfer(address,bytes)")),
+          receiver,
+          flashData.secondSwapData[swapDataCount]
+        );
+        count++;
+        swapDataCount++;
+        unchecked {
+          ++j;
         }
+      }
+      unchecked {
+        ++i;
+      }
+    }
+  }
 
-        // Add repay transactions to the final array
-        for (uint i = 0; i < repayLoanTransaction.length;) {
-            transactions[count].to = repayLoanTransaction[i].to;
-            transactions[count].txData = repayLoanTransaction[i].txData;
-            count++;
-            unchecked { ++i; }
-        }
+  /**
+   * @notice Calculates the collateral amount to sell during loan processing.
+   * @param _user The address of the user account.
+   * @param _protocolToken The address of the protocol token.
+   * @param lendTokens The array of addresses representing lent assets.
+   * @param _debtRepayAmount The amount of debt to repay.
+   * @param feeUnit The fee unit used for calculations.
+   * @param totalCollateral The total collateral value.
+   * @param bufferUnit The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
+   * @return amounts The calculated amounts of tokens to sell.
+   */
+  function getCollateralAmountToSell(
+    address _user,
+    address,
+    address _protocolToken,
+    address[] memory lendTokens,
+    uint256 _debtRepayAmount,
+    uint256 feeUnit, //flash loan fee unit
+    uint256 totalCollateral,
+    uint256 bufferUnit //buffer unit for collateral amount
+  ) public view returns (uint256[] memory amounts) {
+    //Get borrow balance for _protocolToken
+    address _underlyingToken = IAaveToken(_protocolToken)
+      .UNDERLYING_ASSET_ADDRESS();
+    (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
+      DATA_PROVIDER_ADDRESS
+    ).getUserReserveData(_underlyingToken, _user);
 
-        // Add withdrawal transactions to the final array
-        for (uint i = 0; i < withdrawTransaction.length;) {
-            transactions[count].to = withdrawTransaction[i].to;
-            transactions[count].txData = withdrawTransaction[i].txData;
-            count++;
-            unchecked { ++i; }
-        }
+    //Convert underlyingToken to 18 decimal
+    uint borrowBalance = currentVariableDebt *
+      10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
 
-        return (transactions, totalFlashAmount); // Return the final array of transactions and total flash loan amount
+    //Get price for _protocolToken token
+    uint _oraclePrice = IPriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
+      _underlyingToken
+    );
+    //Get price for borrow Balance (amount * price)
+    uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 8;
+    //calculateDebtAndPercentage
+    (, uint256 percentageToRemove) = calculateDebtAndPercentage(
+      _debtRepayAmount,
+      feeUnit,
+      _tokenPrice,
+      borrowBalance,
+      totalCollateral
+    );
+
+    // Calculate the amounts to sell for each lending token
+    amounts = calculateAmountsToSell(
+      _user,
+      lendTokens,
+      percentageToRemove,
+      bufferUnit
+    );
+  }
+
+  /**
+   * @notice Calculates the debt value and the percentage to remove based on the debt repayment amount.
+   * @param _debtRepayAmount The amount of debt to repay.
+   * @param feeUnit The fee unit used for calculations.
+   * @param totalDebt The total debt of the user.
+   * @param borrowBalance The borrow balance of the user.
+   * @param totalCollateral The total collateral of the user.
+   * @return debtValue The calculated debt value.
+   * @return percentageToRemove The calculated percentage to remove.
+   */
+  function calculateDebtAndPercentage(
+    uint256 _debtRepayAmount,
+    uint256 feeUnit,
+    uint256 totalDebt,
+    uint256 borrowBalance,
+    uint256 totalCollateral
+  ) internal pure returns (uint256 debtValue, uint256 percentageToRemove) {
+    uint256 feeAmount = (_debtRepayAmount * 10 ** 18 * feeUnit) / 10 ** 22; // Calculate the fee amount
+    uint256 debtAmountWithFee = _debtRepayAmount + feeAmount; // Add the fee to the debt repayment amount
+    debtValue = (debtAmountWithFee * totalDebt * 10 ** 18) / borrowBalance; // Calculate the debt value
+    percentageToRemove = debtValue / totalCollateral; // Calculate the percentage to remove from collateral
+  }
+
+  /**
+   * @notice Calculates the amounts of tokens to sell based on the percentage to remove.
+   * @param _user The address of the user account.
+   * @param lendTokens The array of addresses representing lent assets.
+   * @param percentageToRemove The percentage to remove.
+   * @return amounts The calculated amounts of tokens to sell.
+   */
+  function calculateAmountsToSell(
+    address _user,
+    address[] memory lendTokens,
+    uint256 percentageToRemove,
+    uint256 bufferUnit
+  ) internal view returns (uint256[] memory amounts) {
+    amounts = new uint256[](lendTokens.length); // Initialize the amounts array
+
+    // Loop through the lent tokens to calculate the amount to sell
+    for (uint256 i; i < lendTokens.length; ) {
+      uint256 balance = IERC20Upgradeable(lendTokens[i]).balanceOf(_user); // Get the balance of the token
+
+      uint256 amountToSell = (balance * percentageToRemove);
+      amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
+      amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
+      unchecked {
+        ++i;
+      }
+    }
+  }
+
+  function executeUserFlashLoan(
+    address _vault,
+    address _receiver,
+    uint256 _portfolioTokenAmount,
+    uint256 _totalSupply,
+    address[] memory borrowedTokens,
+    FunctionParameters.withdrawRepayParams calldata repayData
+  ) external override {
+    uint borrowedLength = borrowedTokens.length;
+    address[] memory underlying = new address[](borrowedLength); // Array to store underlying tokens of borrowed assets
+    uint256[] memory tokenBalance = new uint256[](borrowedLength); // Array to store balances of borrowed tokens
+    uint256 totalFlashAmount; // Variable to track total flash loan amount
+    underlying = new address[](borrowedLength);
+    tokenBalance = new uint256[](borrowedLength);
+
+    for (uint256 i; i < borrowedLength; ) {
+      address _underlyingToken = IAaveToken(borrowedTokens[i])
+        .UNDERLYING_ASSET_ADDRESS();
+      (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
+        DATA_PROVIDER_ADDRESS
+      ).getUserReserveData(_underlyingToken, _vault);
+      underlying[i] = _underlyingToken; // Get the underlying asset for the borrowed token
+      tokenBalance[i] =
+        (currentVariableDebt * _portfolioTokenAmount) /
+        _totalSupply; // Calculate the portion of the debt to repay
+      totalFlashAmount += repayData._flashLoanAmount[i]; // Accumulate the total flash loan amount
+      unchecked {
+        ++i;
+      }
     }
 
-    /**
-     * @notice Internal function to handle swaps and transfers during loan processing.
-     * @param vault The address of the vault.
-     * @param flashData A struct containing flash loan data.
-     * @return transactions An array of transactions to execute.
-     * @return totalFlashAmount The total amount of flash loan used.
-     */
-    function swapAndTransferTransactions(
-        address vault,
-        FunctionParameters.FlashLoanData memory flashData
-    )
-        internal
-        pure
-        returns (
-            MultiTransaction[] memory transactions,
-            uint256 totalFlashAmount
-        )
-    {
-        uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
-        transactions = new MultiTransaction[](tokenLength * 2); // Initialize the transactions array
-        uint count;
+    // Prepare the flash loan data to be used in the flash loan callback
+    FunctionParameters.FlashLoanData memory flashData = FunctionParameters
+      .FlashLoanData({
+        flashLoanToken: repayData._flashLoanToken,
+        debtToken: underlying,
+        protocolTokens: borrowedTokens,
+        bufferUnit: repayData._bufferUnit,
+        solverHandler: repayData._solverHandler,
+        poolAddress: repayData._token0,
+        flashLoanAmount: repayData._flashLoanAmount,
+        debtRepayAmount: tokenBalance,
+        firstSwapData: repayData.firstSwapData,
+        secondSwapData: repayData.secondSwapData,
+        isMaxRepayment: false
+      });
 
-        // Loop through the debt tokens to handle swaps and transfers
-        for (uint i; i < tokenLength;) {
-            // Check if the flash loan token is different from the debt token
-            if (flashData.flashLoanToken != flashData.debtToken[i]) {
-                // Transfer the flash loan token to the solver handler
-                transactions[count].to = flashData.flashLoanToken;
-                transactions[count].txData = abi.encodeWithSelector(
-                    bytes4(keccak256("transfer(address,uint256)")),
-                    flashData.solverHandler, // recipient
-                    flashData.flashLoanAmount[i]
-                );
-                count++;
+    // Initiate the flash loan from the Algebra pool
+    address[] memory assets = new address[](1);
+    assets[0] = repayData._flashLoanToken;
+    uint256[] memory amounts = new uint256[](1);
+    amounts[0] = repayData._flashLoanAmount[0];
+    uint256[] memory interestRateModes = new uint256[](1);
+    interestRateModes[0] = 0;
 
-                // Swap the token using the solver handler
-                transactions[count].to = flashData.solverHandler;
-                transactions[count].txData = abi.encodeWithSelector(
-                    bytes4(
-                        keccak256("multiTokenSwapAndTransfer(address,bytes)")
-                    ),
-                    vault,
-                    flashData.firstSwapData[i]
-                );
-                count++;
-            }
-            // Handle the case where the flash loan token is the same as the debt token
-            else {
-                // Transfer the token directly to the vault
-                transactions[count].to = flashData.flashLoanToken;
-                transactions[count].txData = abi.encodeWithSelector(
-                    bytes4(keccak256("transfer(address,uint256)")),
-                    vault, // recipient
-                    flashData.flashLoanAmount[i]
-                );
-                count++;
-            }
+    IPoolLogic(repayData._token0).flashLoan(
+      _receiver,
+      assets,
+      amounts,
+      interestRateModes,
+      _receiver,
+      abi.encode(flashData),
+      0
+    );
+  }
 
-            totalFlashAmount += flashData.flashLoanAmount[i]; // Update the total flash loan amount
-            unchecked { ++i; }
-        }
-        // Resize the transactions array to remove unused entries
-        uint unusedLength = ((tokenLength * 2) - count);
-        assembly {
-            mstore(transactions, sub(mload(transactions), unusedLength))
-        }
-    }
+  function executeVaultFlashLoan(
+    address _receiver,
+    FunctionParameters.RepayParams calldata repayData
+  ) external override {
+    // Defining the data to be passed in the flash loan, including the amount and pool key
+    FunctionParameters.FlashLoanData memory flashData = FunctionParameters
+      .FlashLoanData({
+        flashLoanToken: repayData._flashLoanToken,
+        debtToken: repayData._debtToken,
+        protocolTokens: repayData._protocolToken,
+        bufferUnit: repayData._bufferUnit,
+        solverHandler: repayData._solverHandler,
+        poolAddress: repayData._token0, //Need to change it and use single address
+        flashLoanAmount: repayData._flashLoanAmount,
+        debtRepayAmount: repayData._debtRepayAmount,
+        firstSwapData: repayData.firstSwapData,
+        secondSwapData: repayData.secondSwapData,
+        isMaxRepayment: repayData.isMaxRepayment
+      });
 
-    /**
-     * @notice Internal function to handle repayment transactions during loan processing.
-     * @param executor The address of the executor.
-     * @param flashData A struct containing flash loan data.
-     * @return transactions An array of transactions to execute.
-     */
-    function repayTransactions(
-        address executor,
-        FunctionParameters.FlashLoanData memory flashData
-    ) internal pure returns (MultiTransaction[] memory transactions) {
-        uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
-        transactions = new MultiTransaction[](tokenLength * 2); // Initialize the transactions array
-        uint256 count;
-        uint256 amountToRepay = flashData.isMaxRepayment
-            ? type(uint256).max // If it's a max repayment, repay the max amount
-            : flashData.debtRepayAmount[0]; // Otherwise, repay the debt amount
-        // Loop through the debt tokens to handle repayments
-        for (uint i = 0; i < tokenLength;) {
-            // Approve the debt token for the protocol
-            transactions[count].to = executor;
-            transactions[count].txData = abi.encodeWithSelector(
-                bytes4(keccak256("vaultInteraction(address,bytes)")),
-                flashData.debtToken[i],
-                approve(flashData.protocolTokens[i], amountToRepay)
-            );
-            count++;
+    address[] memory assets = new address[](1);
+    assets[0] = repayData._flashLoanToken;
+    uint256[] memory amounts = new uint256[](1);
+    amounts[0] = repayData._flashLoanAmount[0];
+    uint256[] memory interestRateModes = new uint256[](1);
+    interestRateModes[0] = 0;
 
-            // Repay the debt using the protocol token
-            transactions[count].to = executor;
-            transactions[count].txData = abi.encodeWithSelector(
-                bytes4(keccak256("vaultInteraction(address,bytes)")),
-                flashData.protocolTokens[i],
-                repay(flashData.debtToken[i], amountToRepay)
-            );
-            count++;
-            unchecked { ++i; }
-        }
-    }
-
-    /**
-     * @notice Internal function to handle withdrawal transactions during loan processing.
-     * @param executor The address of the executor.
-     * @param user The address of the user account.
-     * @param controller The address of the Venus Comptroller.
-     * @param receiver The address of the receiver.
-     * @param lendingTokens The array of addresses representing lent assets.
-     * @param totalCollateral The total collateral value.
-     * @param fee The fee for the transaction.
-     * @param flashData A struct containing flash loan data.
-     * @return transactions An array of transactions to execute.
-     */
-    function withdrawTransactions(
-        address executor,
-        address user,
-        address controller,
-        address receiver,
-        address[] memory lendingTokens,
-        uint256 totalCollateral,
-        uint256 fee,
-        FunctionParameters.FlashLoanData memory flashData
-    ) internal view returns (MultiTransaction[] memory transactions) {
-
-        uint256 amountLength = flashData.debtRepayAmount.length; // Get the number of repayment amounts
-        transactions = new MultiTransaction[](
-            amountLength * 2 * lendingTokens.length
-        ); // Initialize the transactions array
-        uint256 count; // Count for the transactions
-        uint256 swapDataCount; // Count for the swap data
-        // Loop through the repayment amounts to handle withdrawals
-        for (uint i = 0; i < amountLength;) {
-            // Get the amounts to sell based on the collateral
-            uint256[] memory sellAmounts = getCollateralAmountToSell(
-                user,
-                controller,
-                flashData.protocolTokens[i],
-                lendingTokens,
-                flashData.debtRepayAmount[i],
-                fee,
-                totalCollateral,
-                flashData.bufferUnit
-            );
-
-            // Loop through the lending tokens to process each one
-            for (uint j = 0; j < lendingTokens.length;) {
-                // Pull the token from the vault
-                transactions[count].to = executor;
-                transactions[count].txData = abi.encodeWithSelector(
-                    bytes4(keccak256("pullFromVault(address,uint256,address)")),
-                    lendingTokens[j], // The address of the lending token
-                    sellAmounts[j], // The amount to sell
-                    flashData.solverHandler // The solver handler address
-                );
-                count++;
-                // Swap the token and transfer it to the receiver
-                transactions[count].to = flashData.solverHandler;
-                transactions[count].txData = abi.encodeWithSelector(
-                    bytes4(
-                        keccak256("multiTokenSwapAndTransfer(address,bytes)")
-                    ),
-                    receiver,
-                    flashData.secondSwapData[swapDataCount]
-                );
-                count++;
-                swapDataCount++;
-                unchecked { ++j; }
-            }
-            unchecked { ++i; }
-        }
-    }
-
-    /**
-     * @notice Calculates the collateral amount to sell during loan processing.
-     * @param _user The address of the user account.
-     * @param _controller The address of the Venus Comptroller.
-     * @param _protocolToken The address of the protocol token.
-     * @param lendTokens The array of addresses representing lent assets.
-     * @param _debtRepayAmount The amount of debt to repay.
-     * @param feeUnit The fee unit used for calculations.
-     * @param totalCollateral The total collateral value.
-     * @param bufferUnit The buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%) 
-     * @return amounts The calculated amounts of tokens to sell.
-     */
-    function getCollateralAmountToSell(
-        address _user,
-        address _controller,
-        address _protocolToken,
-        address[] memory lendTokens,
-        uint256 _debtRepayAmount,
-        uint256 feeUnit,//flash loan fee unit
-        uint256 totalCollateral,
-        uint256 bufferUnit//buffer unit for collateral amount
-    ) public view returns (uint256[] memory amounts) {
-        
-    }
+    IPoolLogic(repayData._token0).flashLoan(
+      _receiver,
+      assets,
+      amounts,
+      interestRateModes,
+      _receiver,
+      abi.encode(flashData),
+      0
+    );
+  }
 }

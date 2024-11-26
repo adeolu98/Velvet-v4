@@ -26,12 +26,12 @@ interface IAssetHandler {
     address pool,
     address asset,
     uint256 borrowAmount
-  ) external pure returns (bytes memory data);
+  ) external view returns (bytes memory data);
 
   function repay(
     address asset,
     uint256 borrowAmount
-  ) external pure returns (bytes memory data);
+  ) external view returns (bytes memory data);
 
   function approve(
     address pool,

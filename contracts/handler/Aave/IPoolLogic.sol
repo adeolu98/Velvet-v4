@@ -4,7 +4,9 @@ pragma solidity 0.8.17;
 interface IPoolLogic {
   function getReservesList() external view returns (address[] memory);
 
-  function getUserAccountData(address account)
+  function getUserAccountData(
+    address account
+  )
     external
     view
     returns (
@@ -15,4 +17,14 @@ interface IPoolLogic {
       uint256 ltv,
       uint256 healthFactor
     );
+
+  function flashLoan(
+    address receiverAddress,
+    address[] calldata assets,
+    uint256[] calldata amounts,
+    uint256[] calldata interestRateModes,
+    address onBehalfOf,
+    bytes calldata params,
+    uint16 referralCode
+  ) external;
 }
