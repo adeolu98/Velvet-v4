@@ -69,6 +69,40 @@ export async function createEnsoCallDataRoute(
   });
 }
 
+export async function createZeroExCalldata(
+  ensoHandler: string,
+  receiver: string,
+  _tokenIn: any,
+  _tokenOut: any,
+  _amountIn: any
+): Promise<any> {
+  // 1. fetch price
+  // @todo fromAddress ensoHandler - possible? needed?
+  const priceParams = {
+    chainId: 59144,
+    sellToken: _tokenIn,
+    buyToken: _tokenOut,
+    sellAmount: _amountIn,
+    taker: receiver,
+    //slippagePercentage: 1,
+    //gasPrice: "4000457106",
+    //gas: "350000",
+  };
+
+  const postUrl = "https://api.0x.org/swap/allowance-holder/quote?";
+
+  // fetch headers
+  const headers = {
+    "Content-Type": "application/json",
+    "0x-api-key": process.env.ZEROX_KEY,
+    "0x-version": "v2",
+  };
+
+  return await axios.get(postUrl + `${qs.stringify(priceParams)}`, {
+    headers,
+  });
+}
+
 export async function calculateSwapAmounts(
   portfolioAddress: string,
   portfolioAddressLibraryAddressLibraryAddress: string,
