@@ -402,7 +402,7 @@ contract Rebalancing is
    * @param _tokens An array of token addresses to be enabled as collateral.
    * @param _controller The address of the lending protocol's controller contract.
    */
-  function enableCollateralTokens(
+  function enableCollateralTokens( //Here need to add loop, because for aave it takes only one token at a time
     address[] memory _tokens,
     address _controller
   ) external onlyAssetManager {
