@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import {IAssetHandler} from "../../core/interfaces/IAssetHandler.sol";
 import {FunctionParameters} from "../../FunctionParameters.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
-import {IPoolLogic} from "./IPoolLogic.sol";
+import {IPool, DataTypes} from "./IPool.sol";
 import {IPoolDataProvider} from "./IPoolDataProvider.sol";
 import {IAaveToken} from "./IAaveToken.sol";
 import {IPriceOracle} from "./IPriceOracle.sol";
@@ -134,7 +134,7 @@ contract AaveAssetHandler is IAssetHandler {
     view
     returns (address[] memory lendTokens, address[] memory borrowTokens)
   {
-    address[] memory assets = IPoolLogic(comptroller).getReservesList();
+    address[] memory assets = IPool(comptroller).getReservesList();
     uint assetsCount = assets.length; // Get the number of assets
     lendTokens = new address[](assetsCount); // Initialize the lend tokens array
     borrowTokens = new address[](assetsCount); // Initialize the borrow tokens array
@@ -157,11 +157,13 @@ contract AaveAssetHandler is IAssetHandler {
           assets[i],
           account
         );
+      DataTypes.ReserveDataLegacy memory data = IPool(comptroller)
+        .getReserveData(asset);
       if (currentATokenBalance > 0) {
-        lendTokens[lendCount++] = address(asset); // Add the asset to the lend tokens if there is a balance
+        lendTokens[lendCount++] = data.aTokenAddress; // Add the asset to the lend tokens if there is a balance
       }
       if (currentVariableDebt > 0) {
-        borrowTokens[borrowCount++] = address(asset); // Add the asset to the borrow tokens if there is a balance
+        borrowTokens[borrowCount++] = data.aTokenAddress; // Add the asset to the borrow tokens if there is a balance
       }
       unchecked {
         ++i;
@@ -202,7 +204,7 @@ contract AaveAssetHandler is IAssetHandler {
       accountData.currentLiquidationThreshold,
       accountData.ltv,
       accountData.healthFactor
-    ) = IPoolLogic(comptroller).getUserAccountData(user);
+    ) = IPool(comptroller).getUserAccountData(user);
 
     (
       tokenAddresses.lendTokens,
@@ -214,7 +216,7 @@ contract AaveAssetHandler is IAssetHandler {
     address account,
     address comptroller
   ) external view returns (address[] memory borrowedTokens) {
-    address[] memory assets = IPoolLogic(comptroller).getReservesList();
+    address[] memory assets = IPool(comptroller).getReservesList();
     uint assetsCount = assets.length; // Get the number of assets
     borrowedTokens = new address[](assetsCount); // Initialize the borrow tokens array
     uint256 borrowCount; // Counter for borrowed assets
@@ -696,12 +698,14 @@ contract AaveAssetHandler is IAssetHandler {
     uint256[] memory interestRateModes = new uint256[](1);
     interestRateModes[0] = 0;
 
-    IPoolLogic(repayData._token0).flashLoan(
-      _receiver,
+    address receiver = _receiver;
+
+    IPool(repayData._token0).flashLoan(
+      receiver,
       assets,
       amounts,
       interestRateModes,
-      _receiver,
+      receiver,
       abi.encode(flashData),
       0
     );
@@ -734,7 +738,7 @@ contract AaveAssetHandler is IAssetHandler {
     uint256[] memory interestRateModes = new uint256[](1);
     interestRateModes[0] = 0;
 
-    IPoolLogic(repayData._token0).flashLoan(
+    IPool(repayData._token0).flashLoan(
       _receiver,
       assets,
       amounts,
