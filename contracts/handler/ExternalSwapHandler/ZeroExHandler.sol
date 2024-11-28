@@ -20,7 +20,7 @@ import { ExternalPositionManagement } from "./ExternalPositionManagement.sol";
  */
 contract ZeroExHandler is ExternalPositionManagement {
   // The address of Enso's swap execution logic; swaps are delegated to this target.
-  address constant SWAP_TARGET = 0x0000000000005E88410CcDFaDe4a5EfaE4b49562; // exchange proxy address
+  address constant SWAP_TARGET = 0x0000000000005E88410CcDFaDe4a5EfaE4b49562; // allowance holder
 
   /**
    * @notice Conducts a rebalance operation via the Solver platform and transfers the output tokens
@@ -182,7 +182,7 @@ contract ZeroExHandler is ExternalPositionManagement {
       TransferHelper.safeApprove(_sellToken, SWAP_TARGET, 0);
       TransferHelper.safeApprove(_sellToken, SWAP_TARGET, _sellAmount[j]);
 
-      (bool success, ) = SWAP_TARGET.delegatecall(_swapCallData[j]);
+      (bool success, ) = SWAP_TARGET.call(_swapCallData[j]);
       if (!success) revert ErrorLibrary.CallFailed();
     }
   }

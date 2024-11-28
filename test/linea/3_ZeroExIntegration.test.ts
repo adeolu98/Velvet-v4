@@ -840,11 +840,9 @@ describe.only("Tests for Deposit", () => {
           swapAmounts[0][1]
         );
 
-        console.log(postResponse0.data);
-
         let callDataEnso: any = [[]];
-        callDataEnso[0][0] = postResponse0.data.transaction.toString();
-        callDataEnso[0][1] = postResponse1.data.data.toString();
+        callDataEnso[0][0] = postResponse0.data.transaction.data.toString();
+        callDataEnso[0][1] = postResponse1.data.transaction.data.toString();
 
         const callDataDecreaseLiquidity: any = [];
         // Encode the function call
