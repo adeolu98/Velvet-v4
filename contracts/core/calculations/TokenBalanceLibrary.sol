@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
-import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
-import { IAssetHandler } from "../interfaces/IAssetHandler.sol";
-import { FunctionParameters } from "../../FunctionParameters.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
+import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
+import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
+import {FunctionParameters} from "../../FunctionParameters.sol";
 
 /**
  * @title Token Balance Library
@@ -37,7 +37,7 @@ library TokenBalanceLibrary {
     address[] memory controllers = _protocolConfig.getSupportedControllers();
     controllersData = new ControllerData[](controllers.length);
 
-    for (uint256 i; i < controllers.length;) {
+    for (uint256 i; i < controllers.length; ) {
       address controller = controllers[i];
       IAssetHandler assetHandler = IAssetHandler(
         _protocolConfig.assetHandlers(controller)
@@ -49,6 +49,7 @@ library TokenBalanceLibrary {
       if (accountData.totalCollateral == 0) {
         unusedCollateralPercentage = 1e18; // 100% unused if no collateral
       } else {
+        console.log("in else");
         unusedCollateralPercentage =
           ((accountData.totalCollateral - accountData.totalDebt) * 1e18) /
           accountData.totalCollateral;
@@ -58,7 +59,9 @@ library TokenBalanceLibrary {
         controller: controller,
         unusedCollateralPercentage: unusedCollateralPercentage
       });
-      unchecked { ++i; }
+      unchecked {
+        ++i;
+      }
     }
   }
 
@@ -73,11 +76,13 @@ library TokenBalanceLibrary {
     ControllerData[] memory controllersData,
     address controller
   ) internal pure returns (ControllerData memory) {
-    for (uint256 i; i < controllersData.length;) {
+    for (uint256 i; i < controllersData.length; ) {
       if (controllersData[i].controller == controller) {
         return controllersData[i];
       }
-      unchecked { ++i; }
+      unchecked {
+        ++i;
+      }
     }
     revert ErrorLibrary.ControllerDataNotFound();
   }
@@ -139,6 +144,7 @@ library TokenBalanceLibrary {
     if (_token == address(0) || _vault == address(0))
       revert ErrorLibrary.InvalidAddress(); // Ensures neither the token nor the vault address is zero.
     if (_protocolConfig.isBorrowableToken(_token)) {
+      console.log("isBorrowableToken");
       address controller = _protocolConfig.marketControllers(_token);
       ControllerData memory controllerData = findControllerData(
         controllersData,
@@ -153,7 +159,7 @@ library TokenBalanceLibrary {
       tokenBalance = _getTokenBalanceOf(_token, _vault);
     }
   }
-  
+
   /**
    * @notice Fetches the balance of a specific token held in a given vault.
    * @dev Retrieves the token balance using the ERC20 `balanceOf` function.

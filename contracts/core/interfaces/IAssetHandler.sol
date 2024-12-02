@@ -25,11 +25,13 @@ interface IAssetHandler {
   function borrow(
     address pool,
     address asset,
+    address onBehalfOf,
     uint256 borrowAmount
   ) external view returns (bytes memory data);
 
   function repay(
     address asset,
+    address onBehalfOf,
     uint256 borrowAmount
   ) external view returns (bytes memory data);
 

@@ -73,15 +73,16 @@ contract AaveAssetHandler is IAssetHandler {
   function borrow(
     address,
     address asset,
+    address onBehalfOf,
     uint256 borrowAmount
-  ) external view returns (bytes memory data) {
+  ) external pure returns (bytes memory data) {
     data = abi.encodeWithSelector(
       bytes4(keccak256("borrow(address,uint256,uint256,uint16,address)")),
       asset, // Encode the data to borrow the specified amount
       borrowAmount,
       2,
       0,
-      msg.sender
+      onBehalfOf
     );
   }
 
@@ -92,14 +93,15 @@ contract AaveAssetHandler is IAssetHandler {
    */
   function repay(
     address asset,
+    address onBehalfOf,
     uint256 borrowAmount
-  ) public view returns (bytes memory data) {
+  ) public pure returns (bytes memory data) {
     data = abi.encodeWithSelector(
       bytes4(keccak256("repayBorrow(address,uint256,uint256,address)")),
       asset,
       borrowAmount, // Encode the data to repay the specified amount
       2,
-      msg.sender
+      onBehalfOf
     );
   }
 
@@ -206,6 +208,8 @@ contract AaveAssetHandler is IAssetHandler {
       accountData.healthFactor
     ) = IPool(comptroller).getUserAccountData(user);
 
+    console.log("accountData.totalCollateral", accountData.totalCollateral);
+
     (
       tokenAddresses.lendTokens,
       tokenAddresses.borrowTokens
@@ -302,6 +306,7 @@ contract AaveAssetHandler is IAssetHandler {
     // Handle repayment transactions
     MultiTransaction[] memory repayLoanTransaction = repayTransactions(
       executor,
+      vault,
       flashData
     );
 
@@ -431,6 +436,7 @@ contract AaveAssetHandler is IAssetHandler {
    */
   function repayTransactions(
     address executor,
+    address vault,
     FunctionParameters.FlashLoanData memory flashData
   ) internal view returns (MultiTransaction[] memory transactions) {
     uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
@@ -455,7 +461,7 @@ contract AaveAssetHandler is IAssetHandler {
       transactions[count].txData = abi.encodeWithSelector(
         bytes4(keccak256("vaultInteraction(address,bytes)")),
         flashData.protocolTokens[i],
-        repay(flashData.debtToken[i], amountToRepay)
+        repay(flashData.debtToken[i], vault, amountToRepay)
       );
       count++;
       unchecked {

@@ -285,19 +285,17 @@ contract Rebalancing is
 
     address controller = protocolConfig.marketControllers(_protocolToken); //This will be pool address
 
-    portfolio.vaultInteraction(_debtToken, assetHandler.approve(controller, 0));
-
     // Approve the protocol token to spend the debt token
     portfolio.vaultInteraction(
       _debtToken,
       assetHandler.approve(controller, _repayAmount)
     );
-
     // Repay the debt
     portfolio.vaultInteraction(
       controller,
-      assetHandler.repay(_debtToken, _repayAmount)
+      assetHandler.repay(_debtToken, _vault, _repayAmount)
     );
+    
 
     //Check balance not zero
     if (_getTokenBalanceOf(_debtToken, _vault) == 0)
@@ -402,7 +400,8 @@ contract Rebalancing is
    * @param _tokens An array of token addresses to be enabled as collateral.
    * @param _controller The address of the lending protocol's controller contract.
    */
-  function enableCollateralTokens( //Here need to add loop, because for aave it takes only one token at a time
+  function enableCollateralTokens(
+    //Here need to add loop, because for aave it takes only one token at a time
     address[] memory _tokens,
     address _controller
   ) external onlyAssetManager {
@@ -434,10 +433,7 @@ contract Rebalancing is
     );
     for (uint256 i; i < tokensLength; i++) {
       address token = _tokens[i];
-      portfolio.vaultInteraction(
-        protocolConfig.marketControllers(token),
-        assetHandler.exitMarket(token)
-      );
+      portfolio.vaultInteraction(_controller, assetHandler.exitMarket(token));
     }
     emit CollateralTokensDisabled(_tokens, _controller);
   }
@@ -487,11 +483,10 @@ contract Rebalancing is
 
     // Setting token as collateral
     portfolio.vaultInteraction(_controller, assetHandler.enterMarket(_tokens));
-
     // Borrow
     portfolio.vaultInteraction(
       _pool,
-      assetHandler.borrow(_pool, _tokenToBorrow, _amountToBorrow)
+      assetHandler.borrow(_pool, _tokenToBorrow, _vault, _amountToBorrow)
     );
 
     // Get the number of borrowed tokens after the borrow operation
