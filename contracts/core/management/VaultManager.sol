@@ -548,7 +548,7 @@ abstract contract VaultManager is
       // we need to be able to withdraw other tokens. The balance for a withdrawal should always be >0,
       // except when the user accepts to lose this token.
       if (tokenBalance == 0) {
-        if (_exemptionTokens[exemptionIndex] != _token) exemptionIndex += 1;
+        if (_exemptionTokens[exemptionIndex] == _token) exemptionIndex += 1;
         else revert ErrorLibrary.WithdrawalAmountIsSmall();
       }
       return (tokenBalance, exemptionIndex);

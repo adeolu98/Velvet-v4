@@ -338,7 +338,9 @@ contract TokenExclusionManager is
     tokenRemovalVault.withdrawTokens(currentRemovedToken, _user, balance);
 
     // Update the total supply record for the snapshot ID
-    totalSupply = totalSupply - _portfolioTokenBalance;
+    removedToken[_snapshotId].totalSupply =
+      totalSupply -
+      _portfolioTokenBalance;
   }
 
   /**
