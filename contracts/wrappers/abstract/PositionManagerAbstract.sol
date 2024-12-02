@@ -105,7 +105,7 @@ abstract contract PositionManagerAbstract is
     address _accessController
   ) internal {
     __UUPSUpgradeable_init();
-
+    __ReentrancyGuard_init();
     uniswapV3PositionManager = INonfungiblePositionManager(
       _nonFungiblePositionManagerAddress
     );
