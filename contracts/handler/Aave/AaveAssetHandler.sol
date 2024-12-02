@@ -208,8 +208,6 @@ contract AaveAssetHandler is IAssetHandler {
       accountData.healthFactor
     ) = IPool(comptroller).getUserAccountData(user);
 
-    console.log("accountData.totalCollateral", accountData.totalCollateral);
-
     (
       tokenAddresses.lendTokens,
       tokenAddresses.borrowTokens

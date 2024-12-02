@@ -49,7 +49,6 @@ library TokenBalanceLibrary {
       if (accountData.totalCollateral == 0) {
         unusedCollateralPercentage = 1e18; // 100% unused if no collateral
       } else {
-        console.log("in else");
         unusedCollateralPercentage =
           ((accountData.totalCollateral - accountData.totalDebt) * 1e18) /
           accountData.totalCollateral;
@@ -144,7 +143,6 @@ library TokenBalanceLibrary {
     if (_token == address(0) || _vault == address(0))
       revert ErrorLibrary.InvalidAddress(); // Ensures neither the token nor the vault address is zero.
     if (_protocolConfig.isBorrowableToken(_token)) {
-      console.log("isBorrowableToken");
       address controller = _protocolConfig.marketControllers(_token);
       ControllerData memory controllerData = findControllerData(
         controllersData,
