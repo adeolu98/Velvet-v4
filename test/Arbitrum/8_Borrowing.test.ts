@@ -479,41 +479,41 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         console.log("SupplyAfter", await portfolio.totalSupply());
       });
 
-      // it("should swap tokens for user using native token", async () => {
-      //   let tokens = await portfolio.getTokens();
+      it("should swap tokens for user using native token", async () => {
+        let tokens = await portfolio.getTokens();
 
-      //   console.log("SupplyBefore", await portfolio.totalSupply());
+        console.log("SupplyBefore", await portfolio.totalSupply());
 
-      //   let postResponse = [];
+        let postResponse = [];
 
-      //   for (let i = 0; i < tokens.length; i++) {
-      //     let response = await createEnsoCallDataRoute(
-      //       depositBatch.address,
-      //       depositBatch.address,
-      //       "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-      //       tokens[i],
-      //       "100000000000000000"
-      //     );
-      //     postResponse.push(response.data.tx.data);
-      //   }
+        for (let i = 0; i < tokens.length; i++) {
+          let response = await createEnsoCallDataRoute(
+            depositBatch.address,
+            depositBatch.address,
+            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            tokens[i],
+            "100000000000000000"
+          );
+          postResponse.push(response.data.tx.data);
+        }
 
-      //   const data = await depositBatch
-      //     .connect(nonOwner)
-      //     .multiTokenSwapETHAndTransfer(
-      //       {
-      //         _minMintAmount: 0,
-      //         _depositAmount: "600000000000000000",
-      //         _target: portfolio.address,
-      //         _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-      //         _callData: postResponse,
-      //       },
-      //       {
-      //         value: "600000000000000000",
-      //       }
-      //     );
+        const data = await depositBatch
+          .connect(nonOwner)
+          .multiTokenSwapETHAndTransfer(
+            {
+              _minMintAmount: 0,
+              _depositAmount: "600000000000000000",
+              _target: portfolio.address,
+              _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              _callData: postResponse,
+            },
+            {
+              value: "600000000000000000",
+            }
+          );
 
-      //   console.log("SupplyAfter", await portfolio.totalSupply());
-      // });
+        console.log("SupplyAfter", await portfolio.totalSupply());
+      });
 
       it("should rebalance to lending token aArbDAI", async () => {
         let tokens = await portfolio.getTokens();
@@ -588,140 +588,140 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
       });
 
-      // it("should rebalance to lending token aArbLINK", async () => {
-      //   let tokens = await portfolio.getTokens();
-      //   let sellToken = tokens[3];
-      //   let buyToken = addresses.aArbLINK;
+      it("should rebalance to lending token aArbLINK", async () => {
+        let tokens = await portfolio.getTokens();
+        let sellToken = tokens[3];
+        let buyToken = addresses.aArbLINK;
 
-      //   let newTokens = [
-      //     tokens[0],
-      //     tokens[1],
-      //     tokens[2],
-      //     buyToken,
-      //     tokens[4],
-      //     tokens[5],
-      //   ];
+        let newTokens = [
+          tokens[0],
+          tokens[1],
+          tokens[2],
+          buyToken,
+          tokens[4],
+          tokens[5],
+        ];
 
-      //   let vault = await portfolio.vault();
+        let vault = await portfolio.vault();
 
-      //   let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
-      //   let balance = BigNumber.from(
-      //     await ERC20.attach(sellToken).balanceOf(vault)
-      //   ).toString();
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let balance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
 
-      //   let balanceToSwap = BigNumber.from(balance).toString();
-      //   console.log("Balance to rebalance", balanceToSwap);
+        let balanceToSwap = BigNumber.from(balance).toString();
+        console.log("Balance to rebalance", balanceToSwap);
 
-      //   const postResponse = await createEnsoCallDataRoute(
-      //     ensoHandler.address,
-      //     ensoHandler.address,
-      //     sellToken,
-      //     buyToken,
-      //     balanceToSwap
-      //   );
+        const postResponse = await createEnsoCallDataRoute(
+          ensoHandler.address,
+          ensoHandler.address,
+          sellToken,
+          buyToken,
+          balanceToSwap
+        );
 
-      //   const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-      //     [
-      //       " bytes[][]", // callDataEnso
-      //       "bytes[]", // callDataDecreaseLiquidity
-      //       "bytes[][]", // callDataIncreaseLiquidity
-      //       "address[][]", // increaseLiquidityTarget
-      //       "address[]", // underlyingTokensDecreaseLiquidity
-      //       "address[]", // tokensIn
-      //       "address[]", // tokens
-      //       " uint256[]", // minExpectedOutputAmounts
-      //     ],
-      //     [
-      //       [[postResponse.data.tx.data]],
-      //       [],
-      //       [[]],
-      //       [[]],
-      //       [],
-      //       [sellToken],
-      //       [buyToken],
-      //       [0],
-      //     ]
-      //   );
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            " uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.tx.data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [0],
+          ]
+        );
 
-      //   await rebalancing.updateTokens({
-      //     _newTokens: newTokens,
-      //     _sellTokens: [sellToken],
-      //     _sellAmounts: [balanceToSwap],
-      //     _handler: ensoHandler.address,
-      //     _callData: encodedParameters,
-      //   });
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [balanceToSwap],
+          _handler: ensoHandler.address,
+          _callData: encodedParameters,
+        });
 
-      //   console.log(
-      //     "balance after sell",
-      //     await ERC20.attach(sellToken).balanceOf(vault)
-      //   );
-      //   console.log(
-      //     "balance after buy",
-      //     await ERC20.attach(buyToken).balanceOf(vault)
-      //   );
-      // });
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
+        );
+        console.log(
+          "balance after buy",
+          await ERC20.attach(buyToken).balanceOf(vault)
+        );
+      });
 
-      // it("should swap tokens for user using native token", async () => {
-      //   let tokens = await portfolio.getTokens();
+      it("should swap tokens for user using native token", async () => {
+        let tokens = await portfolio.getTokens();
 
-      //   console.log("SupplyBefore", await portfolio.totalSupply());
+        console.log("SupplyBefore", await portfolio.totalSupply());
 
-      //   let postResponse = [];
+        let postResponse = [];
 
-      //   for (let i = 0; i < tokens.length; i++) {
-      //     let response = await createEnsoCallDataRoute(
-      //       depositBatch.address,
-      //       depositBatch.address,
-      //       "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-      //       tokens[i],
-      //       "100000000000000000"
-      //     );
-      //     postResponse.push(response.data.tx.data);
-      //   }
+        for (let i = 0; i < tokens.length; i++) {
+          let response = await createEnsoCallDataRoute(
+            depositBatch.address,
+            depositBatch.address,
+            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            tokens[i],
+            "100000000000000000"
+          );
+          postResponse.push(response.data.tx.data);
+        }
 
-      //   const data = await depositBatch.multiTokenSwapETHAndTransfer(
-      //     {
-      //       _minMintAmount: 0,
-      //       _depositAmount: "600000000000000000",
-      //       _target: portfolio.address,
-      //       _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-      //       _callData: postResponse,
-      //     },
-      //     {
-      //       value: "600000000000000000",
-      //     }
-      //   );
+        const data = await depositBatch.multiTokenSwapETHAndTransfer(
+          {
+            _minMintAmount: 0,
+            _depositAmount: "600000000000000000",
+            _target: portfolio.address,
+            _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            _callData: postResponse,
+          },
+          {
+            value: "600000000000000000",
+          }
+        );
 
-      //   console.log("SupplyAfter", await portfolio.totalSupply());
-      // });
+        console.log("SupplyAfter", await portfolio.totalSupply());
+      });
 
-      // it("should remove tokens as collateral", async () => {
-      //   let tokens = [addresses.DAI];
-      //   let vault = await portfolio.vault();
-      //   await rebalancing.disableCollateralTokens(tokens, addresses.aavePool);
-      //   const pool: IPoolDataProvider = await ethers.getContractAt(
-      //     "IPoolDataProvider",
-      //     addresses.aavePoolDataProvider
-      //   );
+      it("should remove tokens as collateral", async () => {
+        let tokens = [addresses.DAI];
+        let vault = await portfolio.vault();
+        await rebalancing.disableCollateralTokens(tokens, addresses.aavePool);
+        const pool: IPoolDataProvider = await ethers.getContractAt(
+          "IPoolDataProvider",
+          addresses.aavePoolDataProvider
+        );
 
-      //   expect(
-      //     (await pool.getUserReserveData(addresses.DAI, vault))[8]
-      //   ).to.be.equals(false);
-      // });
+        expect(
+          (await pool.getUserReserveData(addresses.DAI, vault))[8]
+        ).to.be.equals(false);
+      });
 
-      // it("should enable collateral", async () => {
-      //   let tokens = [addresses.DAI];
-      //   await rebalancing.enableCollateralTokens(tokens, addresses.aavePool);
-      //   let vault = await portfolio.vault();
-      //   const pool: IPoolDataProvider = await ethers.getContractAt(
-      //     "IPoolDataProvider",
-      //     addresses.aavePoolDataProvider
-      //   );
+      it("should enable collateral", async () => {
+        let tokens = [addresses.DAI];
+        await rebalancing.enableCollateralTokens(tokens, addresses.aavePool);
+        let vault = await portfolio.vault();
+        const pool: IPoolDataProvider = await ethers.getContractAt(
+          "IPoolDataProvider",
+          addresses.aavePoolDataProvider
+        );
 
-      //   expect(
-      //     (await pool.getUserReserveData(addresses.DAI, vault))[8]
-      //   ).to.be.equals(true);
-      // });
+        expect(
+          (await pool.getUserReserveData(addresses.DAI, vault))[8]
+        ).to.be.equals(true);
+      });
 
       it("should borrow ARB using aArbLink as collateral", async () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
@@ -787,7 +787,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         // Add these checks before the repayment
         let usdtBalance = await ERC20.attach(addresses.USDT).balanceOf(vault);
         console.log("USDT Balance before repay:", usdtBalance.toString());
-        const balanceToRepay = BigInt(balanceBorrowed / 2).toString();
+        const balanceToRepay = (balanceBorrowed / 2).toFixed().toString();
 
         console.log("balanceToRepay", balanceToRepay);
 
@@ -917,7 +917,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         await ethers.provider.send("evm_increaseTime", [70]);
 
         const supplyBefore = await portfolio.totalSupply();
-        const tokenToSwapInto = iaddress.btcAddress;
+        const tokenToSwapInto = addresses.WBTC;
 
         const user = owner;
 
@@ -993,13 +993,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           addresses.aavePoolDataProvider
         );
 
-        let balanceBorrowed =
-        (
+        let balanceBorrowed = (
           await pool.getUserReserveData(addresses.ARB, vault)
         )[2];
 
         console.log("balanceBorrowed before withdraw", balanceBorrowed);
-
 
         let tokenBalanceBefore: any = [];
         for (let i = 0; i < tokens.length; i++) {
