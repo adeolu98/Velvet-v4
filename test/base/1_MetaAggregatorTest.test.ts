@@ -18,6 +18,7 @@ import {
 import {
   createEnsoCallData,
   createEnsoCallDataRoute,
+  createMetaAggregatorCalldata,
 } from "./IntentCalculations";
 
 import { priceOracle } from "./Deployments.test";
@@ -35,6 +36,7 @@ import {
   TokenBalanceLibrary,
   BorrowManager,
   TokenExclusionManager,
+  MetaAggregatorHandler,
   TokenExclusionManager__factory,
 } from "../../typechain";
 
@@ -58,6 +60,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let tokenExclusionManager1: any;
   let tokenExclusionManager2: any;
   let ensoHandler: EnsoHandler;
+  let metaAggregatorHandler: MetaAggregatorHandler;
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
@@ -115,6 +118,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       ensoHandler = await EnsoHandler.deploy();
       await ensoHandler.deployed();
 
+      const MetaAggregatorHandler = await ethers.getContractFactory(
+        "MetaAggregatorHandler"
+      );
+      metaAggregatorHandler = await MetaAggregatorHandler.deploy();
+      await metaAggregatorHandler.deployed();
+
       const PositionWrapper = await ethers.getContractFactory(
         "PositionWrapper"
       );
@@ -135,6 +144,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
+      await protocolConfig.enableSolverHandler(metaAggregatorHandler.address);
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
@@ -172,22 +182,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       swapHandler.init(addresses.SushiSwapRouterAddress);
 
       await protocolConfig.setSupportedFactory(ensoHandler.address);
-
-      let whitelistedTokens = [
-        addresses.ARB,
-        addresses.WBTC,
-        addresses.WETH,
-        addresses.DAI,
-        addresses.ADoge,
-        addresses.USDCe,
-        addresses.USDT,
-        addresses.CAKE,
-        addresses.SUSHI,
-        addresses.LINK,
-        addresses.aArbUSDC,
-        addresses.aArbUSDT,
-        addresses.MAIN_LP_USDT,
-      ];
 
       let whitelist = [owner.address];
       zeroAddress = "0x0000000000000000000000000000000000000000";
@@ -269,60 +263,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _initialPortfolioAmount: "100000000000000000000",
           _minPortfolioTokenHoldingAmount: "10000000000000000",
           _assetManagerTreasury: assetManagerTreasury.address,
-          _whitelistedTokens: whitelistedTokens,
+          _whitelistedTokens: [],
           _public: true,
           _transferable: true,
           _transferableToPublic: true,
-          _whitelistTokens: true,
-          _externalPositionManagementWhitelisted: true,
-        });
-
-      const portfolioFactoryCreate2 = await portfolioFactory
-        .connect(nonOwner)
-        .createPortfolioNonCustodial({
-          _name: "PORTFOLIOLY",
-          _symbol: "IDX",
-          _managementFee: "200",
-          _performanceFee: "2500",
-          _entryFee: "0",
-          _exitFee: "0",
-          _initialPortfolioAmount: "100000000000000000000",
-          _minPortfolioTokenHoldingAmount: "10000000000000000",
-          _assetManagerTreasury: assetManagerTreasury.address,
-          _whitelistedTokens: whitelistedTokens,
-          _public: true,
-          _transferable: false,
-          _transferableToPublic: false,
           _whitelistTokens: false,
           _externalPositionManagementWhitelisted: true,
         });
 
-      const portfolioFactoryCreate3 =
-        await portfolioFactory.createPortfolioNonCustodial({
-          _name: "PORTFOLIOLY",
-          _symbol: "IDX",
-          _managementFee: "200",
-          _performanceFee: "2500",
-          _entryFee: "0",
-          _exitFee: "0",
-          _initialPortfolioAmount: "100000000000000000000",
-          _minPortfolioTokenHoldingAmount: "10000000000000000",
-          _assetManagerTreasury: assetManagerTreasury.address,
-          _whitelistedTokens: whitelistedTokens,
-          _public: true,
-          _transferable: false,
-          _transferableToPublic: false,
-          _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
-        });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
-
-      const portfolioAddress1 = await portfolioFactory.getPortfolioList(1);
-      const portfolioInfo1 = await portfolioFactory.PortfolioInfolList(1);
-
-      const portfolioAddress2 = await portfolioFactory.getPortfolioList(2);
-      const portfolioInfo2 = await portfolioFactory.PortfolioInfolList(2);
 
       portfolio = await ethers.getContractAt(
         Portfolio__factory.abi,
@@ -340,35 +290,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       portfolioCalculations = await PortfolioCalculations.deploy();
       await portfolioCalculations.deployed();
 
-      portfolio1 = await ethers.getContractAt(
-        Portfolio__factory.abi,
-        portfolioAddress1
-      );
-
       rebalancing = await ethers.getContractAt(
         Rebalancing__factory.abi,
         portfolioInfo.rebalancing
-      );
-
-      /////////////
-      portfolio2 = await ethers.getContractAt(
-        Portfolio__factory.abi,
-        portfolioAddress2
-      );
-
-      rebalancing = await ethers.getContractAt(
-        Rebalancing__factory.abi,
-        portfolioInfo.rebalancing
-      );
-
-      rebalancing1 = await ethers.getContractAt(
-        Rebalancing__factory.abi,
-        portfolioInfo1.rebalancing
-      );
-
-      rebalancing2 = await ethers.getContractAt(
-        Rebalancing__factory.abi,
-        portfolioInfo2.rebalancing
       );
 
       tokenExclusionManager = await ethers.getContractAt(
@@ -376,28 +300,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         portfolioInfo.tokenExclusionManager
       );
 
-      tokenExclusionManager1 = await ethers.getContractAt(
-        TokenExclusionManager__factory.abi,
-        portfolioInfo1.tokenExclusionManager
-      );
-
-      tokenExclusionManager2 = await ethers.getContractAt(
-        TokenExclusionManager__factory.abi,
-        portfolioInfo2.tokenExclusionManager
-      );
-
       console.log("portfolio deployed to:", portfolio.address);
-
-      console.log("rebalancing:", rebalancing1.address);
     });
 
     describe("Deposit Tests", function () {
       it("should init tokens", async () => {
-        await portfolio.initToken([
-          addresses.WETH,
-          addresses.USDC,
-          addresses.DAI,
-        ]);
+        await portfolio.initToken([addresses.USDC, addresses.DAI]);
       });
 
       it("owner should approve tokens to permit2 contract", async () => {
@@ -433,6 +341,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const tokens = await portfolio.getTokens();
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
         for (let i = 0; i < tokens.length; i++) {
           let { nonce } = await permit2.allowance(
             owner.address,
@@ -472,6 +381,67 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         expect(Number(supplyAfter)).to.be.greaterThan(Number(supplyBefore));
         console.log("supplyAfter", supplyAfter);
+      });
+
+      it("should rebalance", async () => {
+        let tokens = await portfolio.getTokens();
+        let sellToken = tokens[0];
+        let buyToken = addresses.WETH;
+
+        let newTokens = [buyToken, tokens[1]];
+
+        let vault = await portfolio.vault();
+
+        let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let balance = BigNumber.from(
+          await ERC20.attach(sellToken).balanceOf(vault)
+        ).toString();
+
+        const postResponse = await createMetaAggregatorCalldata(
+          metaAggregatorHandler.address,
+          metaAggregatorHandler.address,
+          sellToken,
+          buyToken,
+          balance
+        );
+
+        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
+          [
+            " bytes[][]", // callDataEnso
+            "bytes[]", // callDataDecreaseLiquidity
+            "bytes[][]", // callDataIncreaseLiquidity
+            "address[][]", // increaseLiquidityTarget
+            "address[]", // underlyingTokensDecreaseLiquidity
+            "address[]", // tokensIn
+            "address[]", // tokens
+            "uint256[][]", // swapAmounts
+            "uint256[]", // minExpectedOutputAmounts
+          ],
+          [
+            [[postResponse.data.quotes[1].data]],
+            [],
+            [[]],
+            [[]],
+            [],
+            [sellToken],
+            [buyToken],
+            [[balance]],
+            [0],
+          ]
+        );
+
+        await rebalancing.updateTokens({
+          _newTokens: newTokens,
+          _sellTokens: [sellToken],
+          _sellAmounts: [balance],
+          _handler: metaAggregatorHandler.address,
+          _callData: encodedParameters,
+        });
+
+        console.log(
+          "balance after sell",
+          await ERC20.attach(sellToken).balanceOf(vault)
+        );
       });
     });
   });

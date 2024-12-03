@@ -28,7 +28,7 @@ let wethAddress: string;
 let btcAddress: string;
 let arbAddress: string;
 const forkChainId: any = process.env.FORK_CHAINID;
-const chainId: any = forkChainId ? forkChainId : 42161;
+const chainId: any = forkChainId ? forkChainId : 8453;
 const addresses = chainIdToAddresses[chainId];
 const assetManagerHash = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("ASSET_MANAGER")

@@ -182,7 +182,7 @@ contract MetaAggregatorHandler is ExternalPositionManagement {
       TransferHelper.safeApprove(_sellToken, SWAP_TARGET, 0);
       TransferHelper.safeApprove(_sellToken, SWAP_TARGET, _sellAmount[j]);
 
-      (bool success, ) = SWAP_TARGET.delegatecall(_swapCallData[j]);
+      (bool success, ) = SWAP_TARGET.call(_swapCallData[j]);
       if (!success) revert ErrorLibrary.CallFailed();
     }
   }

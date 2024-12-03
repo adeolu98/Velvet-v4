@@ -14,14 +14,14 @@
 
 pragma solidity 0.8.17;
 
-import {IUniswapV2Router02} from "../front-end-helpers/IUniswapV2Router02.sol";
+import { IUniswapV2Router02 } from "../front-end-helpers/IUniswapV2Router02.sol";
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
 
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 
-import {ErrorLibrary} from "../library/ErrorLibrary.sol";
-import {Ownable} from "@openzeppelin/contracts-4.8.2/access/Ownable.sol";
+import { ErrorLibrary } from "../library/ErrorLibrary.sol";
+import { Ownable } from "@openzeppelin/contracts-4.8.2/access/Ownable.sol";
 
 contract UniswapV2Handler is Initializable, Ownable {
   IUniswapV2Router02 internal uniSwapRouter;
@@ -99,7 +99,7 @@ contract UniswapV2Handler is Initializable, Ownable {
     address _t,
     address _to
   ) external payable returns (uint256 swapResult) {
-    swapResult = uniSwapRouter.swapExactETHForTokens{value: msg.value}(
+    swapResult = uniSwapRouter.swapExactETHForTokens{ value: msg.value }(
       getSlippage(msg.value, _slippage, getPathForETH(_t)),
       getPathForETH(_t),
       _to,

@@ -72,25 +72,19 @@ export async function createMetaAggregatorCalldata(
   _amountIn: any
 ): Promise<any> {
   const priceParams = {
-    slippage: 1,
+    slippage: 1000,
     amount: _amountIn,
     tokenIn: _tokenIn,
     tokenOut: _tokenOut,
     sender: handler,
     receiver: receiver,
     chainId: 8453,
+    skipSimulation: true,
   };
 
   const postUrl = "https://metasolvertest.velvetdao.xyz/best-quotes";
 
-  // fetch headers
-  /* const headers = {
-    "Content-Type": "application/json",
-    //"0x-api-key": process.env.ZEROX_KEY,
-    "0x-version": "v2",
-  };*/
-
-  return await axios.get(postUrl + `${qs.stringify(priceParams)}`);
+  return await axios.post(postUrl, priceParams);
 }
 
 export async function calculateSwapAmounts(
