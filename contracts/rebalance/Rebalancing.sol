@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {ErrorLibrary} from "../library/ErrorLibrary.sol";
 import {IIntentHandler} from "../handler/IIntentHandler.sol";
 import {RebalancingConfig} from "./RebalancingConfig.sol";
@@ -12,6 +13,7 @@ import {IBorrowManager} from "../core/interfaces/IBorrowManager.sol";
 import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
 import {FunctionParameters} from "../FunctionParameters.sol";
 import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
+import "hardhat/console.sol";
 
 /**
  * @title RebalancingCore
@@ -290,12 +292,12 @@ contract Rebalancing is
       _debtToken,
       assetHandler.approve(controller, _repayAmount)
     );
+
     // Repay the debt
     portfolio.vaultInteraction(
       controller,
       assetHandler.repay(_debtToken, _vault, _repayAmount)
     );
-    
 
     //Check balance not zero
     if (_getTokenBalanceOf(_debtToken, _vault) == 0)

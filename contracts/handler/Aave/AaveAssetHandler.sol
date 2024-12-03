@@ -7,7 +7,7 @@ import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/inter
 import {IPool, DataTypes} from "./IPool.sol";
 import {IPoolDataProvider} from "./IPoolDataProvider.sol";
 import {IAaveToken} from "./IAaveToken.sol";
-import {IPriceOracle} from "./IPriceOracle.sol";
+import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 
 contract AaveAssetHandler is IAssetHandler {
@@ -97,7 +97,7 @@ contract AaveAssetHandler is IAssetHandler {
     uint256 borrowAmount
   ) public pure returns (bytes memory data) {
     data = abi.encodeWithSelector(
-      bytes4(keccak256("repayBorrow(address,uint256,uint256,address)")),
+      bytes4(keccak256("repay(address,uint256,uint256,address)")),
       asset,
       borrowAmount, // Encode the data to repay the specified amount
       2,
@@ -436,7 +436,7 @@ contract AaveAssetHandler is IAssetHandler {
     address executor,
     address vault,
     FunctionParameters.FlashLoanData memory flashData
-  ) internal view returns (MultiTransaction[] memory transactions) {
+  ) internal pure returns (MultiTransaction[] memory transactions) {
     uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
     transactions = new MultiTransaction[](tokenLength * 2); // Initialize the transactions array
     uint256 count;
@@ -450,7 +450,7 @@ contract AaveAssetHandler is IAssetHandler {
       transactions[count].txData = abi.encodeWithSelector(
         bytes4(keccak256("vaultInteraction(address,bytes)")),
         flashData.debtToken[i],
-        approve(flashData.protocolTokens[i], amountToRepay)
+        approve(flashData.poolAddress, amountToRepay)
       );
       count++;
 
@@ -458,7 +458,7 @@ contract AaveAssetHandler is IAssetHandler {
       transactions[count].to = executor;
       transactions[count].txData = abi.encodeWithSelector(
         bytes4(keccak256("vaultInteraction(address,bytes)")),
-        flashData.protocolTokens[i],
+        flashData.poolAddress,
         repay(flashData.debtToken[i], vault, amountToRepay)
       );
       count++;
@@ -573,7 +573,7 @@ contract AaveAssetHandler is IAssetHandler {
       10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
 
     //Get price for _protocolToken token
-    uint _oraclePrice = IPriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
+    uint _oraclePrice = IAavePriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
       _underlyingToken
     );
     //Get price for borrow Balance (amount * price)
