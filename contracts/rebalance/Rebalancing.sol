@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import { ErrorLibrary } from "../library/ErrorLibrary.sol";
-import { IIntentHandler } from "../handler/IIntentHandler.sol";
-import { RebalancingConfig } from "./RebalancingConfig.sol";
-import { IAssetHandler } from "../core/interfaces/IAssetHandler.sol";
-import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
-import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
-import { FunctionParameters } from "../FunctionParameters.sol";
-import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import {ErrorLibrary} from "../library/ErrorLibrary.sol";
+import {IIntentHandler} from "../handler/IIntentHandler.sol";
+import {RebalancingConfig} from "./RebalancingConfig.sol";
+import {IAssetHandler} from "../core/interfaces/IAssetHandler.sol";
+import {IBorrowManager} from "../core/interfaces/IBorrowManager.sol";
+import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
+import {FunctionParameters} from "../FunctionParameters.sol";
+import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
 
 /**
  * @title RebalancingCore
@@ -173,15 +173,6 @@ contract Rebalancing is
     // Update the portfolio's token list with new tokens
     portfolio.updateTokenList(_newTokens);
 
-    // Perform token update and weights adjustment based on provided rebalance data
-    _updateWeights(
-      _sellTokens,
-      _newTokens,
-      rebalanceData._sellAmounts,
-      rebalanceData._handler,
-      rebalanceData._callData
-    );
-
     // Initialize a bitmap with 256 slots to handle up to 65,536 unique bit positions
     uint256[256] memory tokenBitmap;
     uint256 tokenLength = _tokens.length;
@@ -203,7 +194,18 @@ contract Rebalancing is
         // Set the bit for this token in the bitmap to mark it as present
         tokenBitmap[index] |= (1 << offset);
       }
+    }
 
+    // Perform token update and weights adjustment based on provided rebalance data
+    _updateWeights(
+      _sellTokens,
+      _newTokens,
+      rebalanceData._sellAmounts,
+      rebalanceData._handler,
+      rebalanceData._callData
+    );
+
+    unchecked {
       // Remove new tokens from the bitmap to avoid unnecessary balance checks
       for (uint256 i; i < _newTokens.length; i++) {
         uint256 bitPos = uint256(keccak256(abi.encodePacked(_newTokens[i]))) %
