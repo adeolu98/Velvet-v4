@@ -314,6 +314,24 @@ library FunctionParameters {
   }
 
   /**
+   * @notice Struct of BatchHandlerMetaAggregator data
+   * @dev Encapsulates the data needed to batch transaction.
+   * @param _minMintAmount The minimum amount of portfolio tokens the user expects to receive for their deposit, protecting against slippage
+   * @param _depositAmount Amount to token to swap to vailt tokens
+   * @param _target Adress of portfolio contract to deposit
+   * @param _depositToken Address of token that needed to be swapped
+   * @param _callData Encoded call data for swap operation
+   */
+  struct BatchHandlerMetaAggregator {
+    uint256 _minMintAmount;
+    uint256 _depositAmount;
+    uint256[] _ethSwapAmounts;
+    address _target;
+    address _depositToken;
+    bytes[] _callData;
+  }
+
+  /**
    * @dev Struct to encapsulate the parameters required for deploying a Safe and its associated modules.
    * @param _gnosisSingleton Address of the Safe singleton contract.
    * @param _gnosisSafeProxyFactory Address of the Safe Proxy Factory contract.

@@ -38,6 +38,10 @@ import {
   TokenExclusionManager,
   MetaAggregatorHandler,
   TokenExclusionManager__factory,
+  DepositBatchMetaAggregator,
+  DepositManagerMetaAggregator,
+  WithdrawBatchMetaAggregator,
+  WithdrawManagerMetaAggregator,
 } from "../../typechain";
 
 import { chainIdToAddresses } from "../../scripts/networkVariables";
@@ -83,6 +87,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let zeroAddress: any;
   let approve_amount = ethers.constants.MaxUint256; //(2^256 - 1 )
   let token;
+  let depositBatch: DepositBatchMetaAggregator;
+  let depositManager: DepositManagerMetaAggregator;
+  let withdrawBatch: WithdrawBatchMetaAggregator;
+  let withdrawManager: WithdrawManagerMetaAggregator;
 
   const provider = ethers.provider;
   const chainId: any = process.env.CHAIN_ID;
@@ -123,6 +131,30 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       );
       metaAggregatorHandler = await MetaAggregatorHandler.deploy();
       await metaAggregatorHandler.deployed();
+
+      const DepositBatch = await ethers.getContractFactory(
+        "DepositBatchMetaAggregator"
+      );
+      depositBatch = await DepositBatch.deploy();
+      await depositBatch.deployed();
+
+      const DepositManager = await ethers.getContractFactory(
+        "DepositManagerMetaAggregator"
+      );
+      depositManager = await DepositManager.deploy(depositBatch.address);
+      await depositManager.deployed();
+
+      const WithdrawBatch = await ethers.getContractFactory(
+        "WithdrawBatchMetaAggregator"
+      );
+      withdrawBatch = await WithdrawBatch.deploy();
+      await withdrawBatch.deployed();
+
+      const WithdrawManager = await ethers.getContractFactory(
+        "WithdrawManagerMetaAggregator"
+      );
+      withdrawManager = await WithdrawManager.deploy();
+      await withdrawManager.deployed();
 
       const PositionWrapper = await ethers.getContractFactory(
         "PositionWrapper"
@@ -249,6 +281,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       portfolioFactory = PortfolioFactory.attach(
         portfolioFactoryInstance.address
+      );
+
+      await withdrawManager.initialize(
+        withdrawBatch.address,
+        portfolioFactory.address
       );
 
       console.log("portfolioFactory address:", portfolioFactory.address);
@@ -383,6 +420,119 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         console.log("supplyAfter", supplyAfter);
       });
 
+      it("should swap tokens for user using native token", async () => {
+        let tokens = await portfolio.getTokens();
+
+        console.log("SupplyBefore", await portfolio.totalSupply());
+
+        let postResponse: string[] = [];
+        let ethSwapAmounts = [];
+
+        for (let i = 0; i < tokens.length; i++) {
+          ethSwapAmounts.push("2000000000000000");
+          let response = await createMetaAggregatorCalldata(
+            depositBatch.address,
+            depositBatch.address,
+            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            tokens[i],
+            "2000000000000000"
+          );
+          const zeroXQuote = response?.data?.quotes?.find(
+            (quote: { protocol: string }) => quote.protocol === "zeroX"
+          );
+
+          postResponse.push(zeroXQuote.data);
+        }
+
+        const data = await depositBatch.multiTokenSwapETHAndTransfer(
+          {
+            _minMintAmount: 0,
+            _depositAmount: "4000000000000000",
+            _ethSwapAmounts: ethSwapAmounts,
+            _target: portfolio.address,
+            _depositToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            _callData: postResponse,
+          },
+          {
+            value: "1000000000000000000",
+          }
+        );
+
+        console.log("SupplyAfter", await portfolio.totalSupply());
+      });
+
+      it("should swap tokens for user using one of the portfolio token", async () => {
+        let tokens = await portfolio.getTokens();
+
+        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
+        const tokenToSwap = addresses.USDC;
+
+        await swapHandler.swapETHToTokens("500", tokenToSwap, owner.address, {
+          value: "100000000000000000",
+        });
+
+        console.log("SupplyBefore", await portfolio.totalSupply());
+
+        let postResponse: string[] = [];
+
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
+        let ethSwapAmounts = [];
+
+        for (let i = 0; i < tokens.length; i++) {
+          let amountIn = BigNumber.from(amountToSwap).div(tokens.length);
+          ethSwapAmounts.push(0);
+
+          if (tokenToSwap == tokens[i]) {
+            const abiCoder = ethers.utils.defaultAbiCoder;
+            const encodedata = abiCoder.encode(["uint"], [amountIn]);
+            postResponse.push(encodedata);
+          } else {
+            let response = await createMetaAggregatorCalldata(
+              depositBatch.address,
+              depositBatch.address,
+              tokenToSwap,
+              tokens[i],
+              Number(amountIn)
+            );
+            interface Quote {
+              protocol: string;
+              data: string;
+            }
+
+            const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
+              (quote: Quote) => quote.protocol === "zeroX"
+            );
+
+            if (!zeroXQuote?.data) {
+              throw new Error("No valid zeroX quote found");
+            }
+
+            postResponse.push(zeroXQuote.data);
+          }
+        }
+
+        //----------Approval-------------
+
+        await ERC20.attach(tokenToSwap).approve(
+          depositManager.address,
+          amountToSwap.toString()
+        );
+
+        await depositManager.deposit({
+          _minMintAmount: 0,
+          _depositAmount: amountToSwap.toString(),
+          _ethSwapAmounts: ethSwapAmounts,
+          _target: portfolio.address,
+          _depositToken: tokenToSwap,
+          _callData: postResponse,
+        });
+
+        console.log("SupplyAfter", await portfolio.totalSupply());
+      });
+
       it("should rebalance", async () => {
         let tokens = await portfolio.getTokens();
         let sellToken = tokens[0];
@@ -442,6 +592,106 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           "balance after sell",
           await ERC20.attach(sellToken).balanceOf(vault)
         );
+      });
+
+      it("should withdraw in single token by user", async () => {
+        await ethers.provider.send("evm_increaseTime", [62]);
+
+        const supplyBefore = await portfolio.totalSupply();
+        const user = owner;
+        const tokenToSwapInto = addresses.USDC;
+
+        let responses = [];
+
+        const amountPortfolioToken = BigNumber.from(
+          await portfolio.balanceOf(user.address)
+        );
+
+        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+
+        const balanceBefore = await ERC20.attach(tokenToSwapInto).balanceOf(
+          user.address
+        );
+
+        const tokens = await portfolio.getTokens();
+
+        let userBalanceBefore = [];
+
+        let withdrawalAmounts =
+          await portfolioCalculations.getWithdrawalAmounts(
+            amountPortfolioToken,
+            portfolio.address
+          );
+
+        await portfolio.approve(
+          withdrawManager.address,
+          BigNumber.from(amountPortfolioToken)
+        );
+
+        let swapAmounts = [];
+
+        for (let i = 0; i < tokens.length; i++) {
+          let withdrawalAmount = (withdrawalAmounts[i] * 0.9999999).toFixed(0);
+          swapAmounts.push(withdrawalAmount);
+          if (tokens[i] == tokenToSwapInto) {
+            responses.push("0x");
+          } else {
+            let response = await createMetaAggregatorCalldata(
+              withdrawBatch.address,
+              user.address,
+              tokens[i],
+              tokenToSwapInto,
+              withdrawalAmount
+            );
+
+            interface Quote {
+              protocol: string;
+              data: string;
+            }
+
+            const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
+              (quote: Quote) => quote.protocol === "zeroX"
+            );
+
+            if (!zeroXQuote?.data) {
+              throw new Error("No valid zeroX quote found");
+            }
+
+            responses.push(zeroXQuote.data);
+          }
+          userBalanceBefore.push(
+            await ERC20.attach(tokens[i]).balanceOf(user.address)
+          );
+        }
+
+        await withdrawManager.withdraw(
+          portfolio.address,
+          tokenToSwapInto,
+          amountPortfolioToken,
+          0,
+          swapAmounts,
+          {
+            _factory: ensoHandler.address,
+            _token0: zeroAddress, //USDT - Pool token
+            _token1: zeroAddress, //USDC - Pool token
+            _flashLoanToken: zeroAddress, //Token to take flashlaon
+            _bufferUnit: "0",
+            _solverHandler: ensoHandler.address, //Handler to swap
+            _flashLoanAmount: [0],
+            firstSwapData: ["0x"],
+            secondSwapData: ["0x"],
+          },
+          responses
+        );
+
+        const balanceAfter = await ERC20.attach(tokenToSwapInto).balanceOf(
+          user.address
+        );
+
+        const supplyAfter = await portfolio.totalSupply();
+
+        expect(Number(balanceAfter)).to.be.greaterThan(Number(balanceBefore));
+        expect(Number(supplyBefore)).to.be.greaterThan(Number(supplyAfter));
       });
     });
   });

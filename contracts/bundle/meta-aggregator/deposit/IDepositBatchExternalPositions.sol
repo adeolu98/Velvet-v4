@@ -1,6 +1,6 @@
 pragma solidity 0.8.17;
 
-import { FunctionParameters } from "../FunctionParameters.sol";
+import { FunctionParameters } from "../../../FunctionParameters.sol";
 
 interface IDepositBatchExternalPositions {
   /**
@@ -10,7 +10,7 @@ interface IDepositBatchExternalPositions {
    * @param _user Address of the user initiating the deposit.
    */
   function multiTokenSwapAndDeposit(
-    FunctionParameters.BatchHandler memory data,
+    FunctionParameters.BatchHandlerMetaAggregator memory data,
     FunctionParameters.ExternalPositionDepositParams memory _params,
     address _user
   ) external;
