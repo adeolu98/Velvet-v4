@@ -21,6 +21,7 @@ import { IAssetManagementConfig } from "../../../config/assetManagement/IAssetMa
 contract DepositBatchExternalPositionsMeta is ReentrancyGuard {
   // The address of Enso's swap execution logic; swaps are delegated to this target.
   address constant SWAP_TARGET = 0xfDAc2748713906ede00D023AA3E0Cc893828D30B;
+  address constant SWAP_TARGET_ETH = 0x50285cbB6480143794f74F4d985dF808DA22f841;
   address constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
   /**
@@ -178,8 +179,8 @@ contract DepositBatchExternalPositionsMeta is ReentrancyGuard {
         balance = abi.decode(data._callData[i], (uint256));
       } else {
         uint256 balanceBefore = _getTokenBalance(_token, address(this));
-        (bool success, ) = SWAP_TARGET.call(data._callData[i]);
-        if (!success) revert ErrorLibrary.CallFailed();
+
+        _handleSwap(_depositToken, data._ethSwapAmounts[i], data._callData[i]);
         uint256 balanceAfter = _getTokenBalance(_token, address(this));
         balance = balanceAfter - balanceBefore;
       }
@@ -191,6 +192,19 @@ contract DepositBatchExternalPositionsMeta is ReentrancyGuard {
     }
 
     return (swapResults, depositAmounts);
+  }
+
+  function _handleSwap(
+    address _depositToken,
+    uint256 _ethSwapValue,
+    bytes memory _calldata
+  ) internal {
+    address swapTarget = _depositToken == ETH_ADDRESS
+      ? SWAP_TARGET_ETH
+      : SWAP_TARGET;
+
+    (bool success, ) = swapTarget.call{ value: _ethSwapValue }(_calldata);
+    if (!success) revert ErrorLibrary.CallFailed();
   }
 
   /**

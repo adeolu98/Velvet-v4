@@ -8,12 +8,12 @@ import {
   AccessController,
   AssetManagementConfig,
   FeeModule,
-  PriceOracleL2,
+  PriceOracle,
 } from "../../typechain";
 
 let protocolConfig: ProtocolConfig;
 let accessController: AccessController;
-let priceOracle: PriceOracleL2;
+let priceOracle: PriceOracle;
 let owner: SignerWithAddress;
 let treasury: SignerWithAddress;
 let wbnbAddress: string;
@@ -42,12 +42,27 @@ before(async () => {
   accessController = await AccessController.deploy();
   await accessController.deployed();
 
-  const PriceOracleL2 = await ethers.getContractFactory("PriceOracleL2");
-  priceOracle = await PriceOracleL2.deploy(
-    addresses.WETH,
-    addresses.SequencerUptimeFeed
-  );
+  const PriceOracle = await ethers.getContractFactory("PriceOracle");
+  priceOracle = await PriceOracle.deploy(addresses.WETH);
   await priceOracle.deployed();
+
+  await priceOracle.setFeeds(
+    [
+      "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      addresses.DAI,
+      addresses.USDC,
+    ],
+    [
+      "0x0000000000000000000000000000000000000348",
+      "0x0000000000000000000000000000000000000348",
+      "0x0000000000000000000000000000000000000348",
+    ],
+    [
+      "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
+      "0x591e79239a7d679378eC8c847e5038150364C78F",
+      "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B",
+    ]
+  );
 });
 
 export async function RebalancingDeploy(

@@ -335,6 +335,28 @@ export async function decreaseLiquidity(
   console.log("balanceT1Returned", balanceT1After.sub(balanceT1Before));
 }
 
+export async function calculateOutputAmounts(
+  _positionWrapperAddress: any,
+  _percentage: any
+): Promise<any> {
+  const AmountCalculationsAlgebra = await ethers.getContractFactory(
+    "AmountCalculationsUniswap"
+  );
+  const amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
+  await amountCalculationsAlgebra.deployed();
+
+  let result =
+    await amountCalculationsAlgebra.callStatic.getLiquidityAmountsForPartialWithdrawal(
+      _positionWrapperAddress,
+      _percentage
+    );
+
+  let token0Amount = result.amount0Out;
+  let token1Amount = result.amount1Out;
+
+  return { token0Amount, token1Amount };
+}
+
 export async function calculateSwapAmountUpdateRange(
   positionManagerAddress: string,
   position: string,
