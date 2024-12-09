@@ -1,30 +1,32 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {IBorrowManager} from "../interfaces/IBorrowManager.sol";
-import {FunctionParameters} from "../../FunctionParameters.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
-import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {AccessModifiers} from "../access/AccessModifiers.sol";
-import {IFlashLoanReceiver} from "../../handler/Aave/IFlashLoanReceiver.sol";
-import {IPortfolio} from "../../core/interfaces/IPortfolio.sol";
-import {IPool} from "../../handler/Aave/IPool.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { IBorrowManager } from "../../interfaces/IBorrowManager.sol";
+import { FunctionParameters } from "../../../FunctionParameters.sol";
+import { IProtocolConfig } from "../../../config/protocol/IProtocolConfig.sol";
+import { IVenusPool } from "../../interfaces/IVenusPool.sol";
+import { IThena } from "../../interfaces/IThena.sol";
+import { IAssetHandler } from "../../interfaces/IAssetHandler.sol";
+import { ErrorLibrary } from "../../../library/ErrorLibrary.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+import { AccessModifiers } from "../../access/AccessModifiers.sol";
+import { IAlgebraFlashCallback } from "@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraFlashCallback.sol";
+import { IPortfolio } from "../../../core/interfaces/IPortfolio.sol";
 
 /**
  * @title BorrowManager
  * @notice This contract manages the borrowing and repayment of assets using flash loans and handles portfolio withdrawals.
  * @dev Inherits from OwnableUpgradeable, UUPSUpgradeable, AccessModifiers, and IAlgebraFlashCallback.
  */
-contract BorrowManager is
+contract BorrowManagerVenus is
   OwnableUpgradeable,
   UUPSUpgradeable,
   AccessModifiers,
-  IFlashLoanReceiver,
+  IAlgebraFlashCallback,
   IBorrowManager
 {
   // Internal variables to store the vault, protocol configuration, and portfolio addresses
@@ -74,7 +76,7 @@ contract BorrowManager is
   ) external onlyPortfolioManager {
     // Get all supported controllers from the protocol configuration
     // There can be multiple controllers from Venus side, hence the loop
-    address[] memory controllers = _protocolConfig.getSupportedControllers(); //Here I guess it will be aave pool address(pool logic address)
+    address[] memory controllers = _protocolConfig.getSupportedControllers();
 
     beforeRepayVerification(
       repayData._factory,
@@ -109,8 +111,8 @@ contract BorrowManager is
         address(this),
         _portfolioTokenAmount,
         _totalSupply,
-        repayData,
-        borrowedTokens
+        borrowedTokens,
+        repayData
       );
 
       // Perform the delegatecall to the asset handler
@@ -132,7 +134,7 @@ contract BorrowManager is
     FunctionParameters.RepayParams calldata repayData
   ) external onlyRebalancerContract returns (bool) {
     IAssetHandler assetHandler = IAssetHandler(
-      _protocolConfig.assetHandlers(_controller) //Maybe need to add pool for aave instead of _controller
+      _protocolConfig.assetHandlers(_controller)
     );
 
     beforeRepayVerification(
@@ -175,31 +177,37 @@ contract BorrowManager is
     return borrowedLengthAfter < borrowedLengthBefore;
   }
 
-  function executeOperation(
-    address[] calldata assets,
-    uint256[] calldata amounts,
-    uint256[] calldata premiums,
-    address initiator,
-    bytes calldata params
-  ) external returns (bool) {
-    if (initiator != address(this)) revert ErrorLibrary.InvalidLoanInitiator();
-    // if(msg.sender != POOL ) --> need to get pool here
+  /**
+   * @notice Callback function for Algebra flash loans.
+   * @dev This function handles the logic after receiving the flash loan, such as repaying debt and performing swaps.
+   * @param fee0 The fee for the borrowed token.
+   * @param fee1 The fee for the paired token (if borrowed).
+   * @param data Encoded data passed from the flash loan.
+   */
+  function algebraFlashCallback(
+    uint256 fee0,
+    uint256 fee1,
+    bytes calldata data
+  ) external override {
+    //Ensure flash loan is active to prevent unauthorized callbacks
+    if (!_isFlashLoanActive) revert ErrorLibrary.FlashLoanIsInactive();
 
     FunctionParameters.FlashLoanData memory flashData = abi.decode(
-      params,
+      data,
       (FunctionParameters.FlashLoanData)
     ); // Decode the flash loan data
 
     IAssetHandler assetHandler = IAssetHandler(
       _protocolConfig.assetHandlers(flashData.protocolTokens[0])
     ); // Get the asset handler for the protocol tokens
-    address controller = _protocolConfig.marketControllers( //This will be pool address
+    address controller = _protocolConfig.marketControllers(
       flashData.protocolTokens[0]
     ); // Get the market controller for the protocol token
 
+    // Get user account data, including total collateral and debt
     (
       FunctionParameters.AccountData memory accountData,
-      FunctionParameters.TokenAddresses memory tokenAddresses
+      FunctionParameters.TokenAddresses memory tokenBalances
     ) = assetHandler.getUserAccountData(_vault, controller);
 
     // Process the loan to generate the transactions needed for repayment and swaps
@@ -211,9 +219,9 @@ contract BorrowManager is
         address(_portfolio),
         controller,
         address(this),
-        tokenAddresses.lendTokens,
+        tokenBalances.lendTokens,
         accountData.totalCollateral,
-        IPool(controller).FLASHLOAN_PREMIUM_TOTAL(),
+        IThena(msg.sender).globalState().fee,
         flashData
       );
 
@@ -223,12 +231,18 @@ contract BorrowManager is
       if (!success) revert ErrorLibrary.CallFailed(); // Revert if the call fails
     }
 
-    // Calculate the amount owed including the fee
-    uint256 amountOwed = totalFlashAmount + premiums[0];
+    // Calculate the fee based on the token0 and fee0/fee1,using the Algebra Pool
+    uint256 fee = IAlgebraPool(msg.sender).token0() == flashData.flashLoanToken
+      ? fee0
+      : fee1;
 
-    TransferHelper.safeApprove(
+    // Calculate the amount owed including the fee
+    uint256 amountOwed = totalFlashAmount + fee;
+
+    // Transfer the amount owed back to the flashLoan provider
+    TransferHelper.safeTransfer(
       flashData.flashLoanToken,
-      controller,
+      msg.sender,
       amountOwed
     );
 
@@ -239,7 +253,8 @@ contract BorrowManager is
       IERC20Upgradeable(flashData.flashLoanToken).balanceOf(address(this))
     );
 
-    return true;
+    //Reset the flash loan state to prevent subsequent unauthorized callbacks
+    _isFlashLoanActive = false;
   }
 
   function beforeRepayVerification(
