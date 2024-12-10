@@ -1381,9 +1381,9 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, 2*nativeTokenAmount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, 2 * nativeTokenAmount, receiverContract.address, false)
 
-         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
+        await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
     it("should revert when ETH swapped out fails for swap erc20 delegate function", async () => {
         const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, receiverRevert } = await loadFixture(setupTest);
