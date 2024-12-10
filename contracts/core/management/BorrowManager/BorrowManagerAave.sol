@@ -13,7 +13,7 @@ import {ErrorLibrary} from "../../../library/ErrorLibrary.sol";
 import {AccessModifiers} from "../../access/AccessModifiers.sol";
 import {IFlashLoanReceiver} from "../../../handler/Aave/IFlashLoanReceiver.sol";
 import {IPortfolio} from "../../../core/interfaces/IPortfolio.sol";
-import {IPool} from "../../../handler/Aave/IPool.sol";
+import {IAavePool} from "../../../handler/Aave/IAavePool.sol";
 
 /**
  * @title BorrowManager
@@ -76,11 +76,7 @@ contract BorrowManagerAave is
     // There can be multiple controllers from Venus side, hence the loop
     address[] memory controllers = _protocolConfig.getSupportedControllers(); //Here I guess it will be aave pool address(pool logic address)
 
-    beforeRepayVerification(
-      repayData._factory,
-      repayData._solverHandler,
-      repayData._bufferUnit
-    );
+    beforeRepayVerification(repayData._solverHandler, repayData._bufferUnit);
 
     // Set flash loan flag to true to allow callback execution and prevent unauthorized callbacks
     _isFlashLoanActive = true;
@@ -94,7 +90,7 @@ contract BorrowManagerAave is
         _protocolConfig.assetHandlers(_controller)
       );
 
-      (, address[] memory borrowedTokens) = assetHandler.getAllProtocolAssets(
+      address[] memory borrowedTokens = assetHandler.getBorrowedTokens(
         _vault,
         _controller
       ); // Get all borrowed tokens for the vault under the controller
@@ -109,8 +105,8 @@ contract BorrowManagerAave is
         address(this),
         _portfolioTokenAmount,
         _totalSupply,
-        repayData,
-        borrowedTokens
+        borrowedTokens,
+        repayData
       );
 
       // Perform the delegatecall to the asset handler
@@ -135,11 +131,7 @@ contract BorrowManagerAave is
       _protocolConfig.assetHandlers(_controller) //Maybe need to add pool for aave instead of _controller
     );
 
-    beforeRepayVerification(
-      repayData._factory,
-      repayData._solverHandler,
-      repayData._bufferUnit
-    );
+    beforeRepayVerification(repayData._solverHandler, repayData._bufferUnit);
 
     // Get the number of borrowed tokens before the flash loan repayment
     uint256 borrowedLengthBefore = (
@@ -200,7 +192,11 @@ contract BorrowManagerAave is
     (
       FunctionParameters.AccountData memory accountData,
       FunctionParameters.TokenAddresses memory tokenAddresses
-    ) = assetHandler.getUserAccountData(_vault, controller);
+    ) = assetHandler.getUserAccountData(
+        _vault,
+        controller,
+        _portfolio.getTokens()
+      );
 
     // Process the loan to generate the transactions needed for repayment and swaps
     (
@@ -213,7 +209,7 @@ contract BorrowManagerAave is
         address(this),
         tokenAddresses.lendTokens,
         accountData.totalCollateral,
-        IPool(controller).FLASHLOAN_PREMIUM_TOTAL(),
+        IAavePool(controller).FLASHLOAN_PREMIUM_TOTAL(),
         flashData
       );
 
@@ -243,13 +239,9 @@ contract BorrowManagerAave is
   }
 
   function beforeRepayVerification(
-    address _factory,
     address _solverHandler,
     uint256 _bufferUnit
   ) internal view {
-    if (!_protocolConfig.isSupportedFactory(_factory))
-      revert ErrorLibrary.InvalidFactoryAddress();
-
     if (!_protocolConfig.isSolver(_solverHandler))
       revert ErrorLibrary.InvalidSolver();
 

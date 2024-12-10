@@ -963,7 +963,8 @@ describe.only("Tests for Deposit", () => {
           );
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1427,7 +1428,8 @@ describe.only("Tests for Deposit", () => {
           );
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1594,7 +1596,8 @@ describe.only("Tests for Deposit", () => {
 
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1786,7 +1789,8 @@ describe.only("Tests for Deposit", () => {
 
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 

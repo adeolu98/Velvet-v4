@@ -204,7 +204,9 @@ describe.only("Tests for Deposit", () => {
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManagerVenus");
+      const BorrowManager = await ethers.getContractFactory(
+        "BorrowManagerVenus"
+      );
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
@@ -1225,7 +1227,8 @@ describe.only("Tests for Deposit", () => {
           );
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 

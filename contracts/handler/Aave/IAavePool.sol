@@ -5,11 +5,11 @@ import {IPoolAddressesProvider} from "./IPoolAddressesProvider.sol";
 import {DataTypes} from "./DataTypes.sol";
 
 /**
- * @title IPool
+ * @title IAavePool
  * @author Aave
  * @notice Defines the basic interface for an Aave Pool.
  */
-interface IPool {
+interface IAavePool {
   /**
    * @dev Emitted when a borrower is liquidated.
    * @param collateralAsset The address of the underlying asset used as collateral, to receive as result of the liquidation

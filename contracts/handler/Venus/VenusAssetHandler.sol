@@ -161,7 +161,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
    */
   function getAllProtocolAssets(
     address account,
-    address comptroller
+    address comptroller,
+    address[] memory
   )
     public
     view
@@ -213,7 +214,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
    */
   function getUserAccountData(
     address user,
-    address comptroller
+    address comptroller,
+    address[] memory
   )
     public
     view
@@ -559,12 +561,14 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
   function getInvestibleBalance(
     address _token,
     address _vault,
-    address _controller
+    address _controller,
+    address[] memory portfolioTokens
   ) external view returns (uint256) {
     // Get the account data for the vault
     (FunctionParameters.AccountData memory accountData, ) = getUserAccountData(
       _vault,
-      _controller
+      _controller,
+      portfolioTokens
     );
 
     // Calculate the unused collateral percentage

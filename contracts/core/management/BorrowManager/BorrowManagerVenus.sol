@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
-import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import { IBorrowManager } from "../../interfaces/IBorrowManager.sol";
-import { FunctionParameters } from "../../../FunctionParameters.sol";
-import { IProtocolConfig } from "../../../config/protocol/IProtocolConfig.sol";
-import { IVenusPool } from "../../interfaces/IVenusPool.sol";
-import { IThena } from "../../interfaces/IThena.sol";
-import { IAssetHandler } from "../../interfaces/IAssetHandler.sol";
-import { ErrorLibrary } from "../../../library/ErrorLibrary.sol";
-import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
-import { AccessModifiers } from "../../access/AccessModifiers.sol";
-import { IAlgebraFlashCallback } from "@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraFlashCallback.sol";
-import { IPortfolio } from "../../../core/interfaces/IPortfolio.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
+import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import {IBorrowManager} from "../../interfaces/IBorrowManager.sol";
+import {FunctionParameters} from "../../../FunctionParameters.sol";
+import {IProtocolConfig} from "../../../config/protocol/IProtocolConfig.sol";
+import {IVenusPool} from "../../interfaces/IVenusPool.sol";
+import {IThena} from "../../interfaces/IThena.sol";
+import {IAssetHandler} from "../../interfaces/IAssetHandler.sol";
+import {ErrorLibrary} from "../../../library/ErrorLibrary.sol";
+import {IAlgebraPool} from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+import {AccessModifiers} from "../../access/AccessModifiers.sol";
+import {IAlgebraFlashCallback} from "@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraFlashCallback.sol";
+import {IPortfolio} from "../../../core/interfaces/IPortfolio.sol";
 
 /**
  * @title BorrowManager
@@ -96,7 +96,7 @@ contract BorrowManagerVenus is
         _protocolConfig.assetHandlers(_controller)
       );
 
-      (, address[] memory borrowedTokens) = assetHandler.getAllProtocolAssets(
+      address[] memory borrowedTokens = assetHandler.getBorrowedTokens(
         _vault,
         _controller
       ); // Get all borrowed tokens for the vault under the controller
@@ -208,7 +208,11 @@ contract BorrowManagerVenus is
     (
       FunctionParameters.AccountData memory accountData,
       FunctionParameters.TokenAddresses memory tokenBalances
-    ) = assetHandler.getUserAccountData(_vault, controller);
+    ) = assetHandler.getUserAccountData(
+        _vault,
+        controller,
+        _portfolio.getTokens()
+      );
 
     // Process the loan to generate the transactions needed for repayment and swaps
     (

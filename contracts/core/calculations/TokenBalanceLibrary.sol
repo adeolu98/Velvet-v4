@@ -32,7 +32,8 @@ library TokenBalanceLibrary {
    */
   function getControllersData(
     address vault,
-    IProtocolConfig _protocolConfig
+    IProtocolConfig _protocolConfig,
+    address[] memory portfolioTokens
   ) public view returns (ControllerData[] memory controllersData) {
     address[] memory controllers = _protocolConfig.getSupportedControllers();
     controllersData = new ControllerData[](controllers.length);
@@ -43,7 +44,7 @@ library TokenBalanceLibrary {
         _protocolConfig.assetHandlers(controller)
       );
       (FunctionParameters.AccountData memory accountData, ) = assetHandler
-        .getUserAccountData(vault, controller);
+        .getUserAccountData(vault, controller, portfolioTokens);
 
       uint256 unusedCollateralPercentage;
       if (accountData.totalCollateral == 0) {
@@ -110,7 +111,11 @@ library TokenBalanceLibrary {
     uint256 portfolioLength = portfolioTokens.length;
     vaultBalances = new uint256[](portfolioLength); // Initializes the array to hold fetched balances.
 
-    controllersData = getControllersData(_vault, _protocolConfig);
+    controllersData = getControllersData(
+      _vault,
+      _protocolConfig,
+      portfolioTokens
+    );
 
     for (uint256 i; i < portfolioLength; ) {
       vaultBalances[i] = _getAdjustedTokenBalance(

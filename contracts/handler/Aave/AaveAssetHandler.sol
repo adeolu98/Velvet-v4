@@ -4,11 +4,13 @@ pragma solidity 0.8.17;
 import {IAssetHandler} from "../../core/interfaces/IAssetHandler.sol";
 import {FunctionParameters} from "../../FunctionParameters.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
-import {IPool, DataTypes} from "./IPool.sol";
+import {IAavePool, DataTypes} from "./IAavePool.sol";
 import {IPoolDataProvider} from "./IPoolDataProvider.sol";
 import {IAaveToken} from "./IAaveToken.sol";
 import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import {IPortfolio} from "../../core/interfaces/IPortfolio.sol";
+import "hardhat/console.sol";
 
 contract AaveAssetHandler is IAssetHandler {
   address immutable DATA_PROVIDER_ADDRESS =
@@ -66,9 +68,12 @@ contract AaveAssetHandler is IAssetHandler {
   }
 
   /**
-   * @notice Encodes the data needed to borrow a specified amount of an asset from the Venus protocol
-   * @param borrowAmount The amount of the asset to borrow.
-   * @return data The encoded data for borrowing the specified amount.
+   * @notice Encodes the data needed to borrow a specified amount of an asset from the Aave protocol
+   * @dev This function constructs the calldata required to invoke the Aave `borrow` function via a low-level call.
+   * @param asset The address of the asset to borrow.
+   * @param onBehalfOf The address on whose behalf the borrow is being executed.
+   * @param borrowAmount The amount of the asset to borrow, specified in its smallest denomination (e.g., wei for ETH).
+   * @return data The encoded data for borrowing the specified amount from Aave.
    */
   function borrow(
     address,
@@ -78,11 +83,11 @@ contract AaveAssetHandler is IAssetHandler {
   ) external pure returns (bytes memory data) {
     data = abi.encodeWithSelector(
       bytes4(keccak256("borrow(address,uint256,uint256,uint16,address)")),
-      asset, // Encode the data to borrow the specified amount
-      borrowAmount,
-      2,
-      0,
-      onBehalfOf
+      asset, // The asset to borrow
+      borrowAmount, // The amount to borrow
+      2, // Interest rate mode: 2 for variable interest rate
+      0, // Referral code: set to 0 (no referral)
+      onBehalfOf // Address for whom the borrow is executed
     );
   }
 
@@ -130,40 +135,36 @@ contract AaveAssetHandler is IAssetHandler {
    */
   function getAllProtocolAssets(
     address account,
-    address comptroller //aave pool logic address
+    address comptroller, //aave pool logic address
+    address[] memory portfolioTokens
   )
     public
     view
     returns (address[] memory lendTokens, address[] memory borrowTokens)
   {
-    address[] memory assets = IPool(comptroller).getReservesList();
+    address[] memory assets = IAavePool(comptroller).getReservesList();
     uint assetsCount = assets.length; // Get the number of assets
     lendTokens = new address[](assetsCount); // Initialize the lend tokens array
     borrowTokens = new address[](assetsCount); // Initialize the borrow tokens array
     uint256 lendCount; // Counter for lent assets
     uint256 borrowCount; // Counter for borrowed assets
 
+    for (uint i = 0; i < portfolioTokens.length; i++) {
+      try IAaveToken(portfolioTokens[i]).UNDERLYING_ASSET_ADDRESS() {
+        lendTokens[lendCount++] = portfolioTokens[i];
+      } catch {}
+    }
+
     for (uint i = 0; i < assetsCount; ) {
       address asset = assets[i];
-      (
-        uint currentATokenBalance,
-        ,
-        uint currentVariableDebt,
-        ,
-        ,
-        ,
-        ,
-        ,
-
-      ) = IPoolDataProvider(DATA_PROVIDER_ADDRESS).getUserReserveData(
-          assets[i],
-          account
-        );
-      DataTypes.ReserveDataLegacy memory data = IPool(comptroller)
+      (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
+        DATA_PROVIDER_ADDRESS
+      ).getUserReserveData(assets[i], account);
+      DataTypes.ReserveDataLegacy memory data = IAavePool(comptroller)
         .getReserveData(asset);
-      if (currentATokenBalance > 0) {
-        lendTokens[lendCount++] = data.aTokenAddress; // Add the asset to the lend tokens if there is a balance
-      }
+      // if (currentATokenBalance > 0) {
+      //   lendTokens[lendCount++] = data.aTokenAddress; // Add the asset to the lend tokens if there is a balance
+      // }
       if (currentVariableDebt > 0) {
         borrowTokens[borrowCount++] = data.aTokenAddress; // Add the asset to the borrow tokens if there is a balance
       }
@@ -190,7 +191,8 @@ contract AaveAssetHandler is IAssetHandler {
    */
   function getUserAccountData(
     address user,
-    address comptroller
+    address comptroller,
+    address[] memory portfolioTokens
   )
     public
     view
@@ -206,19 +208,19 @@ contract AaveAssetHandler is IAssetHandler {
       accountData.currentLiquidationThreshold,
       accountData.ltv,
       accountData.healthFactor
-    ) = IPool(comptroller).getUserAccountData(user);
+    ) = IAavePool(comptroller).getUserAccountData(user);
 
     (
       tokenAddresses.lendTokens,
       tokenAddresses.borrowTokens
-    ) = getAllProtocolAssets(user, comptroller);
+    ) = getAllProtocolAssets(user, comptroller, portfolioTokens);
   }
 
   function getBorrowedTokens(
     address account,
     address comptroller
   ) external view returns (address[] memory borrowedTokens) {
-    address[] memory assets = IPool(comptroller).getReservesList();
+    address[] memory assets = IAavePool(comptroller).getReservesList();
     uint assetsCount = assets.length; // Get the number of assets
     borrowedTokens = new address[](assetsCount); // Initialize the borrow tokens array
     uint256 borrowCount; // Counter for borrowed assets
@@ -228,8 +230,10 @@ contract AaveAssetHandler is IAssetHandler {
       (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
         DATA_PROVIDER_ADDRESS
       ).getUserReserveData(assets[i], account);
+      DataTypes.ReserveDataLegacy memory data = IAavePool(comptroller)
+        .getReserveData(asset);
       if (currentVariableDebt > 0) {
-        borrowedTokens[borrowCount++] = address(asset); // Add the asset to the borrow tokens if there is a balance
+        borrowedTokens[borrowCount++] = data.aTokenAddress; // Add the asset to the borrow tokens if there is a balance
       }
       unchecked {
         ++i;
@@ -253,12 +257,14 @@ contract AaveAssetHandler is IAssetHandler {
   function getInvestibleBalance(
     address _token,
     address _vault,
-    address _controller
+    address _controller,
+    address[] memory portfolioTokens
   ) external view returns (uint256) {
     // Get the account data for the vault
     (FunctionParameters.AccountData memory accountData, ) = getUserAccountData(
       _vault,
-      _controller
+      _controller,
+      portfolioTokens
     );
 
     // Calculate the unused collateral percentage
@@ -512,6 +518,7 @@ contract AaveAssetHandler is IAssetHandler {
 
       // Loop through the lending tokens to process each one
       for (uint j = 0; j < lendingTokens.length; ) {
+        console.log("sellAmounts for pull from vault", sellAmounts[j]);
         // Pull the token from the vault
         transactions[count].to = executor;
         transactions[count].txData = abi.encodeWithSelector(
@@ -568,16 +575,24 @@ contract AaveAssetHandler is IAssetHandler {
       DATA_PROVIDER_ADDRESS
     ).getUserReserveData(_underlyingToken, _user);
 
+    console.log("_underlyingToken in contract", _underlyingToken);
+    console.log("currentVariableDebt in contract", currentVariableDebt);
+
     //Convert underlyingToken to 18 decimal
     uint borrowBalance = currentVariableDebt *
       10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
+
+    console.log("borrowBalance in contract", borrowBalance);
 
     //Get price for _protocolToken token
     uint _oraclePrice = IAavePriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
       _underlyingToken
     );
+
+    console.log("_oraclePrice in contract", _oraclePrice);
     //Get price for borrow Balance (amount * price)
-    uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 8;
+    uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
+    console.log("_tokenPrice in contract", _tokenPrice);
     //calculateDebtAndPercentage
     (, uint256 percentageToRemove) = calculateDebtAndPercentage(
       _debtRepayAmount,
@@ -586,7 +601,7 @@ contract AaveAssetHandler is IAssetHandler {
       borrowBalance,
       totalCollateral
     );
-
+    console.log("percentageToRemove in contract", percentageToRemove);
     // Calculate the amounts to sell for each lending token
     amounts = calculateAmountsToSell(
       _user,
@@ -637,10 +652,13 @@ contract AaveAssetHandler is IAssetHandler {
     // Loop through the lent tokens to calculate the amount to sell
     for (uint256 i; i < lendTokens.length; ) {
       uint256 balance = IERC20Upgradeable(lendTokens[i]).balanceOf(_user); // Get the balance of the token
-
+      console.log("balance of lend token in contract", balance);
       uint256 amountToSell = (balance * percentageToRemove);
+      console.log("amountToSell in contract", amountToSell);
       amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
+      console.log("amountToSell with buffer in contract", amountToSell);
       amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
+      console.log("amounts[i] in contract", amounts[i]);
       unchecked {
         ++i;
       }
@@ -704,7 +722,7 @@ contract AaveAssetHandler is IAssetHandler {
 
     address receiver = _receiver;
 
-    IPool(repayData._token0).flashLoan(
+    IAavePool(repayData._token0).flashLoan(
       receiver,
       assets,
       amounts,
@@ -742,7 +760,7 @@ contract AaveAssetHandler is IAssetHandler {
     uint256[] memory interestRateModes = new uint256[](1);
     interestRateModes[0] = 0;
 
-    IPool(repayData._token0).flashLoan(
+    IAavePool(repayData._token0).flashLoan(
       _receiver,
       assets,
       amounts,

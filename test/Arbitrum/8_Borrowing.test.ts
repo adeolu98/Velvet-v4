@@ -35,13 +35,13 @@ import {
   DepositBatch,
   DepositManager,
   TokenBalanceLibrary,
-  BorrowManagerVenus,
+  BorrowManagerAave,
   TokenExclusionManager,
   TokenExclusionManager__factory,
   WithdrawBatch,
   WithdrawManager,
   AaveAssetHandler,
-  IPool,
+  IAavePool,
   IPoolDataProvider,
 } from "../../typechain";
 
@@ -69,7 +69,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let depositManager: DepositManager;
   let withdrawBatch: WithdrawBatch;
   let withdrawManager: WithdrawManager;
-  let borrowManager: BorrowManagerVenus;
+  let borrowManager: BorrowManagerAave;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
@@ -189,7 +189,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       aaveAssetHandler = await AaveAssetHandler.deploy();
       await aaveAssetHandler.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManagerVenus");
+      const BorrowManager = await ethers.getContractFactory(
+        "BorrowManagerAave"
+      );
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
@@ -202,8 +204,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           addresses.aArbWBTC,
           addresses.aArbWETH,
           addresses.aavePool,
+          addresses.aArbARB,
         ],
         [
+          aaveAssetHandler.address,
           aaveAssetHandler.address,
           aaveAssetHandler.address,
           aaveAssetHandler.address,
@@ -222,9 +226,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           addresses.aArbUSDT,
           addresses.aArbWBTC,
           addresses.aArbWETH,
+          addresses.aArbARB,
           addresses.aavePool,
         ],
         [
+          addresses.aavePool,
           addresses.aavePool,
           addresses.aavePool,
           addresses.aavePool,
@@ -827,7 +833,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const userData = await aaveAssetHandler.getUserAccountData(
           vault,
-          addresses.aavePool
+          addresses.aavePool,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -853,7 +860,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           [["0x"], [addresses.ARB], [0]]
         );
 
+        const Ipool: IAavePool = await ethers.getContractAt(
+          "IAavePool",
+          addresses.aavePool
+        );
+
         let encodedParameters1 = [];
+        const flashLoanFee = Ipool.FLASHLOAN_PREMIUM_TOTAL();
         //Because repay(rebalance) is one borrow token at a time
         const amounToSell =
           await portfolioCalculations.getAaveCollateralAmountToSell(
@@ -861,9 +874,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             addresses.aavePool,
             aaveAssetHandler.address,
             addresses.aArbARB,
+            portfolio.address,
             balanceToRepay,
-            "10", //Flash loan fee
-            bufferUnit //Buffer unit for collateral amount
+            flashLoanFee, //Flash loan fee
+            "310" //Buffer unit for collateral amount
           );
         console.log("amounToSell", amounToSell);
         console.log("lendTokens", lendTokens);
@@ -885,7 +899,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           );
         }
 
-        await rebalancing.repay(addresses.corePool_controller, {
+        await rebalancing.repay(addresses.aavePool, {
           _factory: addresses.aavePool,
           _token0: addresses.aavePool, //USDT - Pool token
           _token1: addresses.aavePool, //USDC - Pool token
@@ -903,7 +917,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         console.log(
           "Balance of vToken After",
-          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
+          await ERC20.attach(addresses.aArbLINK).balanceOf(vault)
         );
 
         balanceBorrowed = (
@@ -984,7 +998,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         const userData = await aaveAssetHandler.getUserAccountData(
           vault,
-          addresses.aavePool
+          addresses.aavePool,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1005,6 +1020,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             owner.address
           );
         }
+
+        const Ipool: IAavePool = await ethers.getContractAt(
+          "IAavePool",
+          addresses.aavePool
+        );
+        const flashLoanFee = Ipool.FLASHLOAN_PREMIUM_TOTAL();
 
         let encodedParameters = [];
         let encodedParameters1 = [];
@@ -1039,8 +1060,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               addresses.aavePool,
               aaveAssetHandler.address,
               borrowedTokens[i],
+              portfolio.address,
               borrowedPortion[i],
-              "10", //Flash loan fee
+              flashLoanFee, //Flash loan fee
               bufferUnit //Buffer unit for collateral amount
             );
 
