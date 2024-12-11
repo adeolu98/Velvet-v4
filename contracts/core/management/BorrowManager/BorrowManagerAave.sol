@@ -25,8 +25,9 @@ contract BorrowManagerAave is AbstractBorrowManager, IFlashLoanReceiver {
     address initiator,
     bytes calldata params
   ) external returns (bool) {
+    //Ensure flash loan is active to prevent unauthorized callbacks
+    if (!_isFlashLoanActive) revert ErrorLibrary.FlashLoanIsInactive();
     if (initiator != address(this)) revert ErrorLibrary.InvalidLoanInitiator();
-    // if(msg.sender != POOL ) --> need to get pool here
 
     FunctionParameters.FlashLoanData memory flashData = abi.decode(
       params,
@@ -86,6 +87,8 @@ contract BorrowManagerAave is AbstractBorrowManager, IFlashLoanReceiver {
       IERC20Upgradeable(flashData.flashLoanToken).balanceOf(address(this))
     );
 
+    //Reset the flash loan state to prevent subsequent unauthorized callbacks
+    _isFlashLoanActive = false;
     return true;
   }
 }
