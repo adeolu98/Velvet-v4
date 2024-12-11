@@ -251,16 +251,16 @@ export async function increaseLiquidity(
   );
 
   const SwapVerificationLibrary = await ethers.getContractFactory(
-    "SwapVerificationLibraryAlgebra"
+    "SwapVerificationLibraryAlgebraV2"
   );
   const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
   await swapVerificationLibrary.deployed();
 
   const PositionManager = await ethers.getContractFactory(
-    "PositionManagerAlgebra",
+    "PositionManagerAlgebraV1_2",
     {
       libraries: {
-        SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
+        SwapVerificationLibraryAlgebraV2: swapVerificationLibrary.address,
       },
     }
   );
@@ -295,16 +295,16 @@ export async function decreaseLiquidity(
   positionWrapperAddress: string
 ): Promise<any> {
   const SwapVerificationLibrary = await ethers.getContractFactory(
-    "SwapVerificationLibraryAlgebra"
+    "SwapVerificationLibraryAlgebraV2"
   );
   const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
   await swapVerificationLibrary.deployed();
 
   const PositionManager = await ethers.getContractFactory(
-    "PositionManagerAlgebra",
+    "PositionManagerAlgebraV1_2",
     {
       libraries: {
-        SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
+        SwapVerificationLibraryAlgebraV2: swapVerificationLibrary.address,
       },
     }
   );
@@ -355,7 +355,7 @@ export async function calculateOutputAmounts(
   _percentage: any
 ): Promise<any> {
   const AmountCalculationsAlgebra = await ethers.getContractFactory(
-    "AmountCalculationsAlgebra"
+    "AmountCalculationsAlgebraV2"
   );
   const amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
   await amountCalculationsAlgebra.deployed();
@@ -379,7 +379,7 @@ export async function calculateSwapAmountUpdateRange(
   newTickUpper: any
 ): Promise<any> {
   const AmountCalculationsAlgebra = await ethers.getContractFactory(
-    "AmountCalculationsAlgebra"
+    "AmountCalculationsAlgebraV2"
   );
   const amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
   await amountCalculationsAlgebra.deployed();
@@ -388,16 +388,16 @@ export async function calculateSwapAmountUpdateRange(
   const positionWrapper = PositionWrapper.attach(position);
 
   const SwapVerificationLibrary = await ethers.getContractFactory(
-    "SwapVerificationLibraryAlgebra"
+    "SwapVerificationLibraryAlgebraV2"
   );
   const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
   await swapVerificationLibrary.deployed();
 
   const PositionManager = await ethers.getContractFactory(
-    "PositionManagerAlgebra",
+    "PositionManagerAlgebraV1_2",
     {
       libraries: {
-        SwapVerificationLibraryAlgebra: swapVerificationLibrary.address,
+        SwapVerificationLibraryAlgebraV2: swapVerificationLibrary.address,
       },
     }
   );
@@ -487,7 +487,7 @@ export async function calculateDepositAmounts(
   inputAmount: any
 ): Promise<any> {
   const AmountCalculationsAlgebra = await ethers.getContractFactory(
-    "AmountCalculationsAlgebra"
+    "AmountCalculationsAlgebraV2"
   );
   const amountCalculationsAlgebra = await AmountCalculationsAlgebra.deploy();
   await amountCalculationsAlgebra.deployed();
