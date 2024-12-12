@@ -82,7 +82,22 @@ abstract contract PositionManagerAlgebraBase is PositionManagerAbstract {
       });
 
     router.exactInputSingle(params);
-    // @todo verify
+
+    _verifySwap(
+      _params._amountIn,
+      balanceTokenInBeforeSwap,
+      balanceTokenOutBeforeSwap,
+      tokenIn,
+      tokenOut,
+      address(uniswapV3PositionManager)
+    );
+
+    _verifyRatioAfterSwap(
+      _params,
+      balanceTokenInBeforeSwap,
+      tokenIn,
+      address(uniswapV3PositionManager)
+    );
   }
 
   /**
@@ -109,12 +124,19 @@ abstract contract PositionManagerAlgebraBase is PositionManagerAbstract {
     uint256
   ) internal view virtual returns (uint128, uint128);
 
-  function _verifySwapAndRatio(
-    WrapperFunctionParameters.SwapParams memory _params,
-    address _tokenIn,
-    address _tokenOut,
+  function _verifySwap(
+    uint256 _amountIn,
     uint256 _balanceTokenInBeforeSwap,
     uint256 _balanceTokenOutBeforeSwap,
+    address _tokenIn,
+    address _tokenOut,
     address _uniswapV3PositionManager
-  ) internal virtual returns (uint256, uint256);
+  ) internal virtual;
+
+  function _verifyRatioAfterSwap(
+    WrapperFunctionParameters.SwapParams memory _params,
+    uint256 _balanceTokenInBeforeSwap,
+    address _tokenIn,
+    address _uniswapV3PositionManager
+  ) internal virtual returns (uint256 balance0, uint256 balance1);
 }

@@ -15,7 +15,6 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 
 import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
-
 /**
  * @title SwapVerificationLibrary
  * @notice Library for verifying swap operations using a price oracle

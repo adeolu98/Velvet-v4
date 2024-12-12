@@ -360,24 +360,31 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
     ).positions(_tokenId);
   }
 
-  function _verifySwapAndRatio(
-    WrapperFunctionParameters.SwapParams memory _params,
-    address _tokenIn,
-    address _tokenOut,
+  function _verifySwap(
+    uint256 _amountIn,
     uint256 _balanceTokenInBeforeSwap,
     uint256 _balanceTokenOutBeforeSwap,
+    address _tokenIn,
+    address _tokenOut,
     address _uniswapV3PositionManager
-  ) internal override returns (uint256 balance0, uint256 balance1) {
+  ) internal override {
     SwapVerificationLibraryAlgebraV2.verifySwap(
       _tokenIn,
       _tokenOut,
-      _params._amountIn,
+      _amountIn,
       IERC20Upgradeable(_tokenOut).balanceOf(address(this)) -
         _balanceTokenOutBeforeSwap,
       protocolConfig.acceptedSlippageFeeReinvestment(),
       IPriceOracle(protocolConfig.oracle())
     );
+  }
 
+  function _verifyRatioAfterSwap(
+    WrapperFunctionParameters.SwapParams memory _params,
+    uint256 _balanceTokenInBeforeSwap,
+    address _tokenIn,
+    address _uniswapV3PositionManager
+  ) internal override returns (uint256 balance0, uint256 balance1) {
     (balance0, balance1) = SwapVerificationLibraryAlgebraV2
       .verifyRatioAfterSwap(
         protocolConfig,
