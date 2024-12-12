@@ -16,7 +16,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
  */
 contract DepositBatch is ReentrancyGuard {
   // The address of Enso's swap execution logic; swaps are delegated to this target.
-  address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52;
+  address constant SWAP_TARGET = 0x137B564775D022E99fac30E6cb0FB58E635Fe76D;
 
   /**
    * @notice Performs a multi-token swap and deposit operation for the user.

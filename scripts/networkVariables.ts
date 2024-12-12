@@ -303,6 +303,7 @@ export const BaseMainnet: ChainAddresses = {
   USDC: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
   DAI: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
   WBTC: "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+  USDplus: "0x0c1a09d5d0445047da3ab4994262b22404288a3b",
 
   //GnosisContracts
   gnosisSingleton: "0x3E5c63644E683549055b9Be8653de26E0B4CD36E",

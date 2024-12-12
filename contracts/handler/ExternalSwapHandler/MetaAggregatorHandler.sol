@@ -10,7 +10,7 @@ import { FunctionParameters } from "../../FunctionParameters.sol";
 import { ExternalPositionManagement } from "./ExternalPositionManagement.sol";
 
 /**
- * @title MetaAggregatorHandler
+ * @title EnsoHandler
  * @dev This contract is designed to interface with the Enso platform, facilitating
  * the execution of token swaps and the subsequent transfer of swap outputs. It leverages
  * delegatecall for swap execution, allowing for the integration of complex swap operations
@@ -18,9 +18,65 @@ import { ExternalPositionManagement } from "./ExternalPositionManagement.sol";
  * the secure handling of token transfers, including adherence to minimum expected output
  * thresholds for swap operations.
  */
-contract MetaAggregatorHandler is ExternalPositionManagement {
+contract MetaAggregatorHandler is IIntentHandler, ExternalPositionManagement {
   // The address of Enso's swap execution logic; swaps are delegated to this target.
-  address constant SWAP_TARGET = 0xfDAc2748713906ede00D023AA3E0Cc893828D30B; // manager contract
+  address constant SWAP_TARGET = 0x137B564775D022E99fac30E6cb0FB58E635Fe76D;
+
+  /**
+   * @notice Conducts a token swap operation via the Enso platform and transfers the output tokens
+   * to a specified recipient address.
+   * @param _to The address designated to receive the output tokens from the swap.
+   * @param _callData Encoded bundle containing the swap operation data, structured as follows:
+   *        - callDataEnso: Array of bytes representing the encoded data for each swap operation,
+   *          allowing for direct interaction with Enso's swap logic.
+   *        - tokens: Array of token addresses involved in the swap operations.
+   *        - minExpectedOutputAmounts: Array of minimum acceptable output amounts for the tokens
+   *          received from each swap operation, ensuring the swap meets the user's expectations.
+   * @return _swapReturns Array containing the actual amounts of tokens received from each swap operation.
+   */
+  function multiTokenSwapAndTransfer(
+    address _to,
+    bytes memory _callData
+  ) external override returns (address[] memory) {
+    (
+      bytes[] memory callDataEnso,
+      address[] memory tokens,
+      uint256[] memory minExpectedOutputAmounts
+    ) = abi.decode(_callData, (bytes[], address[], uint256[]));
+
+    // Validate lengths of input arrays for consistency.
+    uint256 tokensLength = tokens.length;
+
+    if (
+      tokensLength != minExpectedOutputAmounts.length ||
+      tokensLength != callDataEnso.length
+    ) revert ErrorLibrary.InvalidLength();
+
+    // Ensure the recipient address is valid.
+    if (_to == address(0)) revert ErrorLibrary.InvalidAddress();
+    for (uint256 i; i < tokensLength; i++) {
+      address token = tokens[i]; // Optimize gas by caching the token address.
+      uint256 buyBalanceBefore = IERC20Upgradeable(token).balanceOf(
+        address(this)
+      );
+
+      // Perform delegatecall to execute swap operation on the Enso platform.
+      (bool success, ) = SWAP_TARGET.delegatecall(callDataEnso[i]);
+      if (!success) revert ErrorLibrary.CallFailed();
+      // Post-swap processing: verify output against minimum expectations and transfer to recipient.
+      uint256 buyBalanceAfter = IERC20Upgradeable(token).balanceOf(
+        address(this)
+      );
+      uint256 swapReturn = buyBalanceAfter - buyBalanceBefore;
+
+      if (swapReturn == 0 || swapReturn < minExpectedOutputAmounts[i])
+        revert ErrorLibrary.ReturnValueLessThenExpected();
+
+      TransferHelper.safeTransfer(token, _to, swapReturn);
+    }
+
+    return tokens;
+  }
 
   /**
    * @notice Conducts a rebalance operation via the Solver platform and transfers the output tokens
@@ -48,7 +104,6 @@ contract MetaAggregatorHandler is ExternalPositionManagement {
       // One-dimensional as it's a flat list of tokens
       address[] memory tokensIn, // Array of input token addresses
       address[] memory tokensOut, // Array of output token addresses
-      uint256[][] memory swapAmounts,
       uint256[] memory minExpectedOutputAmounts // Array of minimum expected output amounts
     ) = abi.decode(
         _params._calldata,
@@ -60,50 +115,24 @@ contract MetaAggregatorHandler is ExternalPositionManagement {
           address[],
           address[],
           address[],
-          uint256[][],
           uint256[]
         )
       );
 
-    _validateInputParameters(
-      _params,
-      callDataEnso,
-      callDataIncreaseLiquidity,
-      increaseLiquidityTarget,
-      tokensOut,
-      tokensIn,
-      minExpectedOutputAmounts
-    );
+    // Validate lengths of input arrays for consistency.
+    uint256 tokensLength = tokensOut.length;
 
-    _handleTokenTransfer(
-      _params,
-      callDataDecreaseLiquidity,
-      callDataIncreaseLiquidity,
-      increaseLiquidityTarget,
-      callDataEnso,
-      tokensIn,
-      tokensOut,
-      swapAmounts,
-      minExpectedOutputAmounts
-    );
+    if (
+      tokensLength != minExpectedOutputAmounts.length ||
+      tokensLength != callDataEnso.length ||
+      callDataIncreaseLiquidity.length != increaseLiquidityTarget.length ||
+      tokensIn.length != tokensLength
+    ) revert ErrorLibrary.InvalidLength();
 
-    _returnDust(underlyingTokensDecreaseLiquidity, _params._to);
+    // Ensure the recipient address is valid.
+    if (_params._to == address(0)) revert ErrorLibrary.InvalidAddress();
 
-    return tokensOut;
-  }
-
-  function _handleTokenTransfer(
-    FunctionParameters.EnsoRebalanceParams memory _params,
-    bytes[] memory callDataDecreaseLiquidity,
-    bytes[][] memory callDataIncreaseLiquidity,
-    address[][] memory increaseLiquidityTarget,
-    bytes[][] memory callDataEnso,
-    address[] memory tokensIn,
-    address[] memory tokensOut,
-    uint256[][] memory swapAmounts,
-    uint256[] memory minExpectedOutputAmounts
-  ) internal {
-    for (uint256 i; i < tokensOut.length; i++) {
+    for (uint256 i; i < tokensLength; i++) {
       address token = tokensOut[i]; // Optimize gas by caching the token address.
       uint256 buyBalanceBefore = IERC20Upgradeable(token).balanceOf(
         address(this)
@@ -121,7 +150,7 @@ contract MetaAggregatorHandler is ExternalPositionManagement {
       }
 
       // Execute swaps
-      _executeSwaps(callDataEnso[i], tokensIn[i], swapAmounts[i]); // @todo set amount
+      _executeSwaps(callDataEnso[i]);
 
       // Handle wrapped positions for output tokens: Approves position manager to spend underlying tokens + increases liquidity
       if (
@@ -141,29 +170,10 @@ contract MetaAggregatorHandler is ExternalPositionManagement {
         minExpectedOutputAmounts[i]
       );
     }
-  }
 
-  function _validateInputParameters(
-    FunctionParameters.EnsoRebalanceParams memory _params,
-    bytes[][] memory callDataEnso,
-    bytes[][] memory callDataIncreaseLiquidity,
-    address[][] memory increaseLiquidityTarget,
-    address[] memory tokensOut,
-    address[] memory tokensIn,
-    uint256[] memory minExpectedOutputAmounts
-  ) internal pure {
-    // Validate lengths of input arrays for consistency.
-    uint256 tokensLength = tokensOut.length;
+    _returnDust(underlyingTokensDecreaseLiquidity, _params._to);
 
-    if (
-      tokensLength != minExpectedOutputAmounts.length ||
-      tokensLength != callDataEnso.length ||
-      callDataIncreaseLiquidity.length != increaseLiquidityTarget.length ||
-      tokensIn.length != tokensLength
-    ) revert ErrorLibrary.InvalidLength();
-
-    // Ensure the recipient address is valid.
-    if (_params._to == address(0)) revert ErrorLibrary.InvalidAddress();
+    return tokensOut;
   }
 
   /// @notice Executes a series of swap operations
@@ -172,17 +182,10 @@ contract MetaAggregatorHandler is ExternalPositionManagement {
   /// @custom:security This function uses delegatecall, which can be dangerous if not properly secured
   /// @custom:gas-optimization Uses cached array length to save gas in the loop
 
-  function _executeSwaps(
-    bytes[] memory _swapCallData,
-    address _sellToken,
-    uint256[] memory _sellAmount
-  ) private {
+  function _executeSwaps(bytes[] memory _swapCallData) private {
     uint256 swapCallDataLength = _swapCallData.length;
     for (uint256 j; j < swapCallDataLength; j++) {
-      TransferHelper.safeApprove(_sellToken, SWAP_TARGET, 0);
-      TransferHelper.safeApprove(_sellToken, SWAP_TARGET, _sellAmount[j]);
-
-      (bool success, ) = SWAP_TARGET.call(_swapCallData[j]);
+      (bool success, ) = SWAP_TARGET.delegatecall(_swapCallData[j]);
       if (!success) revert ErrorLibrary.CallFailed();
     }
   }

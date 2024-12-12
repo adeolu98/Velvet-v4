@@ -82,7 +82,7 @@ export async function createMetaAggregatorCalldata(
     skipSimulation: true,
   };
 
-  const postUrl = "https://metasolvertest.velvetdao.xyz/best-quotes";
+  const postUrl = "http://arbitrumcentral.velvetdao.xyz:3000/best-quotes";
 
   return await axios.post(postUrl, priceParams);
 }
