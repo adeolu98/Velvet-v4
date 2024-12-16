@@ -72,7 +72,7 @@ export async function createMetaAggregatorCalldata(
   _amountIn: any
 ): Promise<any> {
   const priceParams = {
-    slippage: 1000,
+    slippage: 10,
     amount: _amountIn,
     tokenIn: _tokenIn,
     tokenOut: _tokenOut,
@@ -84,7 +84,7 @@ export async function createMetaAggregatorCalldata(
 
   const postUrl = "http://arbitrumcentral.velvetdao.xyz:3000/best-quotes";
 
-  console.log("price params", priceParams);
+  //console.log("price params", priceParams);
 
   return await axios.post(postUrl, priceParams);
 }
