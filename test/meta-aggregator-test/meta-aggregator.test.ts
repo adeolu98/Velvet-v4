@@ -101,7 +101,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -137,7 +137,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(usdt.address, token2.address, usdtAmount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(usdt.address, token2.address, aggregator.address, swapData.data || "", usdtAmount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(usdt.address, token2.address, aggregator.address, swapData.data || "", usdtAmount, token2Amount, receiverContract.address, false)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -175,7 +175,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiver.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiver.address, false)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -246,7 +246,7 @@ describe("Swap test", function () {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETHDelegate(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false)
 
 
 
@@ -290,7 +290,7 @@ describe("Swap test", function () {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETHDelegate(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiver.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiver.address, false)
 
 
 
@@ -398,7 +398,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, false)
 
         const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
         await tnx.wait();
@@ -439,7 +439,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiver.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiver.address, false)
 
         const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
         await tnx.wait();
@@ -554,7 +554,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount, ensoHelper.address);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, true)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -593,7 +593,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount, ensoHelper.address);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, receiver.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, receiver.address, true)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -667,7 +667,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount, ensoHelper.address);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETHDelegate(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, true)
 
         const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })
         await tnx.wait();
@@ -710,7 +710,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount, ensoHelper.address);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETHDelegate(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiver.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiver.address, true)
 
         const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })
         await tnx.wait();
@@ -809,7 +809,7 @@ describe("Swap test", function () {
 
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, true)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -850,7 +850,7 @@ describe("Swap test", function () {
 
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiver.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiver.address, true)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -1237,34 +1237,7 @@ describe("Coverage test", async () => {
 
         await expect(MetaAggregatorTestSwapContract.deploy(ensoAggregator.address, zeroAddress)).to.be.reverted;
     })
-    it("should revert when when EOA calls erc20Delegate function", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user, receiverContract, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
 
-        const token1Amount = 100000000;
-        const token2Amount = 100000000;
-
-        await token1.mint(receiverContract.address, token1Amount);
-        await token2.mint(aggregator.address, token2Amount);
-
-
-        const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
-
-        await expect(metaAggregatorTestSwapContract.connect(user).swapERC20Delegate(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, 'NotDelegate')
-    })
-    it("should revert when when EOA calls ethDelegate function", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract } = await loadFixture(setupTest);
-
-
-        const nativeTokenAmount = 100000000;
-        const token2Amount = 100000000;
-
-        await token2.mint(aggregator.address, token2Amount);
-
-
-        const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
-
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETHDelegate(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, 'NotDelegate')
-    })
     it("should revert when native token is swapped through swap erc20 delegate function", async () => {
         const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, nativeToken } = await loadFixture(setupTest);
 
@@ -1278,7 +1251,7 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(nativeToken, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(nativeToken, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
@@ -1293,7 +1266,7 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETHDelegate(token2.address, nativeToken, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(token2.address, nativeToken, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false)
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })).to.be.reverted
     })
     it("should revert when eth value sent is not equal to amount in swap eth delegate call", async () => {
@@ -1307,7 +1280,7 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETHDelegate(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount / 2, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount / 2, token2Amount, receiverContract.address, false)
 
 
 
@@ -1324,7 +1297,7 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETHDelegate(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount * 2, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount * 2, receiverContract.address, false)
 
 
 
@@ -1343,7 +1316,7 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, 2 * token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
@@ -1360,7 +1333,7 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount * 2, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount * 2, receiverContract.address, false)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
@@ -1381,7 +1354,7 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, 2 * nativeTokenAmount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, 2 * nativeTokenAmount, receiverContract.address, false)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
@@ -1402,7 +1375,7 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20Delegate(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverRevert.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverRevert.address, false)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
