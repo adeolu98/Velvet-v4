@@ -30,7 +30,7 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
     address _token1,
     string memory _name,
     string memory _symbol,
-    WrapperFunctionParameters.PositionMintParamsThena memory params
+    WrapperFunctionParameters.PositionMintParamsAlgebra memory params
   ) external notPaused nonReentrant returns (address) {
     if (_dustReceiver == address(0)) revert ErrorLibrary.InvalidAddress();
 
@@ -60,19 +60,20 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
   function initializePositionAndDeposit(
     address _dustReceiver,
     IPositionWrapper _positionWrapper,
-    WrapperFunctionParameters.InitialMintParams memory params
+    WrapperFunctionParameters.InitialMintParamsAlgebra memory params
   ) external notPaused nonReentrant {
     // Mint the new Algebra V3 position using the provided liquidity parameters.
     _initializePositionAndDeposit(
       _dustReceiver,
       _positionWrapper,
-      WrapperFunctionParameters.PositionMintParamsThena({
+      WrapperFunctionParameters.PositionMintParamsAlgebra({
         _amount0Desired: params._amount0Desired,
         _amount1Desired: params._amount1Desired,
         _amount0Min: params._amount0Min,
         _amount1Min: params._amount1Min,
         _tickLower: _positionWrapper.initialTickLower(),
-        _tickUpper: _positionWrapper.initialTickUpper()
+        _tickUpper: _positionWrapper.initialTickUpper(),
+        _deployer: params._deployer
       })
     );
   }
@@ -90,6 +91,7 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
     IPositionWrapper _positionWrapper,
     address tokenIn,
     address tokenOut,
+    address deployer,
     uint256 amountIn,
     uint256 _underlyingAmountOut0,
     uint256 _underlyingAmountOut1,
@@ -129,13 +131,14 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
     // Mint a new position with the adjusted range and fee, using the tokens just collected.
     (uint256 newTokenId, ) = _mintNewUniswapPosition(
       _positionWrapper,
-      WrapperFunctionParameters.PositionMintParamsThena({
+      WrapperFunctionParameters.PositionMintParamsAlgebra({
         _amount0Desired: IERC20Upgradeable(token0).balanceOf(address(this)),
         _amount1Desired: IERC20Upgradeable(token1).balanceOf(address(this)),
         _amount0Min: 0,
         _amount1Min: 0,
         _tickLower: _tickLower,
-        _tickUpper: _tickUpper
+        _tickUpper: _tickUpper,
+        _deployer: deployer
       })
     );
 
@@ -220,7 +223,7 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
   function _initializePositionAndDeposit(
     address _dustReceiver,
     IPositionWrapper _positionWrapper,
-    WrapperFunctionParameters.PositionMintParamsThena memory params
+    WrapperFunctionParameters.PositionMintParamsAlgebra memory params
   ) internal {
     address token0 = _positionWrapper.token0();
     address token1 = _positionWrapper.token1();
@@ -274,7 +277,7 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
    */
   function _mintNewUniswapPosition(
     IPositionWrapper _positionWrapper,
-    WrapperFunctionParameters.PositionMintParamsThena memory params
+    WrapperFunctionParameters.PositionMintParamsAlgebra memory params
   ) internal returns (uint256 tokenId, uint128 liquidity) {
     address token0 = _positionWrapper.token0();
     address token1 = _positionWrapper.token1();
@@ -294,7 +297,7 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
         INonfungiblePositionManager.MintParams({
           token0: token0,
           token1: token1,
-          deployer: address(0), //@todo change
+          deployer: params._deployer,
           tickLower: params._tickLower,
           tickUpper: params._tickUpper,
           amount0Desired: params._amount0Desired,

@@ -70,7 +70,8 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAlgebraBase {
         _amount0Min: params._amount0Min,
         _amount1Min: params._amount1Min,
         _tickLower: _positionWrapper.initialTickLower(),
-        _tickUpper: _positionWrapper.initialTickUpper()
+        _tickUpper: _positionWrapper.initialTickUpper(),
+        _deployer: params._deployer
       })
     );
   }
@@ -88,6 +89,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAlgebraBase {
     IPositionWrapper _positionWrapper,
     address tokenIn,
     address tokenOut,
+    address deployer,
     uint256 amountIn,
     uint256 _underlyingAmountOut0,
     uint256 _underlyingAmountOut1,
@@ -133,7 +135,8 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAlgebraBase {
         _amount0Min: 0,
         _amount1Min: 0,
         _tickLower: _tickLower,
-        _tickUpper: _tickUpper
+        _tickUpper: _tickUpper,
+        _deployer: deployer
       })
     );
 

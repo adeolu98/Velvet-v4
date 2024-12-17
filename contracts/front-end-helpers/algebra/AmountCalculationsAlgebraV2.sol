@@ -14,8 +14,6 @@ import { IPool } from "../../wrappers/algebra-v1.2/IPool.sol";
 import { IPositionWrapper } from "../../wrappers/abstract/IPositionWrapper.sol";
 
 import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
-import "hardhat/console.sol";
-
 contract AmountCalculationsAlgebraV2 {
   INonfungiblePositionManager internal uniswapV3PositionManager =
     INonfungiblePositionManager(0xbf77b742eE1c0a6883c009Ce590A832DeBe74064);
