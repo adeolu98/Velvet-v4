@@ -48,8 +48,6 @@ The architecture of the MetaAggregator Contracts consists of two main components
 
 - `swapETH(...)`: Swaps ETH for an ERC20 token.
 - `swapERC20(...)`: Swaps one ERC20 token for another. Is called from the Manager contract.
-- `swapETHDelegate(...)`: Swaps ETH for an ERC20 token using delegate call. This method is intended to be called by other contracts and does not require prior approval.
-- `swapERC20Delegate(...)`: Swaps one ERC20 token for another using delegate call. This method is intended to be called by other contracts and does not require prior approval.
 - `_swap(...)`: Internal function that contains the logic for performing swaps.
 - `_callAggregator(...)`: Internal function to call the aggregator for the swap.
 
