@@ -10,7 +10,6 @@ import {IAaveToken} from "./IAaveToken.sol";
 import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {IPortfolio} from "../../core/interfaces/IPortfolio.sol";
-import "hardhat/console.sol";
 
 contract AaveAssetHandler is IAssetHandler {
   address immutable DATA_PROVIDER_ADDRESS =
@@ -518,7 +517,6 @@ contract AaveAssetHandler is IAssetHandler {
 
       // Loop through the lending tokens to process each one
       for (uint j = 0; j < lendingTokens.length; ) {
-        console.log("sellAmounts for pull from vault", sellAmounts[j]);
         // Pull the token from the vault
         transactions[count].to = executor;
         transactions[count].txData = abi.encodeWithSelector(
@@ -575,24 +573,17 @@ contract AaveAssetHandler is IAssetHandler {
       DATA_PROVIDER_ADDRESS
     ).getUserReserveData(_underlyingToken, _user);
 
-    console.log("_underlyingToken in contract", _underlyingToken);
-    console.log("currentVariableDebt in contract", currentVariableDebt);
-
     //Convert underlyingToken to 18 decimal
     uint borrowBalance = currentVariableDebt *
       10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
-
-    console.log("borrowBalance in contract", borrowBalance);
 
     //Get price for _protocolToken token
     uint _oraclePrice = IAavePriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
       _underlyingToken
     );
 
-    console.log("_oraclePrice in contract", _oraclePrice);
     //Get price for borrow Balance (amount * price)
     uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
-    console.log("_tokenPrice in contract", _tokenPrice);
     //calculateDebtAndPercentage
     (, uint256 percentageToRemove) = calculateDebtAndPercentage(
       _debtRepayAmount,
@@ -601,7 +592,6 @@ contract AaveAssetHandler is IAssetHandler {
       borrowBalance,
       totalCollateral
     );
-    console.log("percentageToRemove in contract", percentageToRemove);
     // Calculate the amounts to sell for each lending token
     amounts = calculateAmountsToSell(
       _user,
@@ -652,13 +642,9 @@ contract AaveAssetHandler is IAssetHandler {
     // Loop through the lent tokens to calculate the amount to sell
     for (uint256 i; i < lendTokens.length; ) {
       uint256 balance = IERC20Upgradeable(lendTokens[i]).balanceOf(_user); // Get the balance of the token
-      console.log("balance of lend token in contract", balance);
       uint256 amountToSell = (balance * percentageToRemove);
-      console.log("amountToSell in contract", amountToSell);
       amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
-      console.log("amountToSell with buffer in contract", amountToSell);
       amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
-      console.log("amounts[i] in contract", amounts[i]);
       unchecked {
         ++i;
       }

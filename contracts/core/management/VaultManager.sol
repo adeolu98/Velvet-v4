@@ -485,8 +485,8 @@ abstract contract VaultManager is
     TokenBalanceLibrary.ControllerData[]
       memory controllersData = TokenBalanceLibrary.getControllersData(
         vault,
-        _protocolConfig,
-        portfolioTokens
+        portfolioTokens,
+        _protocolConfig
       );
 
     for (uint256 i; i < portfolioTokenLength; i++) {
