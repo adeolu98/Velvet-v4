@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable, IProtocolConfig } from "../abstract/PositionManagerAbstract.sol";
+import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable, IProtocolConfig, TransferHelper } from "../abstract/PositionManagerAbstract.sol";
 import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IFactory } from "./IFactory.sol";
@@ -379,7 +379,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       revert ErrorLibrary.InvalidTokenAddress();
     }
 
-    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
+    TransferHelper.safeApprove(tokenIn, address(router), _params._amountIn);
 
     uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(tokenIn).balanceOf(
       address(this)
