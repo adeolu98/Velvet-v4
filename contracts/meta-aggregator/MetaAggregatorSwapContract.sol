@@ -33,7 +33,6 @@ contract MetaAggregatorSwapContract is
     error InsufficientETHOutAmount();
     error InsufficientTokenOutAmount();
     error SwapFailed();
-    error NotDelegate();
     error CannotSwapETH();
 
     //   Event emitted when ETH is swapped for an ERC20 token
@@ -45,21 +44,6 @@ contract MetaAggregatorSwapContract is
 
     // Event emitted when an ERC20 token is swapped for another ERC20 token
     event ERC20Swapped(
-        uint256 indexed amountOut,
-        address indexed tokenIn,
-        address indexed tokenOut,
-        address receiver
-    );
-
-    // Event emitted when ETH is swapped using delegatecall
-    event ETHSwappedDelegate(
-        uint256 indexed amountOut,
-        address indexed tokenOut,
-        address indexed receiver
-    );
-
-    // Event emitted when an ERC20 token is swapped using delegatecall
-    event ERC20SwappedDelegate(
         uint256 indexed amountOut,
         address indexed tokenIn,
         address indexed tokenOut,
@@ -153,121 +137,7 @@ contract MetaAggregatorSwapContract is
         emit ETHSwappedForToken(amountOut, address(tokenOut), receiver);
     }
 
-    /**
-     * @dev Swaps ETH using delegatecall.
-     * This function is called when the swap needs to happen in a delegatecall context.
-     * @param tokenIn must be the native token.
-     * @param tokenOut The ERC20 token to swap to.
-     * @param aggregator The address of the aggregator to use for the swap.
-     * @param swapData The data required for the swap.
-     * @param amountIn The amount of ETH to swap.
-     * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param receiver The address to receive the tokenOut.
-     * @param isDelegate Indicates if the swap is in a delegatecall context.
-     * @return amountOut The amount of tokenOut received.
-     */
-    function swapETHDelegate(
-        address tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
-    ) external payable returns (uint256 amountOut) {
-        if (address(this) == _this) revert NotDelegate();
-        if (tokenIn != nativeToken) revert CannotSwapTokens();
-
-        _validateInputs(
-            tokenIn,
-            address(tokenOut),
-            amountIn,
-            minAmountOut,
-            receiver
-        );
-        if (msg.value != amountIn) revert IncorrectEtherAmountSent();
-
-        uint256 balanceBefore = tokenOut.balanceOf(address(this));
-        _executeAggregatorCall(swapData, isDelegate, aggregator, amountIn);
-        amountOut = tokenOut.balanceOf(address(this)) - balanceBefore;
-        if (amountOut < minAmountOut) revert InsufficientOutputBalance();
-        if (receiver != address(this))
-            TransferHelper.safeTransfer(address(tokenOut), receiver, amountOut);
-
-        emit ETHSwappedDelegate(amountOut, address(tokenOut), receiver);
-    }
-
-    /**
-     * @dev Swaps ERC20 tokens using delegatecall.
-     * This function is called when the swap needs to happen in a delegatecall context.
-     * @param tokenIn The ERC20 token to swap from.
-     * @param tokenOut The ERC20 token to swap to or native ETH.
-     * @param aggregator The address of the aggregator to use for the swap.
-     * @param swapData The data required for the swap.
-     * @param amountIn The amount of tokenIn to swap.
-     * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param receiver The address to receive the tokenOut.
-     * @param isDelegate Indicates if the swap is in a delegatecall context.
-     * @return amountOut The amount of tokenOut received.
-     */
-    function swapERC20Delegate(
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
-    ) external returns (uint256 amountOut) {
-        if (address(this) == _this) revert NotDelegate();
-        if (address(tokenIn) == nativeToken) revert CannotSwapETH();
-
-        _validateInputs(
-            address(tokenIn),
-            address(tokenOut),
-            amountIn,
-            minAmountOut,
-            receiver
-        );
-
-        if (!isDelegate) {
-            if (address(tokenIn) == usdt)
-                TransferHelper.safeApprove(address(tokenIn), aggregator, 0);
-            TransferHelper.safeApprove(address(tokenIn), aggregator, amountIn);
-        }
-
-        // If tokenOut is native
-        if (address(tokenOut) == nativeToken) {
-            uint256 balanceBefore = address(this).balance;
-            _executeAggregatorCall(swapData, isDelegate, aggregator, 0);
-            amountOut = address(this).balance - balanceBefore;
-            if (amountOut < minAmountOut) revert InsufficientETHOutAmount();
-            if (receiver != address(this)) {
-                (bool success, ) = receiver.call{value: amountOut}("");
-                if (!success) revert SwapFailed();
-            }
-        } else {
-            uint256 balanceBefore = tokenOut.balanceOf(address(this));
-            _executeAggregatorCall(swapData, isDelegate, aggregator, 0);
-            amountOut = tokenOut.balanceOf(address(this)) - balanceBefore;
-            if (amountOut < minAmountOut) revert InsufficientTokenOutAmount();
-            if (receiver != address(this))
-                TransferHelper.safeTransfer(
-                    address(tokenOut),
-                    receiver,
-                    amountOut
-                );
-        }
-
-        emit ERC20SwappedDelegate(
-            amountOut,
-            address(tokenIn),
-            address(tokenOut),
-            receiver
-        );
-    }
+ 
 
     /**
      * @dev Internal function to perform the swap from ETH to ERC20.
@@ -305,7 +175,9 @@ contract MetaAggregatorSwapContract is
         uint256 amountOut = tokenOut.balanceOf(address(this)) - balanceBefore;
 
         if (amountOut < minAmountOut) revert InsufficientOutputBalance();
-        TransferHelper.safeTransfer(address(tokenOut), receiver, amountOut);
+        if (receiver != address(this)) {
+            TransferHelper.safeTransfer(address(tokenOut), receiver, amountOut);
+        }
         return amountOut;
     }
 
@@ -351,16 +223,23 @@ contract MetaAggregatorSwapContract is
             _executeAggregatorCall(swapData, isDelegate, aggregator, 0);
             amountOut = address(this).balance - balanceBefore;
             if (amountOut < minAmountOut) revert InsufficientETHOutAmount();
-
-            (bool success, ) = receiver.call{value: amountOut}("");
-            if (!success) revert SwapFailed();
+            if (receiver != address(this)) {
+                (bool success, ) = receiver.call{value: amountOut}("");
+                if (!success) revert SwapFailed();
+            }
         } else {
             uint256 balanceBefore = tokenOut.balanceOf(address(this));
             _executeAggregatorCall(swapData, isDelegate, aggregator, 0);
             amountOut = tokenOut.balanceOf(address(this)) - balanceBefore;
             if (amountOut < minAmountOut) revert InsufficientTokenOutAmount();
 
-            TransferHelper.safeTransfer(address(tokenOut), receiver, amountOut);
+            if (receiver != address(this)) {
+                TransferHelper.safeTransfer(
+                    address(tokenOut),
+                    receiver,
+                    amountOut
+                );
+            }
         }
 
         return amountOut;
