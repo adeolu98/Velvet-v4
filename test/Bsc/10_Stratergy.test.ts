@@ -33,6 +33,7 @@ import {
   Rebalancing__factory,
   PortfolioFactory,
   UniswapV2Handler,
+  PancakeSwapHandler,
   VelvetSafeModule,
   FeeModule,
   FeeModule__factory,
@@ -87,6 +88,7 @@ describe.only("Tests for Deposit", () => {
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
+  let pancakeSwapHandler: PancakeSwapHandler;
   let venusAssetHandler: VenusAssetHandler;
   let rebalancing: any;
   let rebalancing1: any;
@@ -291,10 +293,18 @@ describe.only("Tests for Deposit", () => {
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
 
+      const PancakeswapHandler = await ethers.getContractFactory(
+        "PancakeSwapHandler"
+      );
+      pancakeSwapHandler = await PancakeswapHandler.deploy();
+      await pancakeSwapHandler.deployed();
+
       const VenusAssetHandler = await ethers.getContractFactory(
         "VenusAssetHandler"
       );
-      venusAssetHandler = await VenusAssetHandler.deploy();
+      venusAssetHandler = await VenusAssetHandler.deploy(
+        pancakeSwapHandler.address
+      );
       await venusAssetHandler.deployed();
 
       const PancakeSwapHandler = await ethers.getContractFactory(

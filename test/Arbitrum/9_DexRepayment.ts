@@ -31,7 +31,7 @@ import {
   EnsoHandler,
   VelvetSafeModule,
   FeeModule,
-  UniswapV2Handler,
+  UniswapHandler,
   DepositBatch,
   DepositManager,
   TokenBalanceLibrary,
@@ -73,7 +73,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
-  let swapHandler: UniswapV2Handler;
+  let swapHandler: UniswapHandler;
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
@@ -183,10 +183,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
+      const UniSwapHandler = await ethers.getContractFactory("UniswapHandler");
+      swapHandler = await UniSwapHandler.deploy();
+      await swapHandler.deployed();
+
       const AaveAssetHandler = await ethers.getContractFactory(
         "AaveAssetHandler"
       );
-      aaveAssetHandler = await AaveAssetHandler.deploy();
+      aaveAssetHandler = await AaveAssetHandler.deploy(swapHandler.address);
       await aaveAssetHandler.deployed();
 
       const BorrowManager = await ethers.getContractFactory(
@@ -250,13 +254,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
-      const PancakeSwapHandler = await ethers.getContractFactory(
-        "UniswapV2Handler"
-      );
-      swapHandler = await PancakeSwapHandler.deploy();
-      await swapHandler.deployed();
-
-      swapHandler.init(addresses.SushiSwapRouterAddress);
 
       let whitelistedTokens = [
         addresses.ARB,
@@ -855,6 +852,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const supplyBefore = await portfolio.totalSupply();
         const tokenToSwapInto = addresses.WBTC;
 
+        console.log("tokenToSwapInto",tokenToSwapInto);
+
         const user = owner;
 
         const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
@@ -907,7 +906,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             portfolio.address,
             flashLoanProtocolToken,
             vault,
-            addresses.corePool_controller,
+            addresses.aavePool,
             aaveAssetHandler.address,
             amountPortfolioToken,
             flashloanBufferUnit

@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import {IAssetHandler} from "../../core/interfaces/IAssetHandler.sol";
+import {Ownable} from "@openzeppelin/contracts-4.8.2/access/Ownable.sol";
 import {FunctionParameters} from "../../FunctionParameters.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
 import {IAavePool, DataTypes} from "./IAavePool.sol";
@@ -11,16 +12,25 @@ import {IAavePriceOracle} from "./IAavePriceOracle.sol";
 import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import {IPortfolio} from "../../core/interfaces/IPortfolio.sol";
 import {ISwapRouter} from "./ISwapRouter.sol";
+import {ISwapHandler} from "../ISwapHandler.sol";
 import "hardhat/console.sol";
 
-contract AaveAssetHandler is IAssetHandler {
+contract AaveAssetHandler is IAssetHandler, Ownable {
+  ISwapHandler swapHandler;
+
   address immutable DATA_PROVIDER_ADDRESS =
     0x7F23D86Ee20D869112572136221e173428DD740B;
 
   address immutable PRICE_ORACLE_ADDRESS =
     0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 
-  address immutable ROUTER_ADDRESS = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+  constructor(address _swapHandler) {
+    swapHandler = ISwapHandler(_swapHandler);
+  }
+
+  function setNewSwapHandler(address _swapHandler) public onlyOwner {
+    swapHandler = ISwapHandler(_swapHandler);
+  }
 
   /**
    * @notice Returns the balance of the specified asset in the given pool.
@@ -346,16 +356,17 @@ contract AaveAssetHandler is IAssetHandler {
     );
 
     // Handle withdrawal transactions
-    MultiTransaction[] memory withdrawTransaction = withdrawTransactionsUsingDex(
-      executor,
-      vault,
-      controller,
-      receiver,
-      lendTokens,
-      totalCollateral,
-      fee,
-      flashData
-    );
+    MultiTransaction[]
+      memory withdrawTransaction = withdrawTransactionsUsingDex(
+        executor,
+        vault,
+        controller,
+        receiver,
+        lendTokens,
+        totalCollateral,
+        fee,
+        flashData
+      );
 
     // Combine all transactions into one array
     transactions = new MultiTransaction[](
@@ -434,17 +445,16 @@ contract AaveAssetHandler is IAssetHandler {
     );
 
     // Handle withdrawal transactions
-    MultiTransaction[]
-      memory withdrawTransaction = withdrawTransactions(
-        executor,
-        vault,
-        controller,
-        receiver,
-        lendTokens,
-        totalCollateral,
-        fee,
-        flashData
-      );
+    MultiTransaction[] memory withdrawTransaction = withdrawTransactions(
+      executor,
+      vault,
+      controller,
+      receiver,
+      lendTokens,
+      totalCollateral,
+      fee,
+      flashData
+    );
 
     // Combine all transactions into one array
     transactions = new MultiTransaction[](
@@ -506,7 +516,7 @@ contract AaveAssetHandler is IAssetHandler {
     uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
     transactions = new MultiTransaction[](tokenLength * 3); // Initialize the transactions array
     uint count;
-
+    address router = swapHandler.getRouterAddress();
     // Loop through the debt tokens to handle swaps and transfers
     for (uint i; i < tokenLength; ) {
       // Check if the flash loan token is different from the debt token
@@ -525,7 +535,7 @@ contract AaveAssetHandler is IAssetHandler {
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
           flashData.flashLoanToken, // recipient
-          approve(ROUTER_ADDRESS, flashData.flashLoanAmount[i]) //router
+          approve(router, flashData.flashLoanAmount[i]) //router
         );
         count++;
 
@@ -533,8 +543,8 @@ contract AaveAssetHandler is IAssetHandler {
         transactions[count].to = executor;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
-          ROUTER_ADDRESS,
-          swapTokens(
+          router,
+          swapHandler.swapExactTokensForTokens(
             flashData.flashLoanToken,
             flashData.debtToken[i],
             vault,
@@ -719,6 +729,9 @@ contract AaveAssetHandler is IAssetHandler {
       address _user = user;
       address _receiver = receiver;
       address _executor = executor;
+      address router = swapHandler.getRouterAddress();
+      address flashloanToken = flashData.flashLoanToken;
+
       // Loop through the lending tokens to process each one
       for (uint j = 0; j < lendingTokens.length; ) {
         address underlying = IAaveToken(lendingTokens[j])
@@ -738,7 +751,7 @@ contract AaveAssetHandler is IAssetHandler {
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
           underlying,
-          approve(ROUTER_ADDRESS, sellAmounts[j])
+          approve(router, sellAmounts[j])
         );
         count++;
 
@@ -746,10 +759,10 @@ contract AaveAssetHandler is IAssetHandler {
         transactions[count].to = _executor;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
-          ROUTER_ADDRESS,
-          swapTokens(
+          router,
+          swapHandler.swapExactTokensForTokens(
             underlying,
-            flashData.flashLoanToken,
+            flashloanToken,
             _receiver,
             sellAmounts[j],
             0,

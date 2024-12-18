@@ -8,6 +8,8 @@ import {IVenusComptroller, IVAIController, IPriceOracle} from "./IVenusComptroll
 import {FunctionParameters} from "../../FunctionParameters.sol";
 import {IThena} from "../../core/interfaces/IThena.sol";
 import {IAlgebraPool} from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+import {ISwapHandler} from "../ISwapHandler.sol";
+import {Ownable} from "@openzeppelin/contracts-4.8.2/access/Ownable.sol";
 import "./ExponentialNoError.sol";
 
 /**
@@ -15,8 +17,16 @@ import "./ExponentialNoError.sol";
  * @notice This contract interacts with the Venus protocol to manage user assets and liquidity positions.
  * @dev Provides functions to get balances, handle markets, and process loans within the Venus protocol.
  */
-contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
-  address immutable ROUTER_ADDRESS = 0x1b81D678ffb9C0263b24A97847620C99d213eB14;
+contract VenusAssetHandler is IAssetHandler, ExponentialNoError, Ownable {
+  ISwapHandler swapHandler;
+
+  constructor(address _swapHandler) {
+    swapHandler = ISwapHandler(_swapHandler);
+  }
+
+  function setNewSwapHandler(address _swapHandler) public onlyOwner {
+    swapHandler = ISwapHandler(_swapHandler);
+  }
 
   /**
    * @dev Struct to hold local variables for calculating account liquidity,
@@ -858,6 +868,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
     transactions = new MultiTransaction[](tokenLength * 3); // Initialize the transactions array
     uint count;
+    address router = swapHandler.getRouterAddress();
 
     // Loop through the debt tokens to handle swaps and transfers
     for (uint i; i < tokenLength; ) {
@@ -877,7 +888,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
           flashData.flashLoanToken, // recipient
-          approve(ROUTER_ADDRESS, flashData.flashLoanAmount[i]) //router
+          approve(router, flashData.flashLoanAmount[i]) //router
         );
         count++;
 
@@ -885,8 +896,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         transactions[count].to = executor;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
-          ROUTER_ADDRESS,
-          swapTokens(
+          router,
+          swapHandler.swapExactTokensForTokens(
             flashData.flashLoanToken,
             flashData.debtToken[i],
             vault,
@@ -1071,17 +1082,20 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
       address _user = user;
       address _receiver = receiver;
       address _executor = executor;
+      address router = swapHandler.getRouterAddress();
+      address flashloanToken = flashData.flashLoanToken;
+
       // Loop through the lending tokens to process each one
       for (uint j = 0; j < lendingTokens.length; ) {
-
-        address underlying = IVenusPool(lendingTokens[i]).underlying();
+        address lendingToken = lendingTokens[i];
+        address underlying = IVenusPool(lendingToken).underlying();
 
         // withdraw token of vault
         transactions[count].to = _executor;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
-          lendingTokens[i],
-          withdraw(underlying,_user,sellAmounts[j])
+          lendingToken,
+          withdraw(underlying, _user, sellAmounts[j])
         );
         count++;
 
@@ -1090,7 +1104,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
           underlying,
-          approve(ROUTER_ADDRESS, sellAmounts[j])
+          approve(router, sellAmounts[j])
         );
         count++;
 
@@ -1098,10 +1112,10 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         transactions[count].to = _executor;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
-          ROUTER_ADDRESS,
-          swapTokens(
+          router,
+          swapHandler.swapExactTokensForTokens(
             underlying,
-            flashData.flashLoanToken,
+            flashloanToken,
             _receiver,
             sellAmounts[j],
             0,
