@@ -165,6 +165,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("60");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
       await protocolConfig.setSupportedFactory(addresses.aavePool);
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing");
@@ -183,14 +184,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
-      const UniSwapHandler = await ethers.getContractFactory("UniswapHandler");
-      swapHandler = await UniSwapHandler.deploy();
-      await swapHandler.deployed();
-
       const AaveAssetHandler = await ethers.getContractFactory(
         "AaveAssetHandler"
       );
-      aaveAssetHandler = await AaveAssetHandler.deploy(swapHandler.address);
+      aaveAssetHandler = await AaveAssetHandler.deploy();
       await aaveAssetHandler.deployed();
 
       const BorrowManager = await ethers.getContractFactory(
@@ -827,11 +824,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _protocolToken: [addresses.aArbARB], // lending token in case of venus
           _bufferUnit: bufferUnit, //Buffer unit for collateral amount
           _solverHandler: ensoHandler.address, //Handler to swap
+          _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
+          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
           firstSwapData: [],
           secondSwapData: [],
           isMaxRepayment: false,
+          isDexRepayment: true,
         });
 
         console.log(
@@ -852,7 +852,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const supplyBefore = await portfolio.totalSupply();
         const tokenToSwapInto = addresses.WBTC;
 
-        console.log("tokenToSwapInto",tokenToSwapInto);
+        console.log("tokenToSwapInto", tokenToSwapInto);
 
         const user = owner;
 
@@ -926,6 +926,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanToken: flashLoanToken, //Token to take flashlaon
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
+            _swapHandler: swapHandler.address,
+            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            isDexRepayment: true,
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: [],
             secondSwapData: [],

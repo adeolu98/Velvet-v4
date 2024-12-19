@@ -76,6 +76,7 @@ abstract contract AbstractBorrowManager is
     beforeRepayVerification(
       repayData._factory,
       repayData._solverHandler,
+      repayData._swapHandler,
       repayData._bufferUnit
     );
 
@@ -135,6 +136,7 @@ abstract contract AbstractBorrowManager is
     beforeRepayVerification(
       repayData._factory,
       repayData._solverHandler,
+      repayData._swapHandler,
       repayData._bufferUnit
     );
 
@@ -200,6 +202,7 @@ abstract contract AbstractBorrowManager is
   function beforeRepayVerification(
     address _factory,
     address _solverHandler,
+    address _swapHandler,
     uint256 _bufferUnit
   ) internal view {
     if (!_protocolConfig.isSupportedFactory(_factory))
@@ -207,6 +210,9 @@ abstract contract AbstractBorrowManager is
 
     if (!_protocolConfig.isSolver(_solverHandler))
       revert ErrorLibrary.InvalidSolver();
+
+    if(!_protocolConfig.isSwapHandler(_swapHandler))
+      revert ErrorLibrary.InvalidSwapHandler();
 
     if (_protocolConfig.MAX_COLLATERAL_BUFFER_UNIT() < _bufferUnit)
       revert ErrorLibrary.InvalidBufferUnit();

@@ -15,21 +15,83 @@ import {ISwapRouter} from "./ISwapRouter.sol";
 import {ISwapHandler} from "../ISwapHandler.sol";
 import "hardhat/console.sol";
 
-contract AaveAssetHandler is IAssetHandler, Ownable {
-  ISwapHandler swapHandler;
-
+contract AaveAssetHandler is IAssetHandler {
   address immutable DATA_PROVIDER_ADDRESS =
     0x7F23D86Ee20D869112572136221e173428DD740B;
 
   address immutable PRICE_ORACLE_ADDRESS =
     0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7;
 
-  constructor(address _swapHandler) {
-    swapHandler = ISwapHandler(_swapHandler);
+  /// @dev Struct to hold context data for withdrawal transactions to avoid stack too deep errors
+  /// @param user Address of the user whose assets are being withdrawn
+  /// @param executor Address of the contract executing the transactions
+  /// @param controller Address of the Aave controller
+  /// @param receiver Address receiving the swapped tokens
+  /// @param poolAddress Address of the Aave pool
+  /// @param flashloanToken Address of the token used for flash loan
+  /// @param router Address of the DEX router
+  /// @param swapHandler Address of the swap handler contract
+  /// @param totalCollateral Total collateral value
+  /// @param fee Fee for the transaction
+  /// @param bufferUnit Buffer unit for calculations (expressed in basis points)
+  struct WithdrawContext {
+    address user;
+    address executor;
+    address controller;
+    address receiver;
+    address poolAddress;
+    address flashloanToken;
+    address router;
+    address swapHandler;
+    uint256 totalCollateral;
+    uint256 fee;
+    uint256 bufferUnit;
   }
 
-  function setNewSwapHandler(address _swapHandler) public onlyOwner {
-    swapHandler = ISwapHandler(_swapHandler);
+  /**
+   * @dev Struct to hold arrays of different types of transactions during loan processing.
+   * This struct helps manage transaction arrays while avoiding stack too deep errors.
+   * @param swapTx Array of transactions for token swaps
+   * @param repayTx Array of transactions for loan repayments
+   * @param withdrawTx Array of transactions for asset withdrawals
+   */
+  struct TransactionArrays {
+    MultiTransaction[] swapTx;
+    MultiTransaction[] repayTx;
+    MultiTransaction[] withdrawTx;
+  }
+
+  struct LoanProcessingParams {
+    address vault;
+    address executor;
+    address controller;
+    address receiver;
+    address[] lendTokens;
+    uint256 totalCollateral;
+    uint256 fee;
+    FunctionParameters.FlashLoanData flashData;
+  }
+
+  // New struct to hold swap processing results
+  struct ProcessedSwaps {
+    MultiTransaction[] transactions;
+    uint256 flashAmount;
+    uint256 feeCount;
+  }
+
+  // New struct to hold repay and withdraw transaction results
+  struct ProcessedTransactions {
+    MultiTransaction[] repayTx;
+    MultiTransaction[] withdrawTx;
+  }
+
+  // Add this struct before the function
+  struct SwapContext {
+    address vault;
+    address executor;
+    address router;
+    address flashLoanToken;
+    ISwapHandler swapHandler;
   }
 
   /**
@@ -339,47 +401,107 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
     address receiver,
     address[] memory lendTokens,
     uint256 totalCollateral,
-    uint fee,
+    uint256 fee,
     FunctionParameters.FlashLoanData memory flashData
-  ) external view returns (MultiTransaction[] memory transactions, uint256) {
-    // Process swaps and transfers during the loan
-    (
-      MultiTransaction[] memory swapTransactions,
-      uint256 totalFlashAmount
-    ) = swapAndTransferTransactionsUsingDex(vault, executor, flashData);
+  ) internal view returns (MultiTransaction[] memory transactions, uint256) {
+    // Create params struct to pass around
+    LoanProcessingParams memory params = LoanProcessingParams({
+      vault: vault,
+      executor: executor,
+      controller: controller,
+      receiver: receiver,
+      lendTokens: lendTokens,
+      totalCollateral: totalCollateral,
+      fee: fee,
+      flashData: flashData
+    });
 
-    // Handle repayment transactions
-    MultiTransaction[] memory repayLoanTransaction = repayTransactions(
-      executor,
-      vault,
-      flashData
+    return processLoanTransactions(params);
+  }
+
+  function processLoanTransactions(
+    LoanProcessingParams memory params
+  )
+    internal
+    view
+    returns (MultiTransaction[] memory transactions, uint256 totalFlashAmount)
+  {
+    // 1. Gets swap transactions and flash amount - SAME
+    ProcessedSwaps memory swapResult = processSwaps(params);
+
+    // 2 & 3. Gets repay and withdraw transactions - SAME
+    ProcessedTransactions memory txResult = processRepayAndWithdraw(
+      params,
+      swapResult.feeCount
     );
 
-    // Handle withdrawal transactions
-    MultiTransaction[]
-      memory withdrawTransaction = withdrawTransactionsUsingDex(
-        executor,
-        vault,
-        controller,
-        receiver,
-        lendTokens,
-        totalCollateral,
-        fee,
-        flashData
-      );
+    // 4. Combines transactions in same order - SAME
+    transactions = combineTransactions(
+      TransactionArrays({
+        swapTx: swapResult.transactions,
+        repayTx: txResult.repayTx,
+        withdrawTx: txResult.withdrawTx
+      })
+    );
 
-    // Combine all transactions into one array
-    transactions = new MultiTransaction[](
-      swapTransactions.length +
-        repayLoanTransaction.length +
-        withdrawTransaction.length
+    // 5. Returns same values - SAME
+    return (transactions, swapResult.flashAmount);
+  }
+
+  // Helper function - exact same logic as original swapAndTransferTransactionsUsingDex call
+  function processSwaps(
+    LoanProcessingParams memory params
+  ) internal view returns (ProcessedSwaps memory result) {
+    (
+      result.transactions,
+      result.flashAmount,
+      result.feeCount
+    ) = swapAndTransferTransactionsUsingDex(
+      params.vault,
+      params.executor,
+      params.flashData
+    );
+  }
+
+  // Helper function - exact same logic as original repay and withdraw calls
+  function processRepayAndWithdraw(
+    LoanProcessingParams memory params,
+    uint256 feeCount
+  ) internal view returns (ProcessedTransactions memory result) {
+    result.repayTx = repayTransactions(
+      params.executor,
+      params.vault,
+      params.flashData
+    );
+
+    result.withdrawTx = withdrawTransactionsUsingDex(
+      params.executor,
+      params.vault,
+      params.controller,
+      params.receiver,
+      params.lendTokens,
+      params.totalCollateral,
+      params.fee,
+      feeCount,
+      params.flashData
+    );
+  }
+
+  function combineTransactions(
+    TransactionArrays memory txArrays
+  ) private pure returns (MultiTransaction[] memory) {
+    // Combine all transactions into one array - keeping original array size calculation
+    MultiTransaction[] memory transactions = new MultiTransaction[](
+      txArrays.swapTx.length +
+        txArrays.repayTx.length +
+        txArrays.withdrawTx.length
     );
     uint256 count;
 
     // Add swap transactions to the final array
-    for (uint i = 0; i < swapTransactions.length; ) {
-      transactions[count].to = swapTransactions[i].to;
-      transactions[count].txData = swapTransactions[i].txData;
+    for (uint i = 0; i < txArrays.swapTx.length; ) {
+      transactions[count].to = txArrays.swapTx[i].to;
+      transactions[count].txData = txArrays.swapTx[i].txData;
       count++;
       unchecked {
         ++i;
@@ -387,9 +509,9 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
     }
 
     // Add repay transactions to the final array
-    for (uint i = 0; i < repayLoanTransaction.length; ) {
-      transactions[count].to = repayLoanTransaction[i].to;
-      transactions[count].txData = repayLoanTransaction[i].txData;
+    for (uint i = 0; i < txArrays.repayTx.length; ) {
+      transactions[count].to = txArrays.repayTx[i].to;
+      transactions[count].txData = txArrays.repayTx[i].txData;
       count++;
       unchecked {
         ++i;
@@ -397,15 +519,16 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
     }
 
     // Add withdrawal transactions to the final array
-    for (uint i = 0; i < withdrawTransaction.length; ) {
-      transactions[count].to = withdrawTransaction[i].to;
-      transactions[count].txData = withdrawTransaction[i].txData;
+    for (uint i = 0; i < txArrays.withdrawTx.length; ) {
+      transactions[count].to = txArrays.withdrawTx[i].to;
+      transactions[count].txData = txArrays.withdrawTx[i].txData;
       count++;
       unchecked {
         ++i;
       }
     }
-    return (transactions, totalFlashAmount); // Return the final array of transactions and total flash loan amount
+
+    return transactions;
   }
 
   /**
@@ -419,7 +542,7 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
    * @param fee The fee for the transaction.
    * @param flashData A struct containing flash loan data.
    * @return transactions An array of transactions to execute.
-   * @return The total amount of flash loan used.
+   * @return totalFlashAmount The total amount of flash loan used.
    */
   function loanProcessing(
     address vault,
@@ -430,71 +553,88 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
     uint256 totalCollateral,
     uint fee,
     FunctionParameters.FlashLoanData memory flashData
-  ) external view returns (MultiTransaction[] memory transactions, uint256) {
-    // Process swaps and transfers during the loan
-    (
-      MultiTransaction[] memory swapTransactions,
-      uint256 totalFlashAmount
-    ) = swapAndTransferTransactions(vault, flashData);
+  )
+    external
+    view
+    returns (MultiTransaction[] memory transactions, uint256 totalFlashAmount)
+  {
+    if (flashData.isDexRepayment) {
+      (transactions, totalFlashAmount) = loanProcessingDex(
+        vault,
+        executor,
+        controller,
+        receiver,
+        lendTokens,
+        totalCollateral,
+        fee,
+        flashData
+      );
+    } else {
+      // Process swaps and transfers during the loan
+      (
+        MultiTransaction[] memory swapTransactions,
+        uint256 flashLoanAmount
+      ) = swapAndTransferTransactions(vault, flashData);
 
-    // Handle repayment transactions
-    MultiTransaction[] memory repayLoanTransaction = repayTransactions(
-      executor,
-      vault,
-      flashData
-    );
+      // Handle repayment transactions
+      MultiTransaction[] memory repayLoanTransaction = repayTransactions(
+        executor,
+        vault,
+        flashData
+      );
 
-    // Handle withdrawal transactions
-    MultiTransaction[] memory withdrawTransaction = withdrawTransactions(
-      executor,
-      vault,
-      controller,
-      receiver,
-      lendTokens,
-      totalCollateral,
-      fee,
-      flashData
-    );
+      // Handle withdrawal transactions
+      MultiTransaction[] memory withdrawTransaction = withdrawTransactions(
+        executor,
+        vault,
+        controller,
+        receiver,
+        lendTokens,
+        totalCollateral,
+        fee,
+        flashData
+      );
 
-    // Combine all transactions into one array
-    transactions = new MultiTransaction[](
-      swapTransactions.length +
-        repayLoanTransaction.length +
-        withdrawTransaction.length
-    );
-    uint256 count;
+      // Combine all transactions into one array
+      transactions = new MultiTransaction[](
+        swapTransactions.length +
+          repayLoanTransaction.length +
+          withdrawTransaction.length
+      );
+      uint256 count;
 
-    // Add swap transactions to the final array
-    for (uint i = 0; i < swapTransactions.length; ) {
-      transactions[count].to = swapTransactions[i].to;
-      transactions[count].txData = swapTransactions[i].txData;
-      count++;
-      unchecked {
-        ++i;
+      // Add swap transactions to the final array
+      for (uint i = 0; i < swapTransactions.length; ) {
+        transactions[count].to = swapTransactions[i].to;
+        transactions[count].txData = swapTransactions[i].txData;
+        count++;
+        unchecked {
+          ++i;
+        }
       }
-    }
 
-    // Add repay transactions to the final array
-    for (uint i = 0; i < repayLoanTransaction.length; ) {
-      transactions[count].to = repayLoanTransaction[i].to;
-      transactions[count].txData = repayLoanTransaction[i].txData;
-      count++;
-      unchecked {
-        ++i;
+      // Add repay transactions to the final array
+      for (uint i = 0; i < repayLoanTransaction.length; ) {
+        transactions[count].to = repayLoanTransaction[i].to;
+        transactions[count].txData = repayLoanTransaction[i].txData;
+        count++;
+        unchecked {
+          ++i;
+        }
       }
-    }
 
-    // Add withdrawal transactions to the final array
-    for (uint i = 0; i < withdrawTransaction.length; ) {
-      transactions[count].to = withdrawTransaction[i].to;
-      transactions[count].txData = withdrawTransaction[i].txData;
-      count++;
-      unchecked {
-        ++i;
+      // Add withdrawal transactions to the final array
+      for (uint i = 0; i < withdrawTransaction.length; ) {
+        transactions[count].to = withdrawTransaction[i].to;
+        transactions[count].txData = withdrawTransaction[i].txData;
+        count++;
+        unchecked {
+          ++i;
+        }
       }
-    }
 
-    return (transactions, totalFlashAmount); // Return the final array of transactions and total flash loan amount
+      return (transactions, flashLoanAmount); // Return the final array of transactions and total flash loan amount
+    }
   }
 
   /**
@@ -503,6 +643,7 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
    * @param flashData A struct containing flash loan data.
    * @return transactions An array of transactions to execute.
    * @return totalFlashAmount The total amount of flash loan used.
+   * @return feeCount The count of fees array.
    */
   function swapAndTransferTransactionsUsingDex(
     address vault,
@@ -511,72 +652,114 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
   )
     internal
     view
-    returns (MultiTransaction[] memory transactions, uint256 totalFlashAmount)
+    returns (
+      MultiTransaction[] memory transactions,
+      uint256 totalFlashAmount,
+      uint256 feeCount
+    )
   {
-    uint256 tokenLength = flashData.debtToken.length; // Get the number of debt tokens
-    transactions = new MultiTransaction[](tokenLength * 3); // Initialize the transactions array
+    SwapContext memory context = SwapContext({
+      vault: vault,
+      executor: executor,
+      router: ISwapHandler(flashData.swapHandler).getRouterAddress(),
+      flashLoanToken: flashData.flashLoanToken,
+      swapHandler: ISwapHandler(flashData.swapHandler)
+    });
+
+    uint256 tokenLength = flashData.debtToken.length;
+    transactions = new MultiTransaction[](tokenLength * 3);
     uint count;
-    address router = swapHandler.getRouterAddress();
-    // Loop through the debt tokens to handle swaps and transfers
+
+    (transactions, count, totalFlashAmount, feeCount) = createSwapTransactions(
+      context,
+      flashData,
+      transactions,
+      count,
+      feeCount
+    );
+    
+    uint unusedLength = ((tokenLength * 2) - count);
+    assembly {
+      mstore(transactions, sub(mload(transactions), unusedLength))
+    }
+  }
+
+  function createSwapTransactions(
+    SwapContext memory context,
+    FunctionParameters.FlashLoanData memory flashData,
+    MultiTransaction[] memory transactions,
+    uint256 count,
+    uint256 feeCount
+  )
+    internal
+    view
+    returns (
+      MultiTransaction[] memory,
+      uint256,
+      uint256,
+      uint256
+    )
+  {
+    uint256 totalFlashAmount;
+    uint256 tokenLength = flashData.debtToken.length;
+
     for (uint i; i < tokenLength; ) {
-      // Check if the flash loan token is different from the debt token
-      if (flashData.flashLoanToken != flashData.debtToken[i]) {
+      if (context.flashLoanToken != flashData.debtToken[i]) {
         // Transfer the flash loan token to the vault
-        transactions[count].to = flashData.flashLoanToken;
+        transactions[count].to = context.flashLoanToken;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("transfer(address,uint256)")),
-          vault, // recipient
+          context.vault,
           flashData.flashLoanAmount[i]
         );
         count++;
 
         //Vault Approves the token to dex
-        transactions[count].to = executor;
+        transactions[count].to = context.executor;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
-          flashData.flashLoanToken, // recipient
-          approve(router, flashData.flashLoanAmount[i]) //router
+          context.flashLoanToken,
+          approve(context.router, flashData.flashLoanAmount[i])
         );
         count++;
 
+        SwapContext memory _context = context;
+        FunctionParameters.FlashLoanData memory _flashData = flashData;
+        uint256 _feeCount = feeCount;
+
         // Swap the token using the solver handler
-        transactions[count].to = executor;
+        transactions[count].to = context.executor;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("vaultInteraction(address,bytes)")),
-          router,
-          swapHandler.swapExactTokensForTokens(
-            flashData.flashLoanToken,
-            flashData.debtToken[i],
-            vault,
-            flashData.flashLoanAmount[i],
-            flashData.debtRepayAmount[i],
-            3000
+          _context.router,
+          _context.swapHandler.swapExactTokensForTokens(
+            _context.flashLoanToken,
+            _flashData.debtToken[i],
+            _context.vault,
+            _flashData.flashLoanAmount[i],
+            _flashData.debtRepayAmount[i],
+            _flashData.poolFees[_feeCount]
           )
         );
         count++;
-      }
-      // Handle the case where the flash loan token is the same as the debt token
-      else {
-        // Transfer the token directly to the vault
-        transactions[count].to = flashData.flashLoanToken;
+        feeCount++;
+      } else {
+        transactions[count].to = context.flashLoanToken;
         transactions[count].txData = abi.encodeWithSelector(
           bytes4(keccak256("transfer(address,uint256)")),
-          vault, // recipient
+          context.vault,
           flashData.flashLoanAmount[i]
         );
         count++;
       }
 
-      totalFlashAmount += flashData.flashLoanAmount[i]; // Update the total flash loan amount
+      totalFlashAmount += flashData.flashLoanAmount[i];
       unchecked {
         ++i;
       }
     }
-    // Resize the transactions array to remove unused entries
-    uint unusedLength = ((tokenLength * 2) - count);
-    assembly {
-      mstore(transactions, sub(mload(transactions), unusedLength))
-    }
+
+    return (transactions, count, totalFlashAmount, feeCount);
   }
 
   /**
@@ -686,18 +869,16 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
     }
   }
 
-  /**
-   * @notice Internal function to handle withdrawal transactions during loan processing.
-   * @param executor The address of the executor.
-   * @param user The address of the user account.
-   * @param controller The address of the Venus Comptroller.
-   * @param receiver The address of the receiver.
-   * @param lendingTokens The array of addresses representing lent assets.
-   * @param totalCollateral The total collateral value.
-   * @param fee The fee for the transaction.
-   * @param flashData A struct containing flash loan data.
-   * @return transactions An array of transactions to execute.
-   */
+  /// @notice Main entry point for processing withdrawal transactions using DEX
+  /// @param executor Address of the contract executing the transactions
+  /// @param user Address of the user whose assets are being withdrawn
+  /// @param controller Address of the Aave controller
+  /// @param receiver Address receiving the swapped tokens
+  /// @param lendingTokens Array of lending token addresses to process
+  /// @param totalCollateral Total collateral value
+  /// @param fee Fee for the transaction
+  /// @param flashData Struct containing flash loan related data
+  /// @return MultiTransaction[] Array of transactions to be executed
   function withdrawTransactionsUsingDex(
     address executor,
     address user,
@@ -706,78 +887,151 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
     address[] memory lendingTokens,
     uint256 totalCollateral,
     uint256 fee,
+    uint256 feeCount,
     FunctionParameters.FlashLoanData memory flashData
+  ) internal view returns (MultiTransaction[] memory) {
+    // Create context struct with all necessary data
+    WithdrawContext memory context = WithdrawContext({
+      user: user,
+      executor: executor,
+      controller: controller,
+      receiver: receiver,
+      poolAddress: flashData.poolAddress,
+      flashloanToken: flashData.flashLoanToken,
+      router: ISwapHandler(flashData.swapHandler).getRouterAddress(),
+      swapHandler: flashData.swapHandler,
+      totalCollateral: totalCollateral,
+      fee: fee,
+      bufferUnit: flashData.bufferUnit
+    });
+
+    return
+      processWithdrawTransactions(context, lendingTokens, flashData, feeCount);
+  }
+
+  /// @notice Processes the withdrawal transactions for all assets
+  /// @param context Struct containing all context data for the withdrawal
+  /// @param lendingTokens Array of lending token addresses to process
+  /// @param flashData Struct containing flash loan related data
+  /// @return transactions Array of transactions to be executed
+  function processWithdrawTransactions(
+    WithdrawContext memory context,
+    address[] memory lendingTokens,
+    FunctionParameters.FlashLoanData memory flashData,
+    uint256 feeCount
   ) internal view returns (MultiTransaction[] memory transactions) {
-    uint256 amountLength = flashData.debtRepayAmount.length; // Get the number of repayment amounts
+    uint256 amountLength = flashData.debtRepayAmount.length;
+    // Same array size as original
     transactions = new MultiTransaction[](
       amountLength * 3 * lendingTokens.length
-    ); // Initialize the transactions array
-    uint256 count; // Count for the transactions
-    // Loop through the repayment amounts to handle withdrawals
+    );
+    uint256 count;
+
+    WithdrawContext memory _context = context;
     for (uint i = 0; i < amountLength; ) {
-      // Get the amounts to sell based on the collateral
+      // Same collateral calculation logic as original
       uint256[] memory sellAmounts = getCollateralAmountToSell(
-        user,
-        controller,
+        _context.user,
+        _context.controller,
         flashData.protocolTokens[i],
         lendingTokens,
         flashData.debtRepayAmount[i],
-        fee,
-        totalCollateral,
-        flashData.bufferUnit
+        _context.fee,
+        _context.totalCollateral,
+        _context.bufferUnit
       );
-      address _user = user;
-      address _receiver = receiver;
-      address _executor = executor;
-      address router = swapHandler.getRouterAddress();
-      address flashloanToken = flashData.flashLoanToken;
 
-      // Loop through the lending tokens to process each one
-      for (uint j = 0; j < lendingTokens.length; ) {
-        address underlying = IAaveToken(lendingTokens[j])
-          .UNDERLYING_ASSET_ADDRESS();
-        console.log("sellAmounts for pull from vault", sellAmounts[j]);
-        // withdraw token of vault
-        transactions[count].to = _executor;
-        transactions[count].txData = abi.encodeWithSelector(
-          bytes4(keccak256("vaultInteraction(address,bytes)")),
-          flashData.poolAddress,
-          withdraw(underlying, _user, sellAmounts[j])
-        );
-        count++;
+      (count, feeCount) = processLendingTokenBatch(
+        _context,
+        lendingTokens,
+        sellAmounts,
+        transactions,
+        count,
+        feeCount,
+        flashData.poolFees
+      );
 
-        // Approve the collateral underlying token for the protocol
-        transactions[count].to = _executor;
-        transactions[count].txData = abi.encodeWithSelector(
-          bytes4(keccak256("vaultInteraction(address,bytes)")),
-          underlying,
-          approve(router, sellAmounts[j])
-        );
-        count++;
-
-        //Swap the token and transfer it to the receiver
-        transactions[count].to = _executor;
-        transactions[count].txData = abi.encodeWithSelector(
-          bytes4(keccak256("vaultInteraction(address,bytes)")),
-          router,
-          swapHandler.swapExactTokensForTokens(
-            underlying,
-            flashloanToken,
-            _receiver,
-            sellAmounts[j],
-            0,
-            3000
-          )
-        );
-        count++;
-        unchecked {
-          ++j;
-        }
-      }
       unchecked {
         ++i;
       }
     }
+    return transactions;
+  }
+
+  /// @notice Processes a batch of lending tokens to create withdrawal, approval, and swap transactions
+  /// @param context Struct containing all context data for the withdrawal
+  /// @param lendingTokens Array of lending token addresses to process
+  /// @param sellAmounts Array of amounts to sell for each lending token
+  /// @param transactions Array to store the generated transactions
+  /// @param count Current count of transactions
+  /// @return uint256 Updated count of transactions after processing the batch
+  /// @dev For each lending token, creates three transactions:
+  ///      1. Withdraw tokens from vault
+  ///      2. Approve tokens for DEX
+  ///      3. Swap tokens through DEX
+  function processLendingTokenBatch(
+    WithdrawContext memory context,
+    address[] memory lendingTokens,
+    uint256[] memory sellAmounts,
+    MultiTransaction[] memory transactions,
+    uint256 count,
+    uint256 feeCount,
+    uint256[] memory poolFees
+  ) internal view returns (uint256, uint256) {
+    for (uint j = 0; j < lendingTokens.length; ) {
+      address underlying = IAaveToken(lendingTokens[j])
+        .UNDERLYING_ASSET_ADDRESS();
+      console.log("sellAmounts for pull from vault", sellAmounts[j]);
+
+      WithdrawContext memory _context = context;
+      uint256 _sellAmount = sellAmounts[j];
+
+      // 1. Withdraw transaction - same as original
+      transactions[count++] = MultiTransaction({
+        to: _context.executor,
+        txData: abi.encodeWithSelector(
+          bytes4(keccak256("vaultInteraction(address,bytes)")),
+          _context.poolAddress,
+          withdraw(underlying, _context.user, _sellAmount)
+        )
+      });
+
+      // 2. Approve transaction - same as original
+      transactions[count++] = MultiTransaction({
+        to: _context.executor,
+        txData: abi.encodeWithSelector(
+          bytes4(keccak256("vaultInteraction(address,bytes)")),
+          underlying,
+          approve(_context.router, _sellAmount)
+        )
+      });
+
+      uint fee = poolFees[feeCount];
+
+      // 3. Swap transaction - same as original
+      transactions[count++] = MultiTransaction({
+        to: _context.executor,
+        txData: abi.encodeWithSelector(
+          bytes4(keccak256("vaultInteraction(address,bytes)")),
+          _context.router,
+          ISwapHandler(_context.swapHandler).swapExactTokensForTokens(
+            underlying,
+            _context.flashloanToken,
+            _context.receiver,
+            _sellAmount,
+            0,
+            fee
+          )
+        )
+      });
+      count++;
+      feeCount++;
+
+      unchecked {
+        ++j;
+      }
+    }
+    return (count, feeCount);
   }
 
   /**
@@ -1010,12 +1264,15 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
         protocolTokens: borrowedTokens,
         bufferUnit: repayData._bufferUnit,
         solverHandler: repayData._solverHandler,
+        swapHandler: repayData._swapHandler,
         poolAddress: repayData._factory,
         flashLoanAmount: repayData._flashLoanAmount,
         debtRepayAmount: tokenBalance,
+        poolFees: repayData._poolFees,
         firstSwapData: repayData.firstSwapData,
         secondSwapData: repayData.secondSwapData,
-        isMaxRepayment: false
+        isMaxRepayment: false,
+        isDexRepayment: repayData.isDexRepayment
       });
 
     // Initiate the flash loan from the Algebra pool
@@ -1051,12 +1308,15 @@ contract AaveAssetHandler is IAssetHandler, Ownable {
         protocolTokens: repayData._protocolToken,
         bufferUnit: repayData._bufferUnit,
         solverHandler: repayData._solverHandler,
+        swapHandler: repayData._swapHandler,
         poolAddress: repayData._token0, //Need to change it and use single address
         flashLoanAmount: repayData._flashLoanAmount,
         debtRepayAmount: repayData._debtRepayAmount,
+        poolFees: repayData._poolFees,
         firstSwapData: repayData.firstSwapData,
         secondSwapData: repayData.secondSwapData,
-        isMaxRepayment: repayData.isMaxRepayment
+        isMaxRepayment: repayData.isMaxRepayment,
+        isDexRepayment: repayData.isDexRepayment
       });
 
     address[] memory assets = new address[](1);

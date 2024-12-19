@@ -258,10 +258,17 @@ describe.only("Tests for Deposit", () => {
       ]);
       await tx.wait();
 
+      const PancakeswapHandler = await ethers.getContractFactory(
+        "PancakeSwapHandler"
+      );
+      pancakeSwapHandler = await PancakeswapHandler.deploy();
+      await pancakeSwapHandler.deployed();
+
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
-
+      await protocolConfig.enableSwapHandler(pancakeSwapHandler.address);
+   
       await protocolConfig.enableTokens([
         iaddress.ethAddress,
         iaddress.btcAddress,
@@ -293,17 +300,10 @@ describe.only("Tests for Deposit", () => {
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
 
-      const PancakeswapHandler = await ethers.getContractFactory(
-        "PancakeSwapHandler"
-      );
-      pancakeSwapHandler = await PancakeswapHandler.deploy();
-      await pancakeSwapHandler.deployed();
-
       const VenusAssetHandler = await ethers.getContractFactory(
         "VenusAssetHandler"
       );
       venusAssetHandler = await VenusAssetHandler.deploy(
-        pancakeSwapHandler.address
       );
       await venusAssetHandler.deployed();
 
@@ -1313,11 +1313,14 @@ describe.only("Tests for Deposit", () => {
           _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
           _bufferUnit: bufferUnit, //Buffer unit for collateral amount
           _solverHandler: ensoHandler.address, //Handler to swap
+          _swapHandler: pancakeSwapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
           isMaxRepayment: false,
+          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          isDexRepayment: false,
         });
 
         console.log(
