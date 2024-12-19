@@ -21,7 +21,6 @@ import {TokenBalanceLibrary} from "../core/calculations/TokenBalanceLibrary.sol"
 import {IAavePriceOracle} from "../handler/Aave/IAavePriceOracle.sol";
 import {IPoolDataProvider} from "../handler/Aave/IPoolDataProvider.sol";
 import {IAaveToken} from "../handler/Aave/IAaveToken.sol";
-import "hardhat/console.sol";
 
 contract PortfolioCalculations is ExponentialNoError {
   uint256 internal constant ONE_ETH_IN_WEI = 10 ** 18;
@@ -727,10 +726,7 @@ contract PortfolioCalculations is ExponentialNoError {
     uint256 totalCollateral
   ) internal pure returns (uint256 debtValue, uint256 percentageToRemove) {
     uint256 feeAmount = (_debtRepayAmount * 10 ** 18 * feeUnit) / 10 ** 22;
-    console.log("feeAmount", feeAmount);
     uint256 debtAmountWithFee = _debtRepayAmount + feeAmount;
-    console.log("debtAmountWithFee", debtAmountWithFee);
-    console.log("totalDebt in calcualtion", totalDebt);
     debtValue = (debtAmountWithFee * totalDebt * 10 ** 18) / borrowBalance;
     percentageToRemove = debtValue / totalCollateral;
   }
@@ -754,9 +750,6 @@ contract PortfolioCalculations is ExponentialNoError {
         _portfolioTokens
       );
 
-    console.log("totalCollateral", accountData.totalCollateral);
-    console.log("totalDebt", accountData.totalDebt);
-
     amounts = new uint256[](tokenAddresses.lendTokens.length);
 
     //Get borrow balance for _protocolToken
@@ -766,13 +759,9 @@ contract PortfolioCalculations is ExponentialNoError {
       0x7F23D86Ee20D869112572136221e173428DD740B
     ).getUserReserveData(_underlyingToken, _user);
 
-    console.log("_underlyingToken", _underlyingToken);
-    console.log("currentVariableDebt", currentVariableDebt);
     //Convert underlyingToken to 18 decimal
     uint borrowBalance = currentVariableDebt *
       10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
-
-    console.log("borrowBalance", borrowBalance);
 
     address _account = _user;
     //Get price for _protocolToken token
@@ -781,10 +770,7 @@ contract PortfolioCalculations is ExponentialNoError {
     ).getAssetPrice(_underlyingToken);
     //Get price for borrow Balance (amount * price)
 
-    console.log("_oraclePrice", _oraclePrice);
     uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
-
-    console.log("_tokenPrice", _tokenPrice);
 
     //calculateDebtAndPercentage
     (, uint256 percentageToRemove) = calculateDebtAndPercentage(
@@ -795,19 +781,13 @@ contract PortfolioCalculations is ExponentialNoError {
       accountData.totalCollateral
     );
 
-    console.log("percentageToRemove", percentageToRemove);
-
     // Calculate the amounts to sell for each lending token
     for (uint256 i; i < tokenAddresses.lendTokens.length; i++) {
       uint256 balance = IERC20Upgradeable(tokenAddresses.lendTokens[i])
         .balanceOf(_account);
-      console.log("balance of lend token", balance);
       uint256 amountToSell = (balance * percentageToRemove);
-      console.log("amountToSell", amountToSell);
       amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
-      console.log("amountToSell with buffer", amountToSell);
       amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
-      console.log("amounts[i]", amounts[i]);
     }
   }
 

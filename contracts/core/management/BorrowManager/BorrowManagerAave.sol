@@ -9,7 +9,6 @@ import {IFlashLoanReceiver} from "../../../handler/Aave/IFlashLoanReceiver.sol";
 import {IAavePool} from "../../../handler/Aave/IAavePool.sol";
 import {AbstractBorrowManager} from "./AbstractBorrowManager.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
-import "hardhat/console.sol";
 
 /**
  * @title BorrowManager
@@ -75,20 +74,11 @@ contract BorrowManagerAave is AbstractBorrowManager, IFlashLoanReceiver {
     // Calculate the amount owed including the fee
     uint256 amountOwed = totalFlashAmount + premiums[0];
 
-    console.log("before approvee");
-    console.log("amountOwed", amountOwed);
-    console.log(
-      "balance",
-      IERC20Upgradeable(flashData.flashLoanToken).balanceOf(address(this))
-    );
-
     TransferHelper.safeApprove(
       flashData.flashLoanToken,
       controller,
       amountOwed
     );
-
-    console.log("after approve");
 
     //Reset the flash loan state to prevent subsequent unauthorized callbacks
     _isFlashLoanActive = false;

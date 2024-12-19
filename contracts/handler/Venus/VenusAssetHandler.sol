@@ -77,6 +77,16 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     uint256 bufferUnit;
   }
 
+  /// @notice Parameters required for processing a loan transaction
+  /// @dev Groups all necessary parameters to avoid stack too deep errors
+  /// @param vault Address of the vault holding the assets
+  /// @param executor Address of the contract executing the transactions
+  /// @param controller Address of the Venus controller
+  /// @param receiver Address receiving the withdrawn assets
+  /// @param lendTokens Array of lending token addresses
+  /// @param totalCollateral Total value of collateral in the vault
+  /// @param fee Fee for the transaction
+  /// @param flashData Struct containing flash loan parameters and swap data
   struct LoanProcessingParams {
     address vault;
     address executor;
@@ -88,22 +98,30 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     FunctionParameters.FlashLoanData flashData;
   }
 
-  // New struct to hold swap processing results
+  /// @notice Results from processing swap transactions
+  /// @dev Holds the generated transactions and related accounting information
+  /// @param transactions Array of swap transactions to be executed
+  /// @param flashAmount Total amount needed for flash loan
+  /// @param feeCount Running count of fees processed
   struct ProcessedSwaps {
     MultiTransaction[] transactions;
     uint256 flashAmount;
     uint256 feeCount;
   }
 
-  // New struct to hold repay and withdraw transaction results
+  /// @notice Groups repay and withdraw transactions together
+  /// @dev Separates different transaction types for better organization
+  /// @param repayTx Array of transactions for repaying debt
+  /// @param withdrawTx Array of transactions for withdrawing assets
   struct ProcessedTransactions {
     MultiTransaction[] repayTx;
     MultiTransaction[] withdrawTx;
   }
 
-  /**
-   * @dev Struct to store information about tokens.
-   */
+  /// @notice Information about a collection of tokens
+  /// @dev Used to track arrays of tokens and their count
+  /// @param tokens Array of token addresses
+  /// @param count Number of valid tokens in the array
   struct TokenInfo {
     address[] tokens; // Array of token addresses
     uint count; // Number of tokens
@@ -122,7 +140,13 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     MultiTransaction[] withdrawTx;
   }
 
-  // Add this struct definition at the top with other structs
+  /// @notice Context data for swap operations
+  /// @dev Groups swap-related addresses and handlers to avoid stack too deep errors
+  /// @param vault Address of the vault holding the assets
+  /// @param executor Address of the contract executing the transactions
+  /// @param router Address of the DEX router for swaps
+  /// @param flashLoanToken Address of the token used for flash loans
+  /// @param swapHandler Interface for handling token swaps
   struct SwapContext {
     address vault;
     address executor;
@@ -746,6 +770,17 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     }
   }
 
+  /// @notice Processes a loan using DEX for swaps and transfers
+  /// @param vault Address of the vault holding the assets
+  /// @param executor Address of the contract executing the transactions
+  /// @param controller Address of the Venus controller
+  /// @param receiver Address receiving the withdrawn assets
+  /// @param lendTokens Array of lending token addresses
+  /// @param totalCollateral Total value of collateral in the vault
+  /// @param fee Fee for the transaction
+  /// @param flashData Struct containing flash loan parameters and swap data
+  /// @return transactions Array of transactions to execute
+  /// @return uint256 Total amount of flash loan needed
   function loanProcessingDex(
     address vault,
     address executor,
@@ -771,6 +806,10 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     return processLoanTransactions(params);
   }
 
+  /// @notice Main processing function that coordinates swap, repay, and withdraw operations
+  /// @param params Struct containing all parameters needed for loan processing
+  /// @return transactions Array of transactions to execute
+  /// @return totalFlashAmount Total amount of flash loan needed
   function processLoanTransactions(
     LoanProcessingParams memory params
   )
@@ -800,7 +839,9 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     return (transactions, swapResult.flashAmount);
   }
 
-  // Helper function - exact same logic as original swapAndTransferTransactionsUsingDex call
+  /// @notice Processes swap transactions for the loan
+  /// @param params Struct containing all parameters needed for loan processing
+  /// @return result Struct containing swap transactions, flash amount, and fee count
   function processSwaps(
     LoanProcessingParams memory params
   ) internal view returns (ProcessedSwaps memory result) {
@@ -815,7 +856,10 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     );
   }
 
-  // Helper function - exact same logic as original repay and withdraw calls
+  /// @notice Processes repay and withdraw transactions for the loan
+  /// @param params Struct containing all parameters needed for loan processing
+  /// @param feeCount Current count of fees processed
+  /// @return result Struct containing repay and withdraw transactions
   function processRepayAndWithdraw(
     LoanProcessingParams memory params,
     uint256 feeCount
@@ -839,6 +883,9 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     );
   }
 
+  /// @notice Combines swap, repay, and withdraw transactions into a single array
+  /// @param txArrays Struct containing arrays of different transaction types
+  /// @return Combined array of all transactions in correct execution order
   function combineTransactions(
     TransactionArrays memory txArrays
   ) private pure returns (MultiTransaction[] memory) {

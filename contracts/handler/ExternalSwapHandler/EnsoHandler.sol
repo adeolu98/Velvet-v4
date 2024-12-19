@@ -8,7 +8,6 @@ import {IIntentHandler} from "../IIntentHandler.sol";
 import {IPositionManager} from "../../wrappers/abstract/IPositionManager.sol";
 import {FunctionParameters} from "../../FunctionParameters.sol";
 import {ExternalPositionManagement} from "./ExternalPositionManagement.sol";
-import "hardhat/console.sol";
 
 /**
  * @title EnsoHandler
@@ -52,13 +51,6 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
       tokensLength != minExpectedOutputAmounts.length ||
       tokensLength != callDataEnso.length
     ) revert ErrorLibrary.InvalidLength();
-
-    console.log(
-      "aARBLINK",
-      IERC20Upgradeable(0x191c10Aa4AF7C30e871E70C95dB0E4eb77237530).balanceOf(
-        address(this)
-      )
-    );
 
     // Ensure the recipient address is valid.
     if (_to == address(0)) revert ErrorLibrary.InvalidAddress();

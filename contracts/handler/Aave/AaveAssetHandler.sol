@@ -13,7 +13,6 @@ import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/tok
 import {IPortfolio} from "../../core/interfaces/IPortfolio.sol";
 import {ISwapRouter} from "./ISwapRouter.sol";
 import {ISwapHandler} from "../ISwapHandler.sol";
-import "hardhat/console.sol";
 
 contract AaveAssetHandler is IAssetHandler {
   address immutable DATA_PROVIDER_ADDRESS =
@@ -61,6 +60,16 @@ contract AaveAssetHandler is IAssetHandler {
     MultiTransaction[] withdrawTx;
   }
 
+  /// @notice Parameters required for processing a loan transaction
+  /// @dev Groups all necessary parameters to avoid stack too deep errors
+  /// @param vault Address of the vault holding the assets
+  /// @param executor Address of the contract executing the transactions
+  /// @param controller Address of the Venus controller
+  /// @param receiver Address receiving the withdrawn assets
+  /// @param lendTokens Array of lending token addresses
+  /// @param totalCollateral Total value of collateral in the vault
+  /// @param fee Fee for the transaction
+  /// @param flashData Struct containing flash loan parameters and swap data
   struct LoanProcessingParams {
     address vault;
     address executor;
@@ -72,20 +81,33 @@ contract AaveAssetHandler is IAssetHandler {
     FunctionParameters.FlashLoanData flashData;
   }
 
-  // New struct to hold swap processing results
+  /// @notice Results from processing swap transactions
+  /// @dev Holds the generated transactions and related accounting information
+  /// @param transactions Array of swap transactions to be executed
+  /// @param flashAmount Total amount needed for flash loan
+  /// @param feeCount Running count of fees processed
   struct ProcessedSwaps {
     MultiTransaction[] transactions;
     uint256 flashAmount;
     uint256 feeCount;
   }
 
-  // New struct to hold repay and withdraw transaction results
+  /// @notice Groups repay and withdraw transactions together
+  /// @dev Separates different transaction types for better organization
+  /// @param repayTx Array of transactions for repaying debt
+  /// @param withdrawTx Array of transactions for withdrawing assets
   struct ProcessedTransactions {
     MultiTransaction[] repayTx;
     MultiTransaction[] withdrawTx;
   }
 
-  // Add this struct before the function
+  /// @notice Context data for swap operations
+  /// @dev Groups swap-related addresses and handlers to avoid stack too deep errors
+  /// @param vault Address of the vault holding the assets
+  /// @param executor Address of the contract executing the transactions
+  /// @param router Address of the DEX router for swaps
+  /// @param flashLoanToken Address of the token used for flash loans
+  /// @param swapHandler Interface for handling token swaps
   struct SwapContext {
     address vault;
     address executor;
@@ -211,34 +233,6 @@ contract AaveAssetHandler is IAssetHandler {
       asset,
       amount,
       to
-    );
-  }
-
-  function swapTokens(
-    address tokenIn,
-    address tokenOut,
-    address recipient,
-    uint256 amountIn,
-    uint256 minAmountOut,
-    uint256 fee
-  ) public view returns (bytes memory data) {
-    bytes memory path = abi.encodePacked(
-      tokenIn, // Address of the input token
-      fee, // Pool fee (0.3%)
-      tokenOut // Address of the output token
-    );
-
-    bytes memory encodedParams = abi.encode(
-      path,
-      recipient,
-      block.timestamp + 15,
-      amountIn,
-      minAmountOut
-    );
-
-    data = abi.encodeWithSelector(
-      bytes4(keccak256("exactInput((bytes,address,uint256,uint256,uint256))")),
-      encodedParams
     );
   }
 
@@ -394,6 +388,17 @@ contract AaveAssetHandler is IAssetHandler {
     return (tokenBalance * unusedCollateralPercentage) / 10 ** 18; // Calculate and return the investible balance
   }
 
+  /// @notice Processes a loan using DEX for swaps and transfers
+  /// @param vault Address of the vault holding the assets
+  /// @param executor Address of the contract executing the transactions
+  /// @param controller Address of the Venus controller
+  /// @param receiver Address receiving the withdrawn assets
+  /// @param lendTokens Array of lending token addresses
+  /// @param totalCollateral Total value of collateral in the vault
+  /// @param fee Fee for the transaction
+  /// @param flashData Struct containing flash loan parameters and swap data
+  /// @return transactions Array of transactions to execute
+  /// @return uint256 Total amount of flash loan needed
   function loanProcessingDex(
     address vault,
     address executor,
@@ -419,6 +424,10 @@ contract AaveAssetHandler is IAssetHandler {
     return processLoanTransactions(params);
   }
 
+  /// @notice Main processing function that coordinates swap, repay, and withdraw operations
+  /// @param params Struct containing all parameters needed for loan processing
+  /// @return transactions Array of transactions to execute
+  /// @return totalFlashAmount Total amount of flash loan needed
   function processLoanTransactions(
     LoanProcessingParams memory params
   )
@@ -448,7 +457,9 @@ contract AaveAssetHandler is IAssetHandler {
     return (transactions, swapResult.flashAmount);
   }
 
-  // Helper function - exact same logic as original swapAndTransferTransactionsUsingDex call
+  /// @notice Processes swap transactions for the loan
+  /// @param params Struct containing all parameters needed for loan processing
+  /// @return result Struct containing swap transactions, flash amount, and fee count
   function processSwaps(
     LoanProcessingParams memory params
   ) internal view returns (ProcessedSwaps memory result) {
@@ -463,7 +474,10 @@ contract AaveAssetHandler is IAssetHandler {
     );
   }
 
-  // Helper function - exact same logic as original repay and withdraw calls
+  /// @notice Processes repay and withdraw transactions for the loan
+  /// @param params Struct containing all parameters needed for loan processing
+  /// @param feeCount Current count of fees processed
+  /// @return result Struct containing repay and withdraw transactions
   function processRepayAndWithdraw(
     LoanProcessingParams memory params,
     uint256 feeCount
@@ -487,6 +501,9 @@ contract AaveAssetHandler is IAssetHandler {
     );
   }
 
+  /// @notice Combines swap, repay, and withdraw transactions into a single array
+  /// @param txArrays Struct containing arrays of different transaction types
+  /// @return Combined array of all transactions in correct execution order
   function combineTransactions(
     TransactionArrays memory txArrays
   ) private pure returns (MultiTransaction[] memory) {
@@ -677,7 +694,7 @@ contract AaveAssetHandler is IAssetHandler {
       count,
       feeCount
     );
-    
+
     uint unusedLength = ((tokenLength * 2) - count);
     assembly {
       mstore(transactions, sub(mload(transactions), unusedLength))
@@ -693,12 +710,7 @@ contract AaveAssetHandler is IAssetHandler {
   )
     internal
     view
-    returns (
-      MultiTransaction[] memory,
-      uint256,
-      uint256,
-      uint256
-    )
+    returns (MultiTransaction[] memory, uint256, uint256, uint256)
   {
     uint256 totalFlashAmount;
     uint256 tokenLength = flashData.debtToken.length;
@@ -981,7 +993,6 @@ contract AaveAssetHandler is IAssetHandler {
     for (uint j = 0; j < lendingTokens.length; ) {
       address underlying = IAaveToken(lendingTokens[j])
         .UNDERLYING_ASSET_ADDRESS();
-      console.log("sellAmounts for pull from vault", sellAmounts[j]);
 
       WithdrawContext memory _context = context;
       uint256 _sellAmount = sellAmounts[j];
@@ -1078,7 +1089,6 @@ contract AaveAssetHandler is IAssetHandler {
 
       // Loop through the lending tokens to process each one
       for (uint j = 0; j < lendingTokens.length; ) {
-        console.log("sellAmounts for pull from vault", sellAmounts[j]);
         // Pull the token from the vault
         transactions[count].to = executor;
         transactions[count].txData = abi.encodeWithSelector(
@@ -1135,24 +1145,17 @@ contract AaveAssetHandler is IAssetHandler {
       DATA_PROVIDER_ADDRESS
     ).getUserReserveData(_underlyingToken, _user);
 
-    console.log("_underlyingToken in contract", _underlyingToken);
-    console.log("currentVariableDebt in contract", currentVariableDebt);
-
     //Convert underlyingToken to 18 decimal
     uint borrowBalance = currentVariableDebt *
       10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
-
-    console.log("borrowBalance in contract", borrowBalance);
 
     //Get price for _protocolToken token
     uint _oraclePrice = IAavePriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
       _underlyingToken
     );
 
-    console.log("_oraclePrice in contract", _oraclePrice);
     //Get price for borrow Balance (amount * price)
     uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
-    console.log("_tokenPrice in contract", _tokenPrice);
     //calculateDebtAndPercentage
     (, uint256 percentageToRemove) = calculateDebtAndPercentage(
       _debtRepayAmount,
@@ -1161,7 +1164,6 @@ contract AaveAssetHandler is IAssetHandler {
       borrowBalance,
       totalCollateral
     );
-    console.log("percentageToRemove in contract", percentageToRemove);
     // Calculate the amounts to sell for each lending token
     amounts = calculateAmountsToSell(
       _user,
@@ -1212,13 +1214,9 @@ contract AaveAssetHandler is IAssetHandler {
     // Loop through the lent tokens to calculate the amount to sell
     for (uint256 i; i < lendTokens.length; ) {
       uint256 balance = IERC20Upgradeable(lendTokens[i]).balanceOf(_user); // Get the balance of the token
-      console.log("balance of lend token in contract", balance);
       uint256 amountToSell = (balance * percentageToRemove);
-      console.log("amountToSell in contract", amountToSell);
       amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
-      console.log("amountToSell with buffer in contract", amountToSell);
       amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
-      console.log("amounts[i] in contract", amounts[i]);
       unchecked {
         ++i;
       }

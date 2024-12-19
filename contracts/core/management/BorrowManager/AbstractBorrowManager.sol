@@ -12,7 +12,6 @@ import {AccessModifiers} from "../../access/AccessModifiers.sol";
 import {IPortfolio} from "../../../core/interfaces/IPortfolio.sol";
 import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "hardhat/console.sol";
 
 /**
  * @title AbstractBorrowManager
@@ -169,20 +168,10 @@ abstract contract AbstractBorrowManager is
       assetHandler.getBorrowedTokens(_vault, _controller)
     ).length;
 
-    console.log(
-      "balance before transfer",
-      IERC20Upgradeable(repayData._flashLoanToken).balanceOf(address(this))
-    );
-
     // Transfer any remaining dust balance back to the vault
     TransferHelper.safeTransfer(
       repayData._flashLoanToken,
       _vault,
-      IERC20Upgradeable(repayData._flashLoanToken).balanceOf(address(this))
-    );
-
-    console.log(
-      "balance after transfer",
       IERC20Upgradeable(repayData._flashLoanToken).balanceOf(address(this))
     );
 
