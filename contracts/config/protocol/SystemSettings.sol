@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
 
-import {OwnableCheck} from "./OwnableCheck.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
+import { OwnableCheck } from "./OwnableCheck.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
 
 /**
  * @title SystemSettings
@@ -21,25 +21,55 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   uint256 public lastUnpausedByUser;
   uint256 public lastEmergencyPaused;
 
+  uint256 public MAX_BORROW_TOKEN_LIMIT;
+
+  //Maximum allowed buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
+  uint256 public MAX_COLLATERAL_BUFFER_UNIT;
+
+  address[] public supportedControllers;
+
   bool public isProtocolPaused;
   bool public isProtocolEmergencyPaused;
+
+  // Mapping to track the token with their respective controller address
+  mapping(address => address) public marketControllers;
+
+  // Mapping to track the token/controller address and their respective handler address
+  mapping(address => address) public assetHandlers;
+
+  // Mapping to track the supported controllers of lending protocol
+  mapping(address => bool) public isSupportedControllers;
+
+  // Mapping to track the borrowed tokens that are enabled for interaction on the platform.
+  mapping(address => bool) public isBorrowableToken;
+
+  // Mapping to track the supported factories of flashLoan provider protocol
+  mapping(address => bool) public isSupportedFactory;
 
   event ProtocolPaused(bool indexed paused);
   event MinPortfolioTokenHoldingAmountUpdated(uint256 indexed newAmount);
   event CooldownPeriodUpdated(uint256 indexed newPeriod);
   event MinInitialPortfolioAmountUpdated(uint256 indexed newAmount);
   event AllowedDustToleranceUpdated(uint256 indexed newDustTolerance);
+  event MarketControllersAdded(address[] _assets, address[] _controllers);
+  event MarketControllersRemoved(address[] _assets);
+  event AssetHandlersAdded(address[] _assets, address[] _handlers);
+  event AssetHandlersRemoved(address[] _assets);
+  event SupportedControllersAdded(address[] _controllers);
+  event SupportedControllersRemoved(address indexed _controller);
 
   /**
    * @dev Sets default fee percentages and system limits.
    */
   function __SystemSettings_init() internal onlyInitializing {
-    minPortfolioTokenHoldingAmount = 1e16; // 0.01 ETH or equivalent
-    minInitialPortfolioAmount = 1e16; // 0.01 ETH or equivalent
+    minPortfolioTokenHoldingAmount = 1e14; // 0.0001 ETH or equivalent
+    minInitialPortfolioAmount = 1e14; // 0.0001 ETH or equivalent
     cooldownPeriod = 1 days;
     assetLimit = 15;
     whitelistLimit = 300;
     allowedDustTolerance = 10; // equivalent to 0.01%
+    MAX_COLLATERAL_BUFFER_UNIT = 400; // equivalent to 0.04%
+    MAX_BORROW_TOKEN_LIMIT = 5;
   }
 
   /**
@@ -161,5 +191,182 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     allowedDustTolerance = _allowedDustTolerance;
 
     emit AllowedDustToleranceUpdated(_allowedDustTolerance);
+  }
+
+  /**
+   * @notice Sets the market controllers for specified assets and enable them to be borrowed.
+   * @param _assets An array of asset addresses.
+   * @param _controllers An array of controller addresses corresponding to the assets.
+   */
+  function setAssetAndMarketControllers(
+    address[] memory _assets, //Lending Token Address
+    address[] memory _controllers // Their respective controllers(comptrollers)
+  ) external onlyProtocolOwner {
+    uint256 assetLength = _assets.length;
+    if (assetLength != _controllers.length) revert ErrorLibrary.InvalidLength();
+    for (uint256 i; i < assetLength; i++) {
+      address token = _assets[i];
+      if (token == address(0)) revert ErrorLibrary.InvalidAddress();
+      marketControllers[token] = _controllers[i];
+      isBorrowableToken[token] = true;
+    }
+    emit MarketControllersAdded(_assets, _controllers);
+  }
+
+  /**
+   * @notice Removes the market controllers for specified assets and disable them to be borrowed.
+   * @param _assets An array of asset addresses to remove controllers for.
+   */
+  function removeAssetAndMarketControllers(
+    address[] memory _assets
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      address token = _assets[i];
+      delete marketControllers[token];
+      delete isBorrowableToken[token];
+    }
+    emit MarketControllersRemoved(_assets);
+  }
+
+  /**
+   * @notice Sets the asset handlers for specified assets.
+   * @param _assets An array of asset addresses.
+   * @param _handlers An array of handler addresses corresponding to the assets.
+   */
+  function setAssetHandlers(
+    address[] memory _assets, //Third-Party Token Address
+    address[] memory _handlers // Their respective handlers
+  ) external onlyProtocolOwner {
+    if (_assets.length != _handlers.length) revert ErrorLibrary.InvalidLength();
+    for (uint256 i; i < _assets.length; i++) {
+      address token = _assets[i];
+      if (token == address(0)) revert ErrorLibrary.InvalidAddress();
+      assetHandlers[token] = _handlers[i];
+    }
+    emit AssetHandlersAdded(_assets, _handlers);
+  }
+
+  /**
+   * @notice Removes the asset handlers for specified assets.
+   * @param _assets An array of asset addresses to remove handlers for.
+   */
+  function removeAssetHandlers(
+    address[] memory _assets
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _assets.length; i++) {
+      delete assetHandlers[_assets[i]];
+    }
+    emit AssetHandlersRemoved(_assets);
+  }
+
+  /**
+   * @notice Adds supported controllers to the protocol.
+   * @param _controllers An array of controller addresses to add.
+   */
+  function setSupportedControllers(
+    address[] memory _controllers
+  ) external onlyProtocolOwner {
+    for (uint256 i; i < _controllers.length; i++) {
+      address controller = _controllers[i];
+      if (!isSupportedControllers[controller]) {
+        if (controller == address(0)) revert ErrorLibrary.InvalidAddress();
+        supportedControllers.push(controller);
+        isSupportedControllers[controller] = true;
+      }
+    }
+    emit SupportedControllersAdded(_controllers);
+  }
+
+  /**
+   * @notice Removes a controller from the list of supported controllers.
+   * @dev This function finds the controller in the array, swaps it with the last element, and then removes the last element to avoid leaving a gap.
+   * @param _controller The address of the controller to remove from the list of supported controllers.
+   * @dev The function reverts if the controller is not found in the array.
+   * @dev This function can only be called by the protocol owner.
+   */
+  function removeSupportedControllers(
+    address _controller
+  ) external onlyProtocolOwner {
+    // Find the index of the address to remove
+    uint256 indexToRemove = findAddressIndex(_controller);
+
+    // Swap the address to remove with the last address in the array
+    supportedControllers[indexToRemove] = supportedControllers[
+      supportedControllers.length - 1
+    ];
+    delete isSupportedControllers[_controller];
+    // Remove the last element (which is now a duplicate)
+    supportedControllers.pop();
+
+    emit SupportedControllersRemoved(_controller);
+  }
+
+  /**
+   * @notice Finds the index of an address in the array of addresses.
+   * @param _addressToFind The address to find in the array.
+   * @return The index of the address in the array.
+   * @dev The function reverts if the address is not found.
+   */
+  function findAddressIndex(
+    address _addressToFind
+  ) internal view returns (uint256) {
+    for (uint256 i = 0; i < supportedControllers.length; i++) {
+      if (supportedControllers[i] == _addressToFind) {
+        return i;
+      }
+    }
+    revert ErrorLibrary.InvalidAddress();
+  }
+
+  /**
+   * @notice Returns the list of supported controllers.
+   * @return An array of addresses representing the supported controllers.
+   */
+  function getSupportedControllers() external view returns (address[] memory) {
+    return supportedControllers;
+  }
+
+  /**
+   * @notice Sets Supported FlashLoan Provider Factory Contract
+   * @param _factoryAddress Address of factory contract address
+   */
+  function setSupportedFactory(
+    address _factoryAddress
+  ) external onlyProtocolOwner {
+    if (_factoryAddress == address(0)) revert ErrorLibrary.InvalidAddress();
+    isSupportedFactory[_factoryAddress] = true;
+  }
+
+  /**
+   * @notice Removes Supported FlashLoan Provider Factory Contract
+   * @param _factoryAddress Address of factory contract address
+   */
+  function removeSupportedFactory(
+    address _factoryAddress
+  ) external onlyProtocolOwner {
+    isSupportedFactory[_factoryAddress] = false;
+  }
+
+  /**
+   * @notice Updates the maximum allowed buffer unit for collateral calculations not more then 10%
+   * @dev This function can only be called by the protocol owner
+   * @param _newBufferUnit The new maximum buffer unit value to set
+   */
+  function updateMaxCollateralBufferUnit(
+    uint256 _newBufferUnit
+  ) external onlyProtocolOwner {
+    if (_newBufferUnit > 10000) revert ErrorLibrary.InvalidNewBufferUnit();
+    MAX_COLLATERAL_BUFFER_UNIT = _newBufferUnit;
+  }
+
+  /**
+   * @notice Updates the maximum number of tokens that can be borrowed simultaneously by assetManagers
+   * @dev This function can only be called by the protocol owner
+   * @param _newBorrowTokenLimit The new maximum limit for simultaneous token borrowing (must not exceed 20)
+   * @dev Reverts with ErrorLibrary.ExceedsBorrowLimit() if the new limit is greater than 20
+   */
+  function updateMaxBorrowTokenLimit(uint256 _newBorrowTokenLimit) external onlyProtocolOwner {
+    if(_newBorrowTokenLimit > 20) revert ErrorLibrary.ExceedsBorrowLimit();
+    MAX_BORROW_TOKEN_LIMIT = _newBorrowTokenLimit;
   }
 }

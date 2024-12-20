@@ -6,6 +6,8 @@ import "@openzeppelin/hardhat-upgrades";
 import "hardhat-contract-sizer";
 import "solidity-coverage";
 import "hardhat-tracer";
+import "@nomicfoundation/hardhat-chai-matchers";
+
 
 import "hardhat-gas-reporter";
 import "hardhat-abi-exporter";
@@ -63,8 +65,8 @@ const chainIds = {
 const config: HardhatUserConfig = {
   gasReporter: {
     enabled: true,
-    currency: "ETH",
-    showTimeSpent: true,
+    currency: "USD",
+    gasPrice: 21,
   },
   networks: {
     hardhat: {
@@ -173,14 +175,18 @@ const config: HardhatUserConfig = {
             runs: 200,
           },
         },
-      },
-    ],
+      }],
   },
   mocha: {
     timeout: 400000,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY
+        ? process.env.ETHERSCAN_API_KEY
+        : "",
+      bsc: process.env.BSCSCAN_API_KEY ? process.env.BSCSCAN_API_KEY : "",
+    },
   },
   abiExporter: {
     path: "./abi",
@@ -198,12 +204,12 @@ const config: HardhatUserConfig = {
       "PriceOracleL2",
       "FeeModule",
       "DepositBatch",
-      "WithdrawBatch"
+      "WithdrawBatch",
     ],
     spacing: 2,
   },
   tenderly: {
-    project: "Base10April",
+    project: "v4-bnb-test",
     username: "velvet-capital",
     privateVerification: true,
   },

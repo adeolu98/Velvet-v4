@@ -16,7 +16,7 @@ import {
   AllowanceTransfer,
   MaxAllowanceTransferAmount,
   PermitBatch,
-} from "@uniswap/Permit2-sdk";
+} from "@uniswap/permit2-sdk";
 
 import {
   Portfolio,
@@ -31,6 +31,8 @@ import {
   FeeModule,
   UniswapV2Handler,
   AssetManagementConfig,
+  TokenBalanceLibrary,
+  BorrowManager,
   AccessControl,
   TokenExclusionManager,
   TokenExclusionManager__factory,
@@ -54,6 +56,8 @@ describe.only("Tests for Portfolio Config", () => {
   let assetManagementConfig0: AssetManagementConfig;
   let assetManagementConfig1: AssetManagementConfig;
   let assetManagementConfig2: AssetManagementConfig;
+  let borrowManager: BorrowManager;
+  let tokenBalanceLibrary: TokenBalanceLibrary;
   let accessController0: any;
   let accessController2: any;
   let tokenExclusionManager: any;
@@ -85,7 +89,7 @@ describe.only("Tests for Portfolio Config", () => {
   const addresses = chainIdToAddresses[chainId];
 
   const assetManagerHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("ASSET_MANAGER"),
+    ethers.utils.toUtf8Bytes("ASSET_MANAGER")
   );
 
   function delay(ms: number) {
@@ -110,12 +114,28 @@ describe.only("Tests for Portfolio Config", () => {
 
       const provider = ethers.getDefaultProvider();
 
-      const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
+      const TokenBalanceLibrary = await ethers.getContractFactory(
+        "TokenBalanceLibrary"
+      );
 
+      tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
+      await tokenBalanceLibrary.deployed();
+
+      const PositionWrapper = await ethers.getContractFactory(
+        "PositionWrapper"
+      );
+      const positionWrapperBaseAddress = await PositionWrapper.deploy();
+      await positionWrapperBaseAddress.deployed();
+
+      const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [treasury.address, priceOracle.address],
-        { kind: "uups" },
+        [
+          treasury.address,
+          priceOracle.address,
+          positionWrapperBaseAddress.address,
+        ],
+        { kind: "uups" }
       );
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
@@ -126,22 +146,30 @@ describe.only("Tests for Portfolio Config", () => {
       await rebalancingDefult.deployed();
 
       const AssetManagementConfig = await ethers.getContractFactory(
-        "AssetManagementConfig",
+        "AssetManagementConfig"
       );
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
+      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      borrowManager = await BorrowManager.deploy();
+      await borrowManager.deployed();
+
       const TokenExclusionManager = await ethers.getContractFactory(
-        "TokenExclusionManager",
+        "TokenExclusionManager"
       );
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
-      const Portfolio = await ethers.getContractFactory("Portfolio");
+      const Portfolio = await ethers.getContractFactory("Portfolio", {
+        libraries: {
+          TokenBalanceLibrary: tokenBalanceLibrary.address,
+        },
+      });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
       const PancakeSwapHandler = await ethers.getContractFactory(
-        "UniswapV2Handler",
+        "UniswapV2Handler"
       );
       swapHandler = await PancakeSwapHandler.deploy();
       await swapHandler.deployed();
@@ -161,25 +189,42 @@ describe.only("Tests for Portfolio Config", () => {
 
       let whitelist = [owner.address];
 
+      const SwapVerificationLibrary = await ethers.getContractFactory(
+        "SwapVerificationLibraryUniswap"
+      );
+      const swapVerificationLibrary = await SwapVerificationLibrary.deploy();
+      await swapVerificationLibrary.deployed();
+
+      const PositionManager = await ethers.getContractFactory(
+        "PositionManagerUniswap",
+        {
+          libraries: {
+            SwapVerificationLibraryUniswap: swapVerificationLibrary.address,
+          },
+        }
+      );
+      const positionManagerBaseAddress = await PositionManager.deploy();
+      await positionManagerBaseAddress.deployed();
+
       const FeeModule = await ethers.getContractFactory("FeeModule");
 
       const feeModule = await FeeModule.deploy();
       await feeModule.deployed();
 
       const TokenRemovalVault = await ethers.getContractFactory(
-        "TokenRemovalVault",
+        "TokenRemovalVault"
       );
       const tokenRemovalVault = await TokenRemovalVault.deploy();
       await tokenRemovalVault.deployed();
 
       const VelvetSafeModule = await ethers.getContractFactory(
-        "VelvetSafeModule",
+        "VelvetSafeModule"
       );
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
       const PortfolioFactory = await ethers.getContractFactory(
-        "PortfolioFactory",
+        "PortfolioFactory"
       );
 
       const portfolioFactoryInstance = await upgrades.deployProxy(
@@ -195,6 +240,8 @@ describe.only("Tests for Portfolio Config", () => {
             _feeModuleImplementationAddress: feeModule.address,
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
+            _baseBorrowManager: borrowManager.address,
+            _basePositionManager: positionManagerBaseAddress.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -202,11 +249,11 @@ describe.only("Tests for Portfolio Config", () => {
             _protocolConfig: protocolConfig.address,
           },
         ],
-        { kind: "uups" },
+        { kind: "uups" }
       );
 
       portfolioFactory = PortfolioFactory.attach(
-        portfolioFactoryInstance.address,
+        portfolioFactoryInstance.address
       );
 
       console.log("portfolioFactory address:", portfolioFactory.address);
@@ -226,6 +273,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -246,6 +294,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate3 =
@@ -264,6 +313,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: true,
           _transferableToPublic: false,
           _whitelistTokens: true,
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
@@ -303,12 +353,12 @@ describe.only("Tests for Portfolio Config", () => {
 
       tokenExclusionManager = await ethers.getContractAt(
         TokenExclusionManager__factory.abi,
-        portfolioInfo.tokenExclusionManager,
+        portfolioInfo.tokenExclusionManager
       );
 
       rebalancing = await ethers.getContractAt(
         Rebalancing__factory.abi,
-        portfolioInfo.rebalancing,
+        portfolioInfo.rebalancing
       );
     });
 
@@ -331,10 +381,11 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: false,
+              _externalPositionManagementWhitelisted: true,
             },
             [],
-            1,
-          ),
+            1
+          )
         ).to.be.revertedWithCustomError(portfolioFactory, "NoOwnerPassed");
       });
 
@@ -356,13 +407,14 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: false,
+              _externalPositionManagementWhitelisted: true,
             },
             [owner.address],
-            2,
-          ),
+            2
+          )
         ).to.be.revertedWithCustomError(
           portfolioFactory,
-          "InvalidThresholdLength",
+          "InvalidThresholdLength"
         );
       });
 
@@ -384,20 +436,21 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: true,
+              _externalPositionManagementWhitelisted: true,
             },
             [owner.address],
-            1,
-          ),
+            1
+          )
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "InvalidTokenWhitelistLength",
+          "InvalidTokenWhitelistLength"
         );
       });
 
       it("asset manager should not be able to create portfolio will min Portfolio Price less then min portfolio pirce set by protocol", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
@@ -409,7 +462,7 @@ describe.only("Tests for Portfolio Config", () => {
             _performanceFee: "2500",
             _entryFee: "0",
             _exitFee: "0",
-            _initialPortfolioAmount: "1000000000000000",
+            _initialPortfolioAmount: "1000000000000",
             _minPortfolioTokenHoldingAmount: "10000000000000000",
             _assetManagerTreasury: treasury.address,
             _whitelistedTokens: [],
@@ -417,10 +470,11 @@ describe.only("Tests for Portfolio Config", () => {
             _transferable: false,
             _transferableToPublic: false,
             _whitelistTokens: false,
-          }),
+            _externalPositionManagementWhitelisted: true,
+          })
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "InvalidMinPortfolioAmountByAssetManager",
+          "InvalidMinPortfolioAmountByAssetManager"
         );
       });
 
@@ -428,13 +482,13 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           protocolConfig
             .connect(nonOwner)
-            .updateMinInitialPortfolioAmount("1000000000000000"),
+            .updateMinInitialPortfolioAmount("1000000000000000")
         ).to.be.reverted;
       });
 
       it("protocol should be able to update minPortfolioPrice and assetManager can use newPrice for vault portfolio creation", async () => {
         await protocolConfig.updateMinInitialPortfolioAmount(
-          "1000000000000000",
+          "1000000000000000"
         );
         //4th Portfolio Creation
         await portfolioFactory.connect(nonOwner).createPortfolioNonCustodial({
@@ -452,50 +506,51 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
+          _externalPositionManagementWhitelisted: true,
         });
       });
 
       it("non assetManager should not be able to update initial portfolioPrice", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
         await expect(
           assetManagementConfig
             .connect(nonOwner)
-            .updateInitialPortfolioAmount("1000000000"),
+            .updateInitialPortfolioAmount("1000000000")
         ).to.be.reverted;
       });
 
       it("assetManager should not be able to update initial portfolioPrice less then protocol minInitialPortfolioAmount", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
         await expect(
-          assetManagementConfig.updateInitialPortfolioAmount("1000000000"),
+          assetManagementConfig.updateInitialPortfolioAmount("1000000000")
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "InvalidInitialPortfolioAmount",
+          "InvalidInitialPortfolioAmount"
         );
       });
 
       it("assetManager should not be able to update initial portfolioPrice to zero", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
 
         await expect(
-          assetManagementConfig.updateInitialPortfolioAmount("0"),
+          assetManagementConfig.updateInitialPortfolioAmount("0")
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "InvalidInitialPortfolioAmount",
+          "InvalidInitialPortfolioAmount"
         );
       });
 
@@ -519,10 +574,11 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: true,
+              _externalPositionManagementWhitelisted: true,
             },
             [owner.address],
-            1,
-          ),
+            1
+          )
         ).to.be.revertedWithCustomError(portfolioFactory, "InvalidAddress");
       });
 
@@ -547,7 +603,7 @@ describe.only("Tests for Portfolio Config", () => {
             addresses.ApeSwap_WBTC_USDCe,
             addresses.ApeSwap_DAI_USDT,
             addresses.ApeSwap_WETH_USDT,
-          ]),
+          ])
         ).to.be.revertedWithCustomError(portfolio, "TokenCountOutOfLimit");
       });
 
@@ -555,20 +611,20 @@ describe.only("Tests for Portfolio Config", () => {
         expect(
           await accessController0.hasRole(
             "0xd980155b32cf66e6af51e0972d64b9d5efe0e6f237dfaa4bdc83f990dd79e9c8",
-            nonOwner.address,
-          ),
+            nonOwner.address
+          )
         ).to.be.false;
 
         await portfolioFactory.transferSuperAdminOwnership(
           accessController0.address,
-          nonOwner.address,
+          nonOwner.address
         );
 
         expect(
           await accessController0.hasRole(
             "0xd980155b32cf66e6af51e0972d64b9d5efe0e6f237dfaa4bdc83f990dd79e9c8",
-            nonOwner.address,
-          ),
+            nonOwner.address
+          )
         ).to.be.true;
       });
 
@@ -577,28 +633,28 @@ describe.only("Tests for Portfolio Config", () => {
           .connect(nonOwner)
           .grantRole(
             "0x15900ee5215ef76a9f5d2b8a5ec2fe469c362cbf4d7bef6646ab417b6d169e88",
-            assetManagerAdmin.address,
+            assetManagerAdmin.address
           );
 
         expect(
           await accessController0.hasRole(
             "0x15900ee5215ef76a9f5d2b8a5ec2fe469c362cbf4d7bef6646ab417b6d169e88",
-            assetManagerAdmin.address,
-          ),
+            assetManagerAdmin.address
+          )
         ).to.be.true;
 
         await accessController0
           .connect(nonOwner)
           .revokeRole(
             "0x15900ee5215ef76a9f5d2b8a5ec2fe469c362cbf4d7bef6646ab417b6d169e88",
-            assetManagerAdmin.address,
+            assetManagerAdmin.address
           );
 
         expect(
           await accessController0.hasRole(
             "0x15900ee5215ef76a9f5d2b8a5ec2fe469c362cbf4d7bef6646ab417b6d169e88",
-            assetManagerAdmin.address,
-          ),
+            assetManagerAdmin.address
+          )
         ).to.be.false;
       });
 
@@ -607,28 +663,28 @@ describe.only("Tests for Portfolio Config", () => {
           .connect(nonOwner)
           .grantRole(
             "0xc5f56b202d004644c051ff6057ecbf2a2764b8d81e0a6641e536e1cfa55dfd42",
-            assetManagerAdmin.address,
+            assetManagerAdmin.address
           );
 
         expect(
           await accessController0.hasRole(
             "0xc5f56b202d004644c051ff6057ecbf2a2764b8d81e0a6641e536e1cfa55dfd42",
-            assetManagerAdmin.address,
-          ),
+            assetManagerAdmin.address
+          )
         ).to.be.true;
 
         await accessController0
           .connect(nonOwner)
           .revokeRole(
             "0xc5f56b202d004644c051ff6057ecbf2a2764b8d81e0a6641e536e1cfa55dfd42",
-            assetManagerAdmin.address,
+            assetManagerAdmin.address
           );
 
         expect(
           await accessController0.hasRole(
             "0xc5f56b202d004644c051ff6057ecbf2a2764b8d81e0a6641e536e1cfa55dfd42",
-            assetManagerAdmin.address,
-          ),
+            assetManagerAdmin.address
+          )
         ).to.be.false;
       });
 
@@ -636,22 +692,22 @@ describe.only("Tests for Portfolio Config", () => {
         expect(
           await accessController0.hasRole(
             "0xd980155b32cf66e6af51e0972d64b9d5efe0e6f237dfaa4bdc83f990dd79e9c8",
-            owner.address,
-          ),
+            owner.address
+          )
         ).to.be.false;
 
         await portfolioFactory
           .connect(nonOwner)
           .transferSuperAdminOwnership(
             accessController0.address,
-            owner.address,
+            owner.address
           );
 
         expect(
           await accessController0.hasRole(
             "0xd980155b32cf66e6af51e0972d64b9d5efe0e6f237dfaa4bdc83f990dd79e9c8",
-            owner.address,
-          ),
+            owner.address
+          )
         ).to.be.true;
       });
 
@@ -661,17 +717,17 @@ describe.only("Tests for Portfolio Config", () => {
             .connect(nonOwner)
             .transferSuperAdminOwnership(
               accessController0.address,
-              owner.address,
-            ),
+              owner.address
+            )
         ).to.be.revertedWithCustomError(
           portfolioFactory,
-          "CallerNotSuperAdmin",
+          "CallerNotSuperAdmin"
         );
       });
 
       it("initialize should revert for token duplicates", async () => {
         await expect(
-          portfolio.initToken([addresses.WETH, addresses.WETH]),
+          portfolio.initToken([addresses.WETH, addresses.WETH])
         ).to.be.revertedWithCustomError(portfolio, "TokenAlreadyExist");
       });
 
@@ -689,15 +745,15 @@ describe.only("Tests for Portfolio Config", () => {
             .connect(nonOwner)
             .grantRole(
               "0x15900ee5215ef76a9f5d2b8a5ec2fe469c362cbf4d7bef6646ab417b6d169e88",
-              assetManagerAdmin.address,
-            ),
+              assetManagerAdmin.address
+            )
         ).to.be.reverted;
       });
 
       it("owner should be able to add asset manager admin", async () => {
         await accessController0.grantRole(
           "0x15900ee5215ef76a9f5d2b8a5ec2fe469c362cbf4d7bef6646ab417b6d169e88",
-          assetManagerAdmin.address,
+          assetManagerAdmin.address
         );
       });
 
@@ -705,7 +761,7 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           accessController0
             .connect(nonOwner)
-            .grantRole(assetManagerHash, assetManager.address),
+            .grantRole(assetManagerHash, assetManager.address)
         ).to.be.reverted;
       });
 
@@ -721,22 +777,22 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("non-owner should be able to pause protocol", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).setProtocolPause(true),
+          protocolConfig.connect(nonOwner).setProtocolPause(true)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("owner should not be able to update the protocol streaming fee to higher than 1%", async () => {
         await expect(
-          protocolConfig.updateProtocolStreamingFee("200"),
+          protocolConfig.updateProtocolStreamingFee("200")
         ).to.be.revertedWithCustomError(
           protocolConfig,
-          "InvalidProtocolStreamingFee",
+          "InvalidProtocolStreamingFee"
         );
       });
 
       it("non-owner should not be able to update the protocol streaming fee", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).updateProtocolStreamingFee("100"),
+          protocolConfig.connect(nonOwner).updateProtocolStreamingFee("100")
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
@@ -772,10 +828,10 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("should fail if owner tried to input previous value as new value while updating protocol streaming fee", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).updateProtocolStreamingFee("90"),
+          protocolConfig.connect(nonOwner).updateProtocolStreamingFee("90")
         ).to.be.revertedWithCustomError(
           protocolConfig,
-          "InvalidProtocolStreamingFee",
+          "InvalidProtocolStreamingFee"
         );
       });
 
@@ -799,19 +855,19 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("non-owner should not be able to update the protocol fee", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).updateProtocolFee("2000"),
+          protocolConfig.connect(nonOwner).updateProtocolFee("2000")
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("owner should not be able to update the protocol fee to higher than 50%", async () => {
         await expect(
-          protocolConfig.updateProtocolFee("6000"),
+          protocolConfig.updateProtocolFee("6000")
         ).to.be.revertedWithCustomError(protocolConfig, "InvalidProtocolFee");
       });
 
       it("should fail if owner tried to input previous value as new value while updating protocol fee", async () => {
         await expect(
-          protocolConfig.updateProtocolFee("2000"),
+          protocolConfig.updateProtocolFee("2000")
         ).to.be.revertedWithCustomError(protocolConfig, "InvalidProtocolFee");
       });
 
@@ -825,37 +881,37 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("claiming reward tokens should fail if protocol is paused", async () => {
         await expect(
-          rebalancing.claimRewardTokens(addresses.WETH, addresses.WETH, "0x"),
+          rebalancing.claimRewardTokens(addresses.WETH, addresses.WETH, "0x")
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
       it("asset manager should not be able to remove portfolio token if protocol is paused", async () => {
         await expect(
-          rebalancing.removePortfolioToken(addresses.WBTC),
+          rebalancing.removePortfolioToken(addresses.WBTC)
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
       it("asset manager should not be able to remove non-portfolio token if protocol is paused", async () => {
         await expect(
-          rebalancing.removeNonPortfolioToken(addresses.WBTC),
+          rebalancing.removeNonPortfolioToken(addresses.WBTC)
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
       it("asset manager should not be able to remove portfolio token partially if protocol is paused", async () => {
         await expect(
-          rebalancing.removePortfolioTokenPartially(addresses.WBTC, "1000"),
+          rebalancing.removePortfolioTokenPartially(addresses.WBTC, "1000")
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
       it("asset manager should not be able to remove non-portfolio partially token if protocol is paused", async () => {
         await expect(
-          rebalancing.removeNonPortfolioTokenPartially(addresses.WBTC, "1000"),
+          rebalancing.removeNonPortfolioTokenPartially(addresses.WBTC, "1000")
         ).to.be.revertedWithCustomError(rebalancing, "ProtocolIsPaused");
       });
 
       it("non-protocol owner should not be able to change whitelsitAsset limit", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).setWhitelistLimit(20),
+          protocolConfig.connect(nonOwner).setWhitelistLimit(20)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
@@ -867,7 +923,7 @@ describe.only("Tests for Portfolio Config", () => {
         const proxyAddress = await portfolioFactory.getPortfolioList(0);
         await portfolioFactory.upgradePortfolio(
           [proxyAddress],
-          portfolioContract.address,
+          portfolioContract.address
         );
       });
 
@@ -877,13 +933,13 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("claiming reward tokens should fail if reward target is not enabled", async () => {
         await expect(
-          rebalancing.claimRewardTokens(addresses.WETH, addresses.WETH, "0x"),
+          rebalancing.claimRewardTokens(addresses.WETH, addresses.WETH, "0x")
         ).to.be.revertedWithCustomError(rebalancing, "RewardTargetNotEnabled");
       });
 
       it("non protocol owner should not be able to enable reward target", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).enableRewardTarget(addresses.WETH),
+          protocolConfig.connect(nonOwner).enableRewardTarget(addresses.WETH)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
@@ -893,15 +949,13 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("non protocol owner should not be able to enable reward targets", async () => {
         await expect(
-          protocolConfig
-            .connect(nonOwner)
-            .enableRewardTargets([addresses.USDC]),
+          protocolConfig.connect(nonOwner).enableRewardTargets([addresses.USDC])
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("protocol owner should not be able to enable reward targets passing an empty list", async () => {
         await expect(
-          protocolConfig.enableRewardTargets([]),
+          protocolConfig.enableRewardTargets([])
         ).to.be.revertedWithCustomError(protocolConfig, "InvalidLength");
       });
 
@@ -912,7 +966,7 @@ describe.only("Tests for Portfolio Config", () => {
       it("reward token target should be usable to claim after enabling", async () => {
         // empty calldata is passed, test case with calldata in file 4
         await expect(
-          rebalancing.claimRewardTokens(addresses.WETH, addresses.WETH, "0x"),
+          rebalancing.claimRewardTokens(addresses.WETH, addresses.WETH, "0x")
         ).to.be.revertedWithCustomError(rebalancing, "ClaimFailed");
       });
 
@@ -932,10 +986,10 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("claim removed tokens should fail if protocol is emergency paused", async () => {
         await expect(
-          tokenExclusionManager.claimRemovedTokens(owner.address, 1, 2),
+          tokenExclusionManager.claimRemovedTokens(owner.address, 1, 2)
         ).to.be.revertedWithCustomError(
           tokenExclusionManager,
-          "ProtocolIsPaused",
+          "ProtocolIsPaused"
         );
       });
 
@@ -952,7 +1006,7 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("should protocol emergency pause by non owner should fail", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).setEmergencyPause(true, true),
+          protocolConfig.connect(nonOwner).setEmergencyPause(true, true)
         ).to.be.revertedWith("Unauthorized");
       });
 
@@ -967,16 +1021,16 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("should protocol emergency pause by nonOwner should fail if protocol not emergency paused", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).setEmergencyPause(false, true),
+          protocolConfig.connect(nonOwner).setEmergencyPause(false, true)
         ).to.be.revertedWith("Unauthorized");
       });
 
       it("should protocol emergency pause should fail if protocol has been unpaused less than 5 minutes ago", async () => {
         await expect(
-          protocolConfig.setEmergencyPause(true, true),
+          protocolConfig.setEmergencyPause(true, true)
         ).to.be.revertedWithCustomError(
           protocolConfig,
-          "TimeSinceLastUnpauseNotElapsed",
+          "TimeSinceLastUnpauseNotElapsed"
         );
       });
 
@@ -997,12 +1051,12 @@ describe.only("Tests for Portfolio Config", () => {
         const portfolioAddress = await portfolioFactory.getPortfolioList(1);
         const portfolio = await ethers.getContractAt(
           Portfolio__factory.abi,
-          portfolioAddress,
+          portfolioAddress
         );
 
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
         expect(await assetManagementConfig.transferable()).to.eq(false);
@@ -1010,10 +1064,10 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig
             .connect(nonOwner)
-            .updateTransferability(true, false),
+            .updateTransferability(true, false)
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "PublicFundToWhitelistedNotAllowed",
+          "PublicFundToWhitelistedNotAllowed"
         );
       });
 
@@ -1024,13 +1078,13 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("should revert if not a superAdmin + nonRebalancer contract calls functions", async () => {
         await expect(
-          portfolio.connect(addr2).initToken([addresses.WETH, addresses.WBTC]),
+          portfolio.connect(addr2).initToken([addresses.WETH, addresses.WBTC])
         ).to.be.revertedWithCustomError(portfolio, "CallerNotSuperAdmin");
       });
 
       it("Calling the function mintShares should fail (only callable by contracts)", async () => {
         await expect(
-          portfolio.mintShares(owner.address, "10000000"),
+          portfolio.mintShares(owner.address, "10000000")
         ).to.be.revertedWithCustomError(portfolio, "CallerNotPortfolioManager");
       });
 
@@ -1050,7 +1104,7 @@ describe.only("Tests for Portfolio Config", () => {
             addresses.ApeSwap_WBTC_USDCe,
             addresses.ApeSwap_DAI_USDT,
             addresses.ApeSwap_WETH_USDT,
-          ]),
+          ])
         ).to.be.revertedWithCustomError(portfolio, "TokenCountOutOfLimit");
       });
 
@@ -1062,7 +1116,7 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           accessController
             .connect(nonOwner)
-            .grantRole(assetManagerHash, depositor1.address),
+            .grantRole(assetManagerHash, depositor1.address)
         ).to.be.reverted;
       });
 
@@ -1077,7 +1131,7 @@ describe.only("Tests for Portfolio Config", () => {
 
         const permit2 = await ethers.getContractAt(
           "IAllowanceTransfer",
-          PERMIT2_ADDRESS,
+          PERMIT2_ADDRESS
         );
 
         const tokens = await portfolio2.getTokens();
@@ -1086,7 +1140,7 @@ describe.only("Tests for Portfolio Config", () => {
           let { nonce } = await permit2.allowance(
             nonOwner.address,
             tokens[i],
-            portfolio2.address,
+            portfolio2.address
           );
           await swapHandler.swapETHToTokens(
             "500",
@@ -1094,10 +1148,10 @@ describe.only("Tests for Portfolio Config", () => {
             nonOwner.address,
             {
               value: "100000000000000000",
-            },
+            }
           );
           let balance = await ERC20.attach(tokens[i]).balanceOf(
-            nonOwner.address,
+            nonOwner.address
           );
           let detail = {
             token: tokens[i],
@@ -1118,21 +1172,21 @@ describe.only("Tests for Portfolio Config", () => {
         const { domain, types, values } = AllowanceTransfer.getPermitData(
           permit,
           PERMIT2_ADDRESS,
-          chainId,
+          chainId
         );
         const signature = await nonOwner._signTypedData(domain, types, values);
 
         await expect(
           portfolio2
             .connect(nonOwner)
-            .multiTokenDeposit([], "0", permit, signature),
+            .multiTokenDeposit([], "0", permit, signature)
         ).to.be.revertedWithCustomError(portfolio2, "UserNotAllowedToDeposit");
       });
 
       it("should convert private fund to public", async () => {
         await assetManagementConfig2.convertPrivateFundToPublic();
         expect(await assetManagementConfig2.publicPortfolio()).to.be.equals(
-          true,
+          true
         );
       });
 
@@ -1142,7 +1196,7 @@ describe.only("Tests for Portfolio Config", () => {
         await protocolConfig.disableSolverHandler(addresses.SUSHI);
 
         expect(
-          await protocolConfig.solverHandler(addresses.SUSHI),
+          await protocolConfig.solverHandler(addresses.SUSHI)
         ).to.be.equals(false);
       });
 
@@ -1156,15 +1210,15 @@ describe.only("Tests for Portfolio Config", () => {
             .connect(nonOwner)
             .grantRole(
               "0xc5f56b202d004644c051ff6057ecbf2a2764b8d81e0a6641e536e1cfa55dfd42",
-              whitelistManagerAdmin.address,
-            ),
+              whitelistManagerAdmin.address
+            )
         ).to.be.reverted;
       });
 
       it("owner should be able to add asset whitelist manager admin", async () => {
         await accessController2.grantRole(
           "0xc5f56b202d004644c051ff6057ecbf2a2764b8d81e0a6641e536e1cfa55dfd42",
-          whitelistManagerAdmin.address,
+          whitelistManagerAdmin.address
         );
       });
 
@@ -1172,8 +1226,8 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           accessController2.grantRole(
             "0x1916b456004f332cd8a19679364ef4be668619658be72c17b7e86697c4ae0f16",
-            addr2.address,
-          ),
+            addr2.address
+          )
         ).to.be.reverted;
       });
 
@@ -1181,8 +1235,8 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           accessController2.grantRole(
             "0x8e73530dd444215065cdf478f826e993aeb5e2798587f0bbf5a978bd97df63ea",
-            addr2.address,
-          ),
+            addr2.address
+          )
         ).to.be.reverted;
       });
 
@@ -1192,8 +1246,8 @@ describe.only("Tests for Portfolio Config", () => {
             .connect(addr2)
             .grantRole(
               "0x827de50cc5532fcea9338402dc65442c2567a37fbd0cd8eb56858d00e9e842bd",
-              whitelistManager.address,
-            ),
+              whitelistManager.address
+            )
         ).to.be.reverted;
       });
 
@@ -1202,14 +1256,14 @@ describe.only("Tests for Portfolio Config", () => {
           .connect(whitelistManagerAdmin)
           .grantRole(
             "0x827de50cc5532fcea9338402dc65442c2567a37fbd0cd8eb56858d00e9e842bd",
-            whitelistManager.address,
+            whitelistManager.address
           );
       });
 
       it("owner should be able to add whitelist manager", async () => {
         await accessController2.grantRole(
           "0x827de50cc5532fcea9338402dc65442c2567a37fbd0cd8eb56858d00e9e842bd",
-          addr1.address,
+          addr1.address
         );
       });
 
@@ -1217,10 +1271,10 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig2
             .connect(addr2)
-            .removeWhitelistedUser([owner.address]),
+            .removeWhitelistedUser([owner.address])
         ).to.be.revertedWithCustomError(
           assetManagementConfig1,
-          "CallerNotWhitelistManager",
+          "CallerNotWhitelistManager"
         );
       });
 
@@ -1246,8 +1300,8 @@ describe.only("Tests for Portfolio Config", () => {
             .connect(addr1)
             .revokeRole(
               "0x827de50cc5532fcea9338402dc65442c2567a37fbd0cd8eb56858d00e9e842bd",
-              whitelistManager.address,
-            ),
+              whitelistManager.address
+            )
         ).to.be.reverted;
       });
 
@@ -1256,7 +1310,7 @@ describe.only("Tests for Portfolio Config", () => {
           .connect(whitelistManagerAdmin)
           .revokeRole(
             "0x827de50cc5532fcea9338402dc65442c2567a37fbd0cd8eb56858d00e9e842bd",
-            whitelistManager.address,
+            whitelistManager.address
           );
       });
 
@@ -1264,26 +1318,24 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig2
             .connect(whitelistManager)
-            .whitelistUser([addr2.address]),
+            .whitelistUser([addr2.address])
         ).to.be.revertedWithCustomError(
           assetManagementConfig1,
-          "CallerNotWhitelistManager",
+          "CallerNotWhitelistManager"
         );
       });
 
       it("Non asset manager should not be able to propose new management fee", async () => {
         const config = await portfolio.assetManagementConfig();
         const AssetManagementConfig = await ethers.getContractFactory(
-          "AssetManagementConfig",
+          "AssetManagementConfig"
         );
         const assetManagementConfig = AssetManagementConfig.attach(config);
         await expect(
-          assetManagementConfig
-            .connect(nonOwner)
-            .proposeNewManagementFee("200"),
+          assetManagementConfig.connect(nonOwner).proposeNewManagementFee("200")
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
@@ -1292,27 +1344,25 @@ describe.only("Tests for Portfolio Config", () => {
           .connect(assetManager)
           .proposeNewManagementFee("200");
         expect(await assetManagementConfig0.newManagementFee()).to.be.equal(
-          200,
+          200
         );
       });
 
       it("Asset manager should not be able to update management fee before 28 days passed", async () => {
         await expect(
-          assetManagementConfig0.connect(assetManager).updateManagementFee(),
+          assetManagementConfig0.connect(assetManager).updateManagementFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "TimePeriodNotOver",
+          "TimePeriodNotOver"
         );
       });
 
       it("Non asset manager should not be able to delete proposed new management fee", async () => {
         await expect(
-          assetManagementConfig0
-            .connect(nonOwner)
-            .deleteProposedManagementFee(),
+          assetManagementConfig0.connect(nonOwner).deleteProposedManagementFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
@@ -1327,22 +1377,22 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig0
             .connect(assetManager)
-            .deleteProposedManagementFee(),
+            .deleteProposedManagementFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
       it("Non asset manager should not be able to update management fee", async () => {
         await expect(
-          assetManagementConfig0.connect(nonOwner).updateManagementFee(),
+          assetManagementConfig0.connect(nonOwner).updateManagementFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
       it("asset manager should not be able to update management without proposing new fees", async () => {
         await expect(
-          assetManagementConfig0.updateManagementFee(),
+          assetManagementConfig0.updateManagementFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
@@ -1351,7 +1401,7 @@ describe.only("Tests for Portfolio Config", () => {
           .connect(assetManager)
           .proposeNewManagementFee("200");
         expect(await assetManagementConfig0.newManagementFee()).to.be.equal(
-          200,
+          200
         );
       });
 
@@ -1365,7 +1415,7 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("Asset manager should not be able to update management fee again to prevent event flooding", async () => {
         await expect(
-          assetManagementConfig0.connect(assetManager).updateManagementFee(),
+          assetManagementConfig0.connect(assetManager).updateManagementFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
@@ -1375,10 +1425,10 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig0
             .connect(nonOwner)
-            .proposeNewPerformanceFee("200"),
+            .proposeNewPerformanceFee("200")
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
@@ -1387,16 +1437,16 @@ describe.only("Tests for Portfolio Config", () => {
           .connect(assetManager)
           .proposeNewPerformanceFee("200");
         expect(await assetManagementConfig0.newPerformanceFee()).to.be.equal(
-          200,
+          200
         );
       });
 
       it("Asset manager should not be able to update performance fee before 28 days passed", async () => {
         await expect(
-          assetManagementConfig0.connect(assetManager).updatePerformanceFee(),
+          assetManagementConfig0.connect(assetManager).updatePerformanceFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "TimePeriodNotOver",
+          "TimePeriodNotOver"
         );
       });
 
@@ -1404,10 +1454,10 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig0
             .connect(nonOwner)
-            .deleteProposedPerformanceFee(),
+            .deleteProposedPerformanceFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
@@ -1422,22 +1472,22 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig0
             .connect(assetManager)
-            .deleteProposedPerformanceFee(),
+            .deleteProposedPerformanceFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
       it("Non asset manager should not be able to update performance fee", async () => {
         await expect(
-          assetManagementConfig0.connect(nonOwner).updatePerformanceFee(),
+          assetManagementConfig0.connect(nonOwner).updatePerformanceFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
       it("asset manager should not be able to update performance without proposing new fees", async () => {
         await expect(
-          assetManagementConfig0.updatePerformanceFee(),
+          assetManagementConfig0.updatePerformanceFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
@@ -1446,7 +1496,7 @@ describe.only("Tests for Portfolio Config", () => {
           .connect(assetManager)
           .proposeNewPerformanceFee("200");
         expect(await assetManagementConfig0.newPerformanceFee()).to.be.equal(
-          200,
+          200
         );
       });
 
@@ -1460,7 +1510,7 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("Asset manager should not be able to update performance fee again to prevent event flooding", async () => {
         await expect(
-          assetManagementConfig0.connect(assetManager).updatePerformanceFee(),
+          assetManagementConfig0.connect(assetManager).updatePerformanceFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
@@ -1470,22 +1520,22 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig0
             .connect(nonOwner)
-            .proposeNewEntryAndExitFee("200", "200"),
+            .proposeNewEntryAndExitFee("200", "200")
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
       it("asset manager should not be able to propose wrong entry and exit fee(entry)", async () => {
         await expect(
-          assetManagementConfig0.proposeNewEntryAndExitFee("20000", "200"),
+          assetManagementConfig0.proposeNewEntryAndExitFee("20000", "200")
         ).to.be.revertedWithCustomError(assetManagementConfig0, "InvalidFee");
       });
 
       it("asset manager should not be able to propose wrong entry and exit fee(exit)", async () => {
         await expect(
-          assetManagementConfig0.proposeNewEntryAndExitFee("200", "20000"),
+          assetManagementConfig0.proposeNewEntryAndExitFee("200", "20000")
         ).to.be.revertedWithCustomError(assetManagementConfig0, "InvalidFee");
       });
 
@@ -1499,10 +1549,10 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("Asset manager should be able to update entry and exit fee before 28 days passed", async () => {
         await expect(
-          assetManagementConfig0.connect(assetManager).updateEntryAndExitFee(),
+          assetManagementConfig0.connect(assetManager).updateEntryAndExitFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "TimePeriodNotOver",
+          "TimePeriodNotOver"
         );
       });
 
@@ -1510,10 +1560,10 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig0
             .connect(nonOwner)
-            .deleteProposedEntryAndExitFee(),
+            .deleteProposedEntryAndExitFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
@@ -1529,22 +1579,22 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig0
             .connect(assetManager)
-            .deleteProposedEntryAndExitFee(),
+            .deleteProposedEntryAndExitFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
       it("Non asset manager should not be able to update entry and exit fee", async () => {
         await expect(
-          assetManagementConfig0.connect(nonOwner).updateEntryAndExitFee(),
+          assetManagementConfig0.connect(nonOwner).updateEntryAndExitFee()
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
       it("asset manager should not be able to update entry and exit fee without proposing new fees", async () => {
         await expect(
-          assetManagementConfig0.updateEntryAndExitFee(),
+          assetManagementConfig0.updateEntryAndExitFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
@@ -1566,7 +1616,7 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("Asset manager should not be able to update entry and exit fees again to prevent event flooding", async () => {
         await expect(
-          assetManagementConfig0.connect(assetManager).updateEntryAndExitFee(),
+          assetManagementConfig0.connect(assetManager).updateEntryAndExitFee()
         ).to.be.revertedWithCustomError(assetManagementConfig0, "NoNewFeeSet");
       });
 
@@ -1575,10 +1625,10 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           assetManagementConfig0
             .connect(nonOwner)
-            .updateAssetManagerTreasury(owner.address),
+            .updateAssetManagerTreasury(owner.address)
         ).to.be.revertedWithCustomError(
           assetManagementConfig0,
-          "CallerNotAssetManager",
+          "CallerNotAssetManager"
         );
       });
 
@@ -1590,16 +1640,16 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("Non asset manager should not be able to update the velvet treasury", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).updateVelvetTreasury(owner.address),
+          protocolConfig.connect(nonOwner).updateVelvetTreasury(owner.address)
         ).to.be.reverted;
       });
 
       it("Protocol owner should not be able to set same address as velvet treasury", async () => {
         await expect(
-          protocolConfig.updateVelvetTreasury(treasury.address),
+          protocolConfig.updateVelvetTreasury(treasury.address)
         ).to.be.revertedWithCustomError(
           protocolConfig,
-          "PreviousTreasuryAddress",
+          "PreviousTreasuryAddress"
         );
       });
 
@@ -1609,14 +1659,14 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("Non asset manager should not be able to update the price oracle", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).updatePriceOracle(owner.address),
+          protocolConfig.connect(nonOwner).updatePriceOracle(owner.address)
         ).to.be.reverted;
       });
 
       it("Asset manager should be able to update the price oracle", async () => {
         const PriceOracle = await ethers.getContractFactory("PriceOracle");
         const newPriceOracle = await PriceOracle.deploy(
-          "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+          "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
         );
 
         await protocolConfig.updatePriceOracle(newPriceOracle.address);
@@ -1624,7 +1674,7 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("should upgrade the protocol config", async () => {
         const ProtocolConfig = await ethers.getContractFactory(
-          "ProtocolConfig",
+          "ProtocolConfig"
         );
 
         await upgrades.upgradeProxy(protocolConfig.address, ProtocolConfig);
@@ -1632,16 +1682,16 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("non-assetManager tried to remove token and it should fail", async () => {
         await expect(
-          rebalancing.connect(nonOwner).removePortfolioToken(addresses.WBTC),
+          rebalancing.connect(nonOwner).removePortfolioToken(addresses.WBTC)
         ).to.be.reverted;
       });
 
       it("should fail if snapshot is not taken and user tries to claim", async () => {
         await expect(
-          tokenExclusionManager.claimRemovedTokens(owner.address, 1, 2),
+          tokenExclusionManager.claimRemovedTokens(owner.address, 1, 2)
         ).to.be.revertedWithCustomError(
           tokenExclusionManager,
-          "NoTokensRemoved",
+          "NoTokensRemoved"
         );
       });
 
@@ -1652,25 +1702,25 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("non-owner should not be able to update the cooldown period", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).setCoolDownPeriod("100"),
+          protocolConfig.connect(nonOwner).setCoolDownPeriod("100")
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("owner should not be able to update the cooldown period smaller than 1 minute", async () => {
         await expect(
-          protocolConfig.setCoolDownPeriod("1"),
+          protocolConfig.setCoolDownPeriod("1")
         ).to.be.revertedWithCustomError(
           protocolConfig,
-          "InvalidCooldownPeriod",
+          "InvalidCooldownPeriod"
         );
       });
 
       it("owner should not be able to update the cooldown period greater than 14 days", async () => {
         await expect(
-          protocolConfig.setCoolDownPeriod("1296000"),
+          protocolConfig.setCoolDownPeriod("1296000")
         ).to.be.revertedWithCustomError(
           protocolConfig,
-          "InvalidCooldownPeriod",
+          "InvalidCooldownPeriod"
         );
       });
 
@@ -1680,19 +1730,19 @@ describe.only("Tests for Portfolio Config", () => {
 
       it("non-owner should not be able to update the allowed dust tolerance", async () => {
         await expect(
-          protocolConfig.connect(nonOwner).updateAllowedDustTolerance("1000"),
+          protocolConfig.connect(nonOwner).updateAllowedDustTolerance("1000")
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 
       it("owner should not be able to update the allowed dust tolerance with the value 0", async () => {
         await expect(
-          protocolConfig.updateAllowedDustTolerance("0"),
+          protocolConfig.updateAllowedDustTolerance("0")
         ).to.be.revertedWithCustomError(protocolConfig, "InvalidDustTolerance");
       });
 
       it("owner should not be able to update the allowed dust tolerance with the value 10_000", async () => {
         await expect(
-          protocolConfig.updateAllowedDustTolerance("10000"),
+          protocolConfig.updateAllowedDustTolerance("10000")
         ).to.be.revertedWithCustomError(protocolConfig, "InvalidDustTolerance");
       });
 
@@ -1704,7 +1754,7 @@ describe.only("Tests for Portfolio Config", () => {
         await expect(
           portfolioFactory
             .connect(nonOwner)
-            .setTokenRemovalVaultModule(addr1.address),
+            .setTokenRemovalVaultModule(addr1.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
 

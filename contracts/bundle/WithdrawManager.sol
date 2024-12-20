@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {TargetWhitelisting, ErrorLibrary} from "./TargetWhitelisting.sol";
-import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {IWithdrawBatch} from "./IWithdrawBatch.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { TargetWhitelisting, ErrorLibrary } from "./TargetWhitelisting.sol";
+import { IPortfolio } from "../core/interfaces/IPortfolio.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { IWithdrawBatch } from "./IWithdrawBatch.sol";
+import { FunctionParameters } from "../FunctionParameters.sol";
 
 /**
  * @title WithdrawManager
@@ -31,12 +32,16 @@ contract WithdrawManager is ReentrancyGuard, TargetWhitelisting {
    * @param _target The address of the portfolio.
    * @param _tokenToWithdraw The address of the token to receive after withdrawal.
    * @param _portfolioTokenAmount The amount of the portfolio token to be withdrawn.
-   * @param _callData Additional data required for the multi-token swap and withdrawal.
+   * @param _expectedOutputAmount The minimum amount of tokens expected to receive after the swap and withdrawal.
+   * @param repayData Struct containing parameters for repaying flash loans, if any.
+   * @param _callData An array of bytes containing additional data required for each swap.
    */
   function withdraw(
     address _target,
     address _tokenToWithdraw,
     uint256 _portfolioTokenAmount,
+    uint256 _expectedOutputAmount,
+    FunctionParameters.withdrawRepayParams calldata repayData,
     bytes[] memory _callData
   ) external nonReentrant {
     validateTargetWhitelisting(_target);
@@ -46,13 +51,15 @@ contract WithdrawManager is ReentrancyGuard, TargetWhitelisting {
     IPortfolio(_target).multiTokenWithdrawalFor(
       user,
       address(WITHDRAW_BATCH),
-      _portfolioTokenAmount
+      _portfolioTokenAmount,
+      repayData
     );
 
     WITHDRAW_BATCH.multiTokenSwapAndWithdraw(
       _target,
       _tokenToWithdraw,
       user,
+      _expectedOutputAmount,
       _callData
     );
   }

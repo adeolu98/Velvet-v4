@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import {Script} from "forge-std/Script.sol";
-import {PortfolioFactory} from "../../../contracts/PortfolioFactory.sol";
-import {IPortfolioFactory} from "../../../contracts/core/interfaces/IPortfolioFactory.sol";
+import { Script } from "forge-std/Script.sol";
+import { PortfolioFactory } from "../../../contracts/PortfolioFactory.sol";
+import { IPortfolioFactory } from "../../../contracts/core/interfaces/IPortfolioFactory.sol";
 
-import {FunctionParameters} from "../../../contracts/FunctionParameters.sol";
+import { FunctionParameters } from "../../../contracts/FunctionParameters.sol";
 
-import {PriceOracleDeployment} from "./PriceOracleDeployment.s.sol";
-import {BaseContractDeployment} from "./BaseContractDeployment.s.sol";
-import {ProtocolConfigDeployment} from "./ProtocolConfigDeployment.s.sol";
+import { PriceOracleDeployment } from "./PriceOracleDeployment.s.sol";
+import { BaseContractDeployment } from "./BaseContractDeployment.s.sol";
+import { ProtocolConfigDeployment } from "./ProtocolConfigDeployment.s.sol";
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Addresses} from "./Addresses.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { Addresses } from "./Addresses.sol";
 import "forge-std/console.sol";
 
 contract PortfolioDeployment is Script, Addresses {
@@ -50,6 +50,8 @@ contract PortfolioDeployment is Script, Addresses {
           _baseTokenRemovalVaultImplementation: tokenRemovalVault,
           _baseVelvetGnosisSafeModuleAddress: safe,
           _gnosisSingleton: BSC_GNOSIS_SINGLETON,
+          _basePositionManager: address(0),
+          _baseBorrowManager: address(0),
           _gnosisFallbackLibrary: BSC_GNOSIS_FALLBACK_LIB,
           _gnosisMultisendLibrary: BSC_GNOSIS_MULTISEND_LIB,
           _gnosisSafeProxyFactory: BSC_GNOSIS_SAFE_PROXY_FACTORY,

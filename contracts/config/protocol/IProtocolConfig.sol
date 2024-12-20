@@ -169,6 +169,12 @@ interface IProtocolConfig {
    */
   function protocolStreamingFee() external view returns (uint256);
 
+  /**
+   * @notice Maximum allowed buffer unit used to slightly increase the amount of collateral to sell, expressed in 0.001% (100000 = 100%)
+   * @return Max collateral buffer unit
+   */
+  function MAX_COLLATERAL_BUFFER_UNIT() external view returns (uint256);
+
   // ----- SolverManagement Functions -----
 
   /**
@@ -228,4 +234,28 @@ interface IProtocolConfig {
    * @dev Reverts if the provided address is invalid (address(0)).
    */
   function disableRewardTarget(address _rewardTargetAddress) external;
+
+  function positionWrapperBaseImplementation() external view returns (address);
+
+  function allowedRatioDeviationBps() external view returns (uint256);
+
+  function acceptedSlippageFeeReinvestment() external view returns (uint256);
+
+  function marketControllers(address _asset) external view returns (address);
+
+  function assetHandlers(address _asset) external view returns (address);
+
+  function getSupportedControllers() external view returns (address[] memory);
+
+  function isSupportedControllers(
+    address _controllers
+  ) external view returns (bool);
+
+  function isBorrowableToken(address _asset) external view returns (bool);
+
+  function isSupportedFactory(
+    address _factoryAddress
+  ) external view returns (bool);
+
+  function MAX_BORROW_TOKEN_LIMIT() external pure returns(uint256);
 }

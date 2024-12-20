@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
-import {AccessController} from "./access/AccessController.sol";
-import {IPortfolio} from "./core/interfaces/IPortfolio.sol";
-import {IAssetManagementConfig} from "./config/assetManagement/IAssetManagementConfig.sol";
-import {ITokenExclusionManager} from "./core/interfaces/ITokenExclusionManager.sol";
-import {IRebalancing} from "./rebalance/IRebalancing.sol";
-import {IAccessController} from "./access/IAccessController.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/Ownable2StepUpgradeable.sol";
-import {FunctionParameters} from "./FunctionParameters.sol";
-import {ErrorLibrary} from "./library/ErrorLibrary.sol";
-import {IProtocolConfig} from "./config/protocol/IProtocolConfig.sol";
-import {IFeeModule} from "./fee/IFeeModule.sol";
-import {IVelvetSafeModule} from "./vault/IVelvetSafeModule.sol";
-import {VelvetSafeModule} from "./vault/VelvetSafeModule.sol";
-import {GnosisDeployer} from "contracts/library/GnosisDeployer.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { AccessController } from "./access/AccessController.sol";
+import { IPortfolio } from "./core/interfaces/IPortfolio.sol";
+import { IAssetManagementConfig } from "./config/assetManagement/IAssetManagementConfig.sol";
+import { ITokenExclusionManager } from "./core/interfaces/ITokenExclusionManager.sol";
+import { IRebalancing } from "./rebalance/IRebalancing.sol";
+import { IAccessController } from "./access/IAccessController.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/Ownable2StepUpgradeable.sol";
+import { FunctionParameters } from "./FunctionParameters.sol";
+import { ErrorLibrary } from "./library/ErrorLibrary.sol";
+import { IProtocolConfig } from "./config/protocol/IProtocolConfig.sol";
+import { IFeeModule } from "./fee/IFeeModule.sol";
+import { IVelvetSafeModule } from "./vault/IVelvetSafeModule.sol";
+import { VelvetSafeModule } from "./vault/VelvetSafeModule.sol";
+import { GnosisDeployer } from "contracts/library/GnosisDeployer.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { IBorrowManager } from "./core/interfaces/IBorrowManager.sol";
 
 contract PortfolioFactory is
   Ownable2StepUpgradeable,
@@ -30,6 +31,8 @@ contract PortfolioFactory is
   address internal feeModuleImplementationAddress;
   address internal baseVelvetGnosisSafeModuleAddress;
   address internal baseTokenRemovalVaultAddress;
+  address internal basePositionManager;
+  address internal baseBorrowManager;
 
   address public protocolConfig;
   bool internal portfolioCreationPause;
@@ -39,6 +42,9 @@ contract PortfolioFactory is
   address public gnosisFallbackLibrary;
   address public gnosisMultisendLibrary;
   address public gnosisSafeProxyFactory;
+
+  address public nftManagerAddress;
+  address public swapRouterV3Address;
 
   uint256 public portfolioId;
 
@@ -50,6 +56,7 @@ contract PortfolioFactory is
     address tokenExclusionManager;
     address rebalancing;
     address owner;
+    address borrowManager;
     address assetManagementConfig;
     address feeModule;
     address vaultAddress;
@@ -71,7 +78,7 @@ contract PortfolioFactory is
   event UpgradePortfolio(address indexed newImplementation);
   event UpgradeAssetManagerConfig(address indexed newImplementation);
   event UpgradeFeeModule(address indexed newImplementation);
-  event UpdataTokenRemovalVaultBaseAddress(address indexed newImplementation);
+  event UpgradeTokenRemovalVaultBaseAddress(address indexed newImplementation);
   event UpgradeRebalance(address indexed newImplementation);
   event UpdateGnosisAddresses(
     address indexed newGnosisSingleton,
@@ -80,8 +87,11 @@ contract PortfolioFactory is
     address newGnosisSafeProxyFactory
   );
   event UpgradeTokenExclusionManager(address indexed newImplementation);
+  event UpgradeBorrowManager(address indexed newImplementation);
 
   event TransferSuperAdminOwnership(address indexed newOwner);
+
+  event UpgradePositionManager(address indexed newImplementation);
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -104,12 +114,14 @@ contract PortfolioFactory is
       initData._baseAssetManagementConfigAddress == address(0) ||
       initData._feeModuleImplementationAddress == address(0) ||
       initData._baseVelvetGnosisSafeModuleAddress == address(0) ||
+      initData._basePositionManager == address(0) ||
       initData._gnosisSingleton == address(0) ||
       initData._gnosisFallbackLibrary == address(0) ||
       initData._gnosisMultisendLibrary == address(0) ||
       initData._gnosisSafeProxyFactory == address(0) ||
       initData._protocolConfig == address(0) ||
-      initData._baseTokenRemovalVaultImplementation == address(0)
+      initData._baseTokenRemovalVaultImplementation == address(0) ||
+      initData._baseBorrowManager == address(0)
     ) revert ErrorLibrary.InvalidAddress();
     _setBasePortfolioAddress(initData._basePortfolioAddress);
     _setBaseRebalancingAddress(initData._baseRebalancingAddres);
@@ -126,6 +138,8 @@ contract PortfolioFactory is
     setTokenRemovalVaultImplementationAddress(
       initData._baseTokenRemovalVaultImplementation
     );
+    _setBaseBorrowManager(initData._baseBorrowManager);
+    setPositionManagerImplementationAddress(initData._basePositionManager);
     baseVelvetGnosisSafeModuleAddress = initData
       ._baseVelvetGnosisSafeModuleAddress;
     protocolConfig = initData._protocolConfig;
@@ -133,6 +147,20 @@ contract PortfolioFactory is
     gnosisFallbackLibrary = initData._gnosisFallbackLibrary;
     gnosisMultisendLibrary = initData._gnosisMultisendLibrary;
     gnosisSafeProxyFactory = initData._gnosisSafeProxyFactory;
+  }
+
+  /**
+   * @notice Sets the addresses for NFT manager and swap router used by position managers
+   * @dev Can only be called by contract owner
+   * @param _nftManager Address of the Uniswap V3 NFT position manager contract
+   * @param _swapRouterV3 Address of the Uniswap V3 swap router contract
+   */
+  function setPositionManagerAddresses(
+    address _nftManager,
+    address _swapRouterV3
+  ) external onlyOwner {
+    nftManagerAddress = _nftManager;
+    swapRouterV3Address = _swapRouterV3;
   }
 
   /**
@@ -214,11 +242,16 @@ contract PortfolioFactory is
           _accessController: address(accessController),
           _feeModule: address(_feeModule),
           _assetManagerTreasury: initData._assetManagerTreasury,
+          _basePositionManager: basePositionManager,
           _whitelistedTokens: initData._whitelistedTokens,
           _publicPortfolio: initData._public,
           _transferable: initData._transferable,
           _transferableToPublic: initData._transferableToPublic,
-          _whitelistTokens: initData._whitelistTokens
+          _whitelistTokens: initData._whitelistTokens,
+          _externalPositionManagementWhitelisted: initData
+            ._externalPositionManagementWhitelisted,
+          _nftManager: nftManagerAddress,
+          _swapRouterV3: swapRouterV3Address
         })
       )
     );
@@ -247,6 +280,18 @@ contract PortfolioFactory is
       })
     );
 
+    //BorrowManager
+    ERC1967Proxy borrowManager = new ERC1967Proxy(
+      baseBorrowManager,
+      abi.encodeWithSelector(
+        IBorrowManager.init.selector,
+        vaultAddress,
+        protocolConfig,
+        address(portfolio),
+        address(accessController)
+      )
+    );
+
     IPortfolio(address(portfolio)).init(
       FunctionParameters.PortfolioInitData({
         _name: initData._name,
@@ -254,6 +299,7 @@ contract PortfolioFactory is
         _vault: vaultAddress,
         _module: module,
         _tokenExclusionManager: address(_tokenExclusionManager),
+        _borrowManager: address(borrowManager),
         _accessController: address(accessController),
         _protocolConfig: protocolConfig,
         _assetManagementConfig: address(_assetManagementConfig),
@@ -285,7 +331,8 @@ contract PortfolioFactory is
       abi.encodeWithSelector(
         IRebalancing.init.selector,
         IPortfolio(address(portfolio)),
-        address(accessController)
+        address(accessController),
+        address(borrowManager)
       )
     );
 
@@ -294,6 +341,7 @@ contract PortfolioFactory is
         address(portfolio),
         address(_tokenExclusionManager),
         address(rebalancing),
+        address(borrowManager),
         msg.sender,
         address(_assetManagementConfig),
         address(_feeModule),
@@ -307,7 +355,8 @@ contract PortfolioFactory is
         _portfolio: address(portfolio),
         _portfolioCreator: msg.sender,
         _rebalancing: address(rebalancing),
-        _feeModule: address(_feeModule)
+        _feeModule: address(_feeModule),
+        _borrowManager: address(borrowManager)
       })
     );
 
@@ -353,6 +402,28 @@ contract PortfolioFactory is
     _setBaseTokenExclusionManagerAddress(_newImpl);
     _upgrade(_proxy, _newImpl);
     emit UpgradeTokenExclusionManager(_newImpl);
+  }
+
+  /**
+   * @notice This function is used to set the base borrowManager address
+   * @param _baseManager Address of the borrowManager module to set as base
+   */
+  function _setBaseBorrowManager(address _baseManager) internal {
+    baseBorrowManager = _baseManager;
+  }
+
+  /**
+   * @notice This function is used to upgrade the Borrow Manager contract
+   * @param _proxy Proxy address
+   * @param _newImpl New implementation address
+   */
+  function upgradeBorrowManager(
+    address[] calldata _proxy,
+    address _newImpl
+  ) external virtual onlyOwner {
+    _setBaseBorrowManager(_newImpl);
+    _upgrade(_proxy, _newImpl);
+    emit UpgradeBorrowManager(_newImpl);
   }
 
   /**
@@ -409,6 +480,20 @@ contract PortfolioFactory is
     _setBaseRebalancingAddress(_newImpl);
     _upgrade(_proxy, _newImpl);
     emit UpgradeRebalance(_newImpl);
+  }
+
+  /**
+   * @notice This function is used to upgrade the Token Exclusion Manager contract
+   * @param _proxy Proxy address
+   * @param _newImpl New implementation address
+   */
+  function upgradePositionManager(
+    address[] calldata _proxy,
+    address _newImpl
+  ) external virtual onlyOwner {
+    setPositionManagerImplementationAddress(_newImpl);
+    _upgrade(_proxy, _newImpl);
+    emit UpgradePositionManager(_newImpl);
   }
 
   /**
@@ -496,6 +581,16 @@ contract PortfolioFactory is
   }
 
   /**
+   * @notice This function is used to set the position manager implementation address
+   * @param _basePositionManager Address of the position manager to set as base
+   */
+  function setPositionManagerImplementationAddress(
+    address _basePositionManager
+  ) internal {
+    basePositionManager = _basePositionManager;
+  }
+
+  /**
    * @notice This function is used to set the Token Removal Vault implementation address
    * @param _newImpl New implementation address
    */
@@ -503,7 +598,7 @@ contract PortfolioFactory is
     address _newImpl
   ) external virtual onlyOwner {
     setTokenRemovalVaultImplementationAddress(_newImpl);
-    emit UpdataTokenRemovalVaultBaseAddress(_newImpl);
+    emit UpgradeTokenRemovalVaultBaseAddress(_newImpl);
   }
 
   /**
@@ -520,10 +615,10 @@ contract PortfolioFactory is
     address _newGnosisSafeProxyFactory
   ) external virtual onlyOwner {
     if (
-      _newGnosisSingleton != address(0) ||
-      _newGnosisFallbackLibrary != address(0) ||
-      _newGnosisMultisendLibrary != address(0) ||
-      _newGnosisSafeProxyFactory != address(0)
+      _newGnosisSingleton == address(0) ||
+      _newGnosisFallbackLibrary == address(0) ||
+      _newGnosisMultisendLibrary == address(0) ||
+      _newGnosisSafeProxyFactory == address(0)
     ) revert ErrorLibrary.InvalidAddress();
     gnosisSingleton = _newGnosisSingleton;
     gnosisFallbackLibrary = _newGnosisFallbackLibrary;

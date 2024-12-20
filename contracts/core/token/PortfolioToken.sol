@@ -6,6 +6,7 @@ import {AccessModifiers} from "../access/AccessModifiers.sol";
 import {CooldownManager, ErrorLibrary} from "../cooldown/CooldownManager.sol";
 import {Dependencies} from "../config/Dependencies.sol";
 import {UserManagement} from "../user/UserManagement.sol";
+import {IAssetManagementConfig} from "../../config/assetManagement/IAssetManagementConfig.sol";
 
 /**
  * @title PortfolioToken
@@ -47,10 +48,11 @@ abstract contract PortfolioToken is
    */
   function _mintAndBurnCheck(
     uint256 _fee,
-    address _to
+    address _to,
+    IAssetManagementConfig _assetManagementConfig
   ) internal returns (bool) {
     return (_fee > 0 &&
-      !(_to == assetManagementConfig().assetManagerTreasury() ||
+      !(_to == _assetManagementConfig.assetManagerTreasury() ||
         _to == protocolConfig().velvetTreasury()));
   }
 
@@ -62,11 +64,12 @@ abstract contract PortfolioToken is
    */
   function _mintTokenAndSetCooldown(
     address _to,
-    uint256 _mintAmount
+    uint256 _mintAmount,
+    IAssetManagementConfig _assetManagementConfig
   ) internal returns (uint256) {
-    uint256 entryFee = assetManagementConfig().entryFee();
+    uint256 entryFee = _assetManagementConfig.entryFee();
 
-    if (_mintAndBurnCheck(entryFee, _to)) {
+    if (_mintAndBurnCheck(entryFee, _to, _assetManagementConfig)) {
       _mintAmount = feeModule()._chargeEntryOrExitFee(_mintAmount, entryFee);
     }
 
@@ -95,10 +98,11 @@ abstract contract PortfolioToken is
     address _to,
     uint256 _mintAmount
   ) internal returns (uint256 afterFeeAmount) {
-    uint256 exitFee = assetManagementConfig().exitFee();
+    IAssetManagementConfig _assetManagementConfig = assetManagementConfig();
+    uint256 exitFee = _assetManagementConfig.exitFee();
 
     afterFeeAmount = _mintAmount;
-    if (_mintAndBurnCheck(exitFee, _to)) {
+    if (_mintAndBurnCheck(exitFee, _to, _assetManagementConfig)) {
       afterFeeAmount = feeModule()._chargeEntryOrExitFee(_mintAmount, exitFee);
     }
 
@@ -116,14 +120,15 @@ abstract contract PortfolioToken is
     address to,
     uint256 amount
   ) internal override {
+    IAssetManagementConfig assetManagementConfig = assetManagementConfig();
     super._beforeTokenTransfer(from, to, amount);
     if (from == address(0) || to == address(0)) {
       return;
     }
     if (
-      !(assetManagementConfig().transferableToPublic() ||
-        (assetManagementConfig().transferable() &&
-          assetManagementConfig().whitelistedUsers(to)))
+      !(assetManagementConfig.transferableToPublic() ||
+        (assetManagementConfig.transferable() &&
+          assetManagementConfig.whitelistedUsers(to)))
     ) {
       revert ErrorLibrary.Transferprohibited();
     }

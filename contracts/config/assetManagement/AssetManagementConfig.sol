@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
 
-import {TreasuryManagement} from "./TreasuryManagement.sol";
-import {PortfolioSettings, AssetManagerCheck} from "./PortfolioSettings.sol";
-import {TokenWhitelistManagement} from "./TokenWhitelistManagement.sol";
-import {UserWhitelistManagement} from "./UserWhitelistManagement.sol";
-import {FeeManagement} from "./FeeManagement.sol";
+import { TreasuryManagement } from "./TreasuryManagement.sol";
+import { PortfolioSettings, AssetManagerCheck } from "./PortfolioSettings.sol";
+import { TokenWhitelistManagement } from "./TokenWhitelistManagement.sol";
+import { UserWhitelistManagement } from "./UserWhitelistManagement.sol";
+import { FeeManagement } from "./FeeManagement.sol";
 
-import {FunctionParameters} from "../../FunctionParameters.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
 
-import {AccessRoles} from "../../access/AccessRoles.sol";
+import { AccessRoles } from "../../access/AccessRoles.sol";
 
-import {IAccessController} from "../../access/IAccessController.sol";
+import { IAccessController } from "../../access/IAccessController.sol";
 
 /**
  * @title MainContract
@@ -27,8 +27,7 @@ contract AssetManagementConfig is
   PortfolioSettings,
   TokenWhitelistManagement,
   FeeManagement,
-  UserWhitelistManagement,
-  AccessRoles
+  UserWhitelistManagement
 {
   IAccessController internal accessController;
 
@@ -44,13 +43,15 @@ contract AssetManagementConfig is
     __Ownable_init();
     __UUPSUpgradeable_init();
 
+    address protocolConfig = initData._protocolConfig;
+
     accessController = IAccessController(initData._accessController);
 
     // init parents
     __TreasuryManagement_init(initData._assetManagerTreasury);
 
     __PortfolioSettings_init(
-      initData._protocolConfig,
+      protocolConfig,
       initData._initialPortfolioAmount,
       initData._minPortfolioTokenHoldingAmount,
       initData._publicPortfolio,
@@ -60,12 +61,17 @@ contract AssetManagementConfig is
 
     __TokenWhitelistManagement_init(
       initData._whitelistedTokens,
+      address(accessController),
+      initData._basePositionManager,
       initData._whitelistTokens,
-      initData._protocolConfig
+      initData._externalPositionManagementWhitelisted,
+      protocolConfig,
+      initData._nftManager,
+      initData._swapRouterV3
     );
 
     __FeeManagement_init(
-      initData._protocolConfig,
+      protocolConfig,
       initData._managementFee,
       initData._performanceFee,
       initData._entryFee,
@@ -73,7 +79,7 @@ contract AssetManagementConfig is
       initData._feeModule
     );
 
-    __UserWhitelistManagement_init(initData._protocolConfig);
+    __UserWhitelistManagement_init(protocolConfig);
   }
 
   // Override the onlyOwner modifier to specify it overrides from OwnableUpgradeable.

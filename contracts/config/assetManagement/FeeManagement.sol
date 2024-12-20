@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {AssetManagerCheck} from "./AssetManagerCheck.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
+import { AssetManagerCheck } from "./AssetManagerCheck.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/Initializable.sol";
 
-import {IFeeModule} from "../../fee/IFeeModule.sol";
+import { IFeeModule } from "../../fee/IFeeModule.sol";
 
 /**
  * @title FeeManagement
@@ -124,10 +124,10 @@ abstract contract FeeManagement is AssetManagerCheck, Initializable {
     if (block.timestamp < (proposedManagementFeeTime + 28 days))
       revert ErrorLibrary.TimePeriodNotOver();
 
+    feeModule.chargeProtocolAndManagementFees();
+
     managementFee = newManagementFee;
     proposedManagementFeeTime = 0;
-
-    feeModule.chargeProtocolAndManagementFees();
 
     emit UpdateManagementFee(newManagementFee);
   }
@@ -168,6 +168,8 @@ abstract contract FeeManagement is AssetManagerCheck, Initializable {
 
     if (block.timestamp < (proposedPerformanceFeeTime + 28 days))
       revert ErrorLibrary.TimePeriodNotOver();
+
+    feeModule.chargeProtocolAndManagementFees();
 
     performanceFee = newPerformanceFee;
     proposedPerformanceFeeTime = 0;

@@ -109,6 +109,8 @@ library ErrorLibrary {
   error BalanceOfHandlerShouldBeZero();
   /// @notice Throws when balance of selltoken in handler after swap is exceeding dust
   error BalanceOfHandlerShouldNotExceedDust();
+  /// @notice Throws when balance of selltoken in vault after swap is exceeding dust
+  error BalanceOfVaultShouldNotExceedDust();
   /// @notice Throws when swap return value in handler is less then min buy amounts
   error ReturnValueLessThenExpected();
   /// @notice Throws when non portfolio token balance in not zero after rebalance
@@ -153,6 +155,8 @@ library ErrorLibrary {
   error ProtocolEmergencyPaused();
   /// @notice Thrown when batchHandler balance diff is zero
   error InvalidBalanceDiff();
+  ///@notice Error thrown when the user tries to withdraw or transfer an amount greater than their balance.
+  error InsufficientBalance();
   // @notice Thrown when an unpause action is attempted too soon after the last unpause.
   error TimeSinceLastUnpauseNotElapsed();
   // @notice Thrown when an invalid cooldown period is set.
@@ -177,4 +181,34 @@ library ErrorLibrary {
   error InvalidTargetAddress();
   // @notice Thrown when the ETH balance sent is zero
   error InvalidBalance();
+  // @notice Thrown when the swap amount is invalid
+  error InvalidSwapAmount();
+  // @notice Thrown when the passed deviation bps is invalid
+  error InvalidDeviationBps();
+  // @notice Thrown when external position management is not whitelisted
+  error ExternalPositionManagementNotWhitelisted();
+  // @notice Thrown when the increase liquidity call fails
+  error IncreaseLiquidityFailed();
+  // @notice Thrown when the decrease liquidity call fails
+  error DecreaseLiquidityFailed();
+  // @notice Thrown when borrow failed
+  error BorrowFailed();
+  // @notice Thrown when invalid flashloan provider factory address is provided
+  error InvalidFactoryAddress();
+  // @notice Thrown when buffer unit is more then max valid collateral buffer unit
+  error InvalidBufferUnit();
+  // @notice Thrown when new buffer unit is more then max accetable buffer unit
+  error InvalidNewBufferUnit();
+  /// @notice Thrown when a swap operation is invalid
+  error InvalidSwap();
+  // @notice Thrown when controller data is not found
+  error ControllerDataNotFound();
+  // @notice Thrown when the input token used for swapping is invalid
+  error InvalidSwapToken();
+  // @notice Thrown when protocol owner sets new borrow token limit more then max limit(20)
+  error ExceedsBorrowLimit();
+  // @notice Thrown when borrow token limit exceeds the max limit set by protocol owner
+  error BorrowTokenLimitExceeded();
+  // @notice Thrown when flash loan functionality is not active for the portfolio
+  error FlashLoanIsInactive();
 }

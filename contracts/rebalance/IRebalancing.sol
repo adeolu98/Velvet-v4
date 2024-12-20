@@ -18,29 +18,38 @@ import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
 import {FunctionParameters} from "../FunctionParameters.sol";
 
 interface IRebalancing {
-  event UpdatedWeights();
-  event UpdatedTokens(address[] newTokens);
+    event UpdatedWeights();
+    event UpdatedTokens(address[] newTokens);
 
-  function init(IPortfolio _portfolio, address _accessController) external;
+    function init(
+        IPortfolio _portfolio,
+        address _accessController,
+        address _borrowManager
+    ) external;
 
-  /**
-   * @notice The function updates the token weights and rebalances the portfolio to the new weights
-   * @param denorms The new token weights of the portfolio
-   */
-  function updateWeights(uint96[] calldata denorms, uint256 _slippage) external;
+    /**
+     * @notice The function updates the token weights and rebalances the portfolio to the new weights
+     * @param denorms The new token weights of the portfolio
+     */
+    function updateWeights(
+        uint96[] calldata denorms,
+        uint256 _slippage
+    ) external;
 
-  /**
-   * @notice Updates the token list and adjusts weights based on provided rebalance data.
-   * @dev This function is called by the asset manager to rebalance the portfolio.
-   * @param rebalanceData The data required for rebalancing, including tokens to sell, new tokens, sell amounts, handler, and call data.
-   */
-  function updateTokens(
-    FunctionParameters.RebalanceIntent calldata rebalanceData
-  ) external;
+    /**
+     * @notice Updates the token list and adjusts weights based on provided rebalance data.
+     * @dev This function is called by the asset manager to rebalance the portfolio.
+     * @param rebalanceData The data required for rebalancing, including tokens to sell, new tokens, sell amounts, handler, and call data.
+     */
+    function updateTokens(
+        FunctionParameters.RebalanceIntent calldata rebalanceData
+    ) external;
 
-  function removePortfolioToken(address _token) external;
+    function removePortfolioToken(address _token) external;
 
-  function allowToken(address _token) external;
+    function allowToken(address _token) external;
 
-  function removeNonPortfolioToken(address _token) external;
+    function removeNonPortfolioToken(address _token) external;
+
+    function tokensBorrowed() external pure returns(uint256);
 }

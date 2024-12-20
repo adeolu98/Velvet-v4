@@ -43,8 +43,5 @@ interface ITokenExclusionManager {
 
   function removedToken(
     uint256 id
-  )
-    external
-    view
-    returns (address token, address vault, uint256 totalSupply);
+  ) external view returns (address token, address vault, uint256 totalSupply);
 }

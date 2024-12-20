@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
-import {AccessController} from "../../access/AccessController.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
+import { AccessController } from "../../access/AccessController.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
 
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-import {ITokenExclusionManager} from "../interfaces/ITokenExclusionManager.sol";
+import { ITokenExclusionManager } from "../interfaces/ITokenExclusionManager.sol";
 
-import {TokenRemovalVault} from "../../vault/TokenRemovalVault.sol";
-import {ITokenRemovalVault} from "../../vault/ITokenRemovalVault.sol";
+import { TokenRemovalVault } from "../../vault/TokenRemovalVault.sol";
+import { ITokenRemovalVault } from "../../vault/ITokenRemovalVault.sol";
 
 /**
  * @title TokenExclusionManager
@@ -275,10 +274,7 @@ contract TokenExclusionManager is
   function _claim(address user, uint256 id) internal {
     (bool isValid, uint256 balance) = getDataAtId(user, id);
     if (isValid && balance > 0) {
-      RemovedTokenRecord memory tokenData = removedToken[id];
-      uint256 totalSupply = tokenData.totalSupply;
-      address currentRemovedToken = tokenData.token;
-      attemptClaim(currentRemovedToken, user, id, balance, totalSupply);
+      attemptClaim(user, id, balance);
       hasUserClaimed[user][id] = true;
       uint256 _nextId = id + 1;
       //Looks for nextId and set record if user has not interacted
@@ -317,33 +313,33 @@ contract TokenExclusionManager is
   /**
    * @notice Attempts to transfer the user's share of a removed token to them.
    * @dev Calculates the user's share based on their portfolio token balance at the time of removal and transfers it.
-   * @param _removedToken Address of the removed token.
    * @param _user address of user to claim removed token
+   * @param _snapshotId The ID of the snapshot at which the token was removed.
    * @param _portfolioTokenBalance User's balance of portfolio tokens at the last valid snapshot ID.
-   * @param _totalSupply Total supply of portfolio tokens at the snapshot ID.
    */
   function attemptClaim(
-    address _removedToken,
     address _user,
     uint256 _snapshotId,
-    uint256 _portfolioTokenBalance,
-    uint256 _totalSupply
+    uint256 _portfolioTokenBalance
   ) private {
     RemovedTokenRecord memory tokenInformation = removedToken[_snapshotId];
     // Calculate the user's share of the removed token
-    uint256 currentVaultBalance = IERC20Upgradeable(tokenInformation.token)
+    uint256 totalSupply = tokenInformation.totalSupply;
+    address currentRemovedToken = tokenInformation.token;
+
+    uint256 currentVaultBalance = IERC20Upgradeable(currentRemovedToken)
       .balanceOf(tokenInformation.vault);
     uint256 balance = (currentVaultBalance * _portfolioTokenBalance) /
-      _totalSupply;
+      totalSupply;
     // Transfer the calculated share to the user
     ITokenRemovalVault tokenRemovalVault = ITokenRemovalVault(
       tokenInformation.vault
     );
-    tokenRemovalVault.withdrawTokens(_removedToken, _user, balance);
+    tokenRemovalVault.withdrawTokens(currentRemovedToken, _user, balance);
 
     // Update the total supply record for the snapshot ID
     removedToken[_snapshotId].totalSupply =
-      _totalSupply -
+      totalSupply -
       _portfolioTokenBalance;
   }
 

@@ -4,12 +4,14 @@ pragma solidity 0.8.17;
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
 import {ErrorLibrary} from "../library/ErrorLibrary.sol";
 import {IIntentHandler} from "../handler/IIntentHandler.sol";
 import {RebalancingConfig} from "./RebalancingConfig.sol";
-
+import {IAssetHandler} from "../core/interfaces/IAssetHandler.sol";
+import {IBorrowManager} from "../core/interfaces/IBorrowManager.sol";
+import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
 import {FunctionParameters} from "../FunctionParameters.sol";
+import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
 
 /**
  * @title RebalancingCore
@@ -23,16 +25,32 @@ contract Rebalancing is
   RebalancingConfig
 {
   /// @notice Emitted when weights are successfully updated after a swap operation.
-  event UpdatedWeights();
-  event UpdatedTokens(address[] newTokens);
+  event UpdatedWeights(address[] tokens, uint256[] amounts);
+  event UpdatedTokens(address[] sellTokens, address[] newTokens);
   event PortfolioTokenRemoved(
     address indexed token,
     address indexed vault,
     uint256 indexed balance,
     uint256 atSnapshotId
   );
+  event TokenRepayed(FunctionParameters.RepayParams);
+  event DirectTokenRepayed(
+    address indexed _debtToken,
+    address indexed _protocolToken,
+    uint256 indexed _repayAmount
+  );
+  event Borrowed(
+    address indexed _tokenToBorrow,
+    uint256 indexed _amountToBorrow
+  );
+  event CollateralTokensEnabled(address[] tokens, address controller);
+  event CollateralTokensDisabled(address[] tokens, address controller);
+  event ClaimedRewardTokens(address _token, address _target, uint256 _amount);
 
   uint256 public constant TOTAL_WEIGHT = 10_000; // Represents 100% in basis points.
+  uint256 public tokensBorrowed;
+
+  IBorrowManager internal borrowManager;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -46,12 +64,14 @@ contract Rebalancing is
    */
   function init(
     address _portfolio,
-    address _accessController
+    address _accessController,
+    address _borrowManager
   ) external initializer {
     __Ownable_init();
     __ReentrancyGuard_init();
     __UUPSUpgradeable_init();
     __RebalancingHelper_init(_portfolio, _accessController);
+    borrowManager = IBorrowManager(_borrowManager);
   }
 
   /**
@@ -78,7 +98,7 @@ contract Rebalancing is
       _callData
     );
 
-    emit UpdatedWeights();
+    emit UpdatedWeights(_sellTokens, _sellAmounts);
   }
 
   /**
@@ -114,7 +134,16 @@ contract Rebalancing is
 
     // Execute the swap using the handler.
     address[] memory ensoBuyTokens = IIntentHandler(_handler)
-      .multiTokenSwapAndTransfer(_vault, _callData);
+      .multiTokenSwapAndTransferRebalance(
+        FunctionParameters.EnsoRebalanceParams(
+          IPositionManager(
+            IAssetManagementConfig(portfolio.assetManagementConfig())
+              .positionManager()
+          ),
+          _vault,
+          _callData
+        )
+      );
 
     // Verify that all specified sell tokens have been completely sold by the handler.
     for (uint256 i; i < sellTokenLength; i++) {
@@ -125,32 +154,14 @@ contract Rebalancing is
     }
 
     // Ensure that each token bought by the solver is in the portfolio list.
-    uint256 tokenLength = _newTokens.length;
-    for (uint256 i; i < tokenLength; i++) {
-      address token = _newTokens[i];
-      if (_getTokenBalanceOf(token, _vault) == 0)
-        revert ErrorLibrary.BalanceOfVaultCannotNotBeZero(token);
-      tokensMapping[token] = true;
-    }
-
-    // Validate that all tokens bought by the solver are in the list of new tokens.
-    uint256 ensoBuyTokensLength = ensoBuyTokens.length;
-    for (uint256 i; i < ensoBuyTokensLength; i++) {
-      if (!tokensMapping[ensoBuyTokens[i]]) {
-        revert ErrorLibrary.InvalidBuyTokenList();
-      }
-    }
-
-    // Reset the tokens mapping for the new tokens.
-    for (uint256 i; i < tokenLength; i++) {
-      delete tokensMapping[_newTokens[i]];
-    }
+    _verifyNewTokenList(ensoBuyTokens, _newTokens);
   }
 
   /**
-   * @notice Updates the token list and adjusts weights based on provided rebalance data.
-   * @dev This function is called by the asset manager to rebalance the portfolio.
-   * @param rebalanceData The data required for rebalancing, including tokens to sell, new tokens, sell amounts, handler, and call data.
+   * @notice Updates the portfolio’s token list, adjusts weights, and verifies token balances.
+   * @dev Uses a 256-slot bitmap to efficiently track up to 65,536 unique token addresses.
+   *      Each token address is mapped to a unique bit position in the bitmap using keccak256 hashing.
+   * @param rebalanceData Struct containing rebalance details including token lists and related data.
    */
   function updateTokens(
     FunctionParameters.RebalanceIntent calldata rebalanceData
@@ -159,10 +170,33 @@ contract Rebalancing is
     address[] calldata _newTokens = rebalanceData._newTokens;
     address[] memory _tokens = _getCurrentTokens();
 
-    //Need a check here to confirm _newTokens has buyTokens in it
+    // Update the portfolio's token list with new tokens
     portfolio.updateTokenList(_newTokens);
 
-    // Perform token update and weights adjustment based on provided rebalance data.
+    // Initialize a bitmap with 256 slots to handle up to 65,536 unique bit positions
+    uint256[256] memory tokenBitmap;
+    uint256 tokenLength = _tokens.length;
+    uint256[] memory initialBalances = new uint256[](tokenLength);
+
+    unchecked {
+      // Populate the bitmap with current tokens and store their initial balances
+      for (uint256 i; i < tokenLength; i++) {
+        address token = _tokens[i];
+
+        // Store the current balance of the token for later verification
+        initialBalances[i] = _getTokenBalanceOf(token, _vault);
+
+        // Calculate a unique bit position for this token
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536; // Hash to get a unique bit position in the range 0-65,535
+        uint256 index = bitPos / 256; // Determine the specific uint256 slot in the array (0 to 255)
+        uint256 offset = bitPos % 256; // Determine the bit position within that uint256 slot (0 to 255)
+
+        // Set the bit for this token in the bitmap to mark it as present
+        tokenBitmap[index] |= (1 << offset);
+      }
+    }
+
+    // Perform token update and weights adjustment based on provided rebalance data
     _updateWeights(
       _sellTokens,
       _newTokens,
@@ -171,27 +205,115 @@ contract Rebalancing is
       rebalanceData._callData
     );
 
-    // Update the internal mapping to reflect changes in the token list post-rebalance.
-    uint256 tokenLength = _tokens.length;
-    for (uint256 i; i < tokenLength; i++) {
-      tokensMapping[_tokens[i]] = true;
-    }
+    unchecked {
+      // Remove new tokens from the bitmap to avoid unnecessary balance checks
+      for (uint256 i; i < _newTokens.length; i++) {
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(_newTokens[i]))) %
+          65536;
+        uint256 index = bitPos / 256;
+        uint256 offset = bitPos % 256;
 
-    uint256 newTokensLength = _newTokens.length;
-    for (uint256 i; i < newTokensLength; i++) {
-      tokensMapping[_newTokens[i]] = false;
-    }
-
-    for (uint256 i; i < tokenLength; i++) {
-      address _portfolioToken = _tokens[i];
-      if (tokensMapping[_portfolioToken]) {
-        if (_getTokenBalanceOf(_portfolioToken, _vault) != 0)
-          revert ErrorLibrary.NonPortfolioTokenBalanceIsNotZero();
+        // Clear the bit for each new token to mark it as excluded from checks
+        tokenBitmap[index] &= ~(1 << offset);
       }
-      delete tokensMapping[_portfolioToken];
+
+      // Verify balances for remaining tokens in the bitmap
+      uint256 dustTolerance = protocolConfig.allowedDustTolerance();
+      for (uint256 i; i < tokenLength; i++) {
+        address token = _tokens[i];
+
+        // Calculate the bit position for this token to verify its presence
+        uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536;
+        uint256 index = bitPos / 256;
+        uint256 offset = bitPos % 256;
+
+        // Check if the bit for this token is still set in the bitmap
+        if ((tokenBitmap[index] & (1 << offset)) != 0) {
+          // Calculate the allowable "dust" amount based on the initial balance
+          uint256 dustValue = (initialBalances[i] * dustTolerance) /
+            TOTAL_WEIGHT;
+
+          // Verify that the token's balance does not exceed the allowable dust tolerance
+          if (_getTokenBalanceOf(token, _vault) > dustValue)
+            revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
+        }
+      }
     }
 
-    emit UpdatedTokens(_newTokens);
+    // Emit an event to signal that tokens have been updated
+    emit UpdatedTokens(_sellTokens, _newTokens);
+  }
+
+  /**
+   * @notice Executes a flash loan to repay debt and rebalance the portfolio.
+   * @param repayData Struct containing all necessary parameters for executing the flash loan and rebalancing.
+   * @dev This function is called by the asset manager to manage debts and portfolio balance.
+   * The flash loan is obtained from the specified pool, and the function handles token swaps and repayments.
+   */
+  function repay(
+    address _controller,
+    FunctionParameters.RepayParams calldata repayData
+  ) external onlyAssetManager nonReentrant protocolNotPaused {
+    // Attempt to repay the debt through the borrowManager
+    // Returns true if the token's debt is fully repaid, false if partial repayment
+    bool isTokenFullyRepaid = borrowManager.repayVault(_controller, repayData);
+
+    // If the token's debt is fully repaid, decrement the count of borrowed token types
+    // This helps maintain an accurate count for the MAX_BORROW_TOKEN_LIMIT check
+    if (isTokenFullyRepaid) tokensBorrowed--;
+    emit TokenRepayed(repayData);
+  }
+
+  /**
+   * @notice Repays a debt directly by transferring the debt token and repaying the debt.
+   * @param _debtToken The address of the debt token to be repaid.
+   * @param _protocolToken The address of the protocol token used to repay the debt.
+   * @param _repayAmount The amount of the debt token to be repaid.
+   * @dev This function is used to repay a debt directly by transferring the debt token and repaying the debt.
+   * It is called by the asset manager to repay a debt directly.
+   */
+  function directDebtRepayment(
+    address _debtToken, // Address of the debt token
+    address _protocolToken, // Address of the protocol token to which the debt token is to be transferred
+    uint256 _repayAmount // Amount of debt token to be repaid and type(uint256).max for full repayment
+  ) external onlyAssetManager nonReentrant protocolNotPaused {
+    if (_debtToken == address(0) || _protocolToken == address(0))
+      revert ErrorLibrary.InvalidAddress();
+    if (_repayAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
+
+    IAssetHandler assetHandler = IAssetHandler(
+      protocolConfig.assetHandlers(_protocolToken)
+    );
+
+    portfolio.vaultInteraction(
+      _debtToken,
+      assetHandler.approve(_protocolToken, 0)
+    );
+
+    // Approve the protocol token to spend the debt token
+    portfolio.vaultInteraction(
+      _debtToken,
+      assetHandler.approve(_protocolToken, _repayAmount)
+    );
+
+    // Repay the debt
+    portfolio.vaultInteraction(
+      _protocolToken,
+      assetHandler.repay(_repayAmount)
+    );
+
+    //Check balance not zero
+    if (_getTokenBalanceOf(_debtToken, _vault) == 0)
+      revert ErrorLibrary.BalanceOfVaultCannotNotBeZero(_debtToken);
+
+    //Remove approval
+    portfolio.vaultInteraction(
+      _debtToken,
+      assetHandler.approve(_protocolToken, 0)
+    );
+
+    //Events
+    emit DirectTokenRepayed(_debtToken, _protocolToken, _repayAmount);
   }
 
   /**
@@ -201,10 +323,10 @@ contract Rebalancing is
   function removePortfolioToken(
     address _token
   ) external onlyAssetManager nonReentrant protocolNotPaused {
-    if (!_isPortfolioToken(_token)) revert ErrorLibrary.NotPortfolioToken();
-
-    // Generate a new token list excluding the token to be removed
     address[] memory currentTokens = _getCurrentTokens();
+    if (!_isPortfolioToken(_token, currentTokens))
+      revert ErrorLibrary.NotPortfolioToken();
+
     uint256 tokensLength = currentTokens.length;
     address[] memory newTokens = new address[](tokensLength - 1);
     uint256 j = 0;
@@ -216,8 +338,7 @@ contract Rebalancing is
     }
 
     portfolio.updateTokenList(newTokens);
-
-    uint256 tokenBalance = IERC20Upgradeable(_token).balanceOf(_vault);
+    uint256 tokenBalance = _getTokenBalanceOf(_token, _vault);
     _tokenRemoval(_token, tokenBalance);
   }
 
@@ -228,9 +349,10 @@ contract Rebalancing is
   function removeNonPortfolioToken(
     address _token
   ) external onlyAssetManager protocolNotPaused nonReentrant {
-    if (_isPortfolioToken(_token)) revert ErrorLibrary.IsPortfolioToken();
+    if (_isPortfolioToken(_token, _getCurrentTokens()))
+      revert ErrorLibrary.IsPortfolioToken();
 
-    uint256 tokenBalance = IERC20Upgradeable(_token).balanceOf(_vault);
+    uint256 tokenBalance = _getTokenBalanceOf(_token, _vault);
     _tokenRemoval(_token, tokenBalance);
   }
 
@@ -245,7 +367,8 @@ contract Rebalancing is
     address _token,
     uint256 _percentage
   ) external onlyAssetManager protocolNotPaused nonReentrant {
-    if (!_isPortfolioToken(_token)) revert ErrorLibrary.NotPortfolioToken();
+    if (!_isPortfolioToken(_token, _getCurrentTokens()))
+      revert ErrorLibrary.NotPortfolioToken();
 
     uint256 tokenBalanceToRemove = _getTokenBalanceForPartialRemoval(
       _token,
@@ -263,7 +386,8 @@ contract Rebalancing is
     address _token,
     uint256 _percentage
   ) external onlyAssetManager protocolNotPaused nonReentrant {
-    if (_isPortfolioToken(_token)) revert ErrorLibrary.IsPortfolioToken();
+    if (_isPortfolioToken(_token, _getCurrentTokens()))
+      revert ErrorLibrary.IsPortfolioToken();
 
     uint256 tokenBalanceToRemove = _getTokenBalanceForPartialRemoval(
       _token,
@@ -273,6 +397,162 @@ contract Rebalancing is
     _tokenRemoval(_token, tokenBalanceToRemove);
   }
 
+  /**
+   * @notice Enables specified tokens as collateral in the lending protocol.
+   * @dev This function allows the asset manager to designate certain tokens as collateral,
+   *      which can then be used to borrow other assets or increase borrowing capacity.
+   *      It interacts with the lending protocol through the AssetHandler contract.
+   * @param _tokens An array of token addresses to be enabled as collateral.
+   * @param _controller The address of the lending protocol's controller contract.
+   */
+  function enableCollateralTokens(
+    address[] memory _tokens,
+    address _controller
+  ) external onlyAssetManager {
+    if (!protocolConfig.isSupportedControllers(_controller))
+      revert ErrorLibrary.InvalidAddress();
+    IAssetHandler assetHandler = IAssetHandler(
+      protocolConfig.assetHandlers(_controller)
+    );
+    portfolio.vaultInteraction(_controller, assetHandler.enterMarket(_tokens));
+    emit CollateralTokensEnabled(_tokens, _controller);
+  }
+
+  /**
+   * @notice Disables specified tokens as collateral in the lending protocol.
+   * @dev This function allows the asset manager to remove certain tokens from being used as collateral.
+   *      It interacts with the lending protocol through the AssetHandler contract for each token.
+   * @param _tokens An array of token addresses to be disabled as collateral.
+   *@param _controller The address of the lending protocol's controller contract.
+   */
+  function disableCollateralTokens(
+    address[] memory _tokens,
+    address _controller
+  ) external onlyAssetManager {
+    uint256 tokensLength = _tokens.length;
+    if (!protocolConfig.isSupportedControllers(_controller))
+      revert ErrorLibrary.InvalidAddress();
+    IAssetHandler assetHandler = IAssetHandler(
+      protocolConfig.assetHandlers(_controller)
+    );
+    for (uint256 i; i < tokensLength; i++) {
+      address token = _tokens[i];
+      portfolio.vaultInteraction(
+        protocolConfig.marketControllers(token),
+        assetHandler.exitMarket(token)
+      );
+    }
+    emit CollateralTokensDisabled(_tokens, _controller);
+  }
+
+  /**
+   * @notice Executes a borrow operation using the specified pool and collateral.
+   * @param _pool Address of the pool to borrow from.
+   * @param _tokens Address of the token to set as collateral.
+   * @param _tokenToBorrow Address of the token to borrow.
+   * @param _amountToBorrow Amount of the token to borrow.
+   * @dev Checks the pool address for validity and performs the borrow operation.
+   * Updates the portfolio with the new token list after the borrow operation.
+   */
+  function borrow(
+    address _pool, // pool address to borrow from
+    address[] memory _tokens, // tokens to set collateral
+    address _tokenToBorrow, // token to borrow
+    address _controller, // controller address
+    uint256 _amountToBorrow
+  ) external onlyAssetManager protocolNotPaused {
+    // Check for _pool address validity, prevent malicious address input
+    if (
+      _pool == address(0) ||
+      _tokenToBorrow == address(0) ||
+      !protocolConfig.isBorrowableToken(_pool) ||
+      !protocolConfig.isSupportedControllers(_controller)
+    ) revert ErrorLibrary.InvalidAddress();
+
+    if (_amountToBorrow == 0) revert ErrorLibrary.AmountCannotBeZero();
+
+    //Ensures the number of different borrowed token types doesn't exceed protocol limits
+    if (tokensBorrowed > protocolConfig.MAX_BORROW_TOKEN_LIMIT()) {
+      revert ErrorLibrary.BorrowTokenLimitExceeded();
+    }
+
+    IAssetHandler assetHandler = IAssetHandler(
+      protocolConfig.assetHandlers(_controller)
+    );
+
+    uint256 balanceBefore = _getTokenBalanceOf(_tokenToBorrow, _vault);
+
+    // Get the number of borrowed tokens before the new borrow operation
+    // This will be used to determine if we're borrowing a new token type
+    uint256 borrowedLengthBefore = (
+      assetHandler.getBorrowedTokens(_vault, _controller)
+    ).length;
+
+    // Setting token as collateral
+    portfolio.vaultInteraction(_controller, assetHandler.enterMarket(_tokens));
+
+    // Borrow
+    portfolio.vaultInteraction(
+      _pool,
+      assetHandler.borrow(_pool, _tokenToBorrow, _amountToBorrow)
+    );
+
+    // Get the number of borrowed tokens after the borrow operation
+    // If this number is larger than before, it means we borrowed a new token type
+    uint256 borrowedLengthAfter = (
+      assetHandler.getBorrowedTokens(_vault, _controller)
+    ).length;
+
+    // Increment the total number of borrowed token types if we borrowed a new token type
+    // We only increment if the length increased, meaning this is a new token type being borrowed
+    if (borrowedLengthAfter > borrowedLengthBefore) {
+      tokensBorrowed++;
+    }
+
+    // Get the current list of tokens in the portfolio
+    address[] memory currentTokens = _getCurrentTokens();
+    // Check if the borrowed token is not already in the portfolio
+    if (!_isPortfolioToken(_tokenToBorrow, currentTokens)) {
+      uint256 length = currentTokens.length;
+      // Create a new array with space for one additional token
+      address[] memory newTokens = new address[](length + 1);
+      // Use unchecked block to save gas by skipping overflow/underflow checks
+      // This is safe here because we're only incrementing by small amounts
+      unchecked {
+        assembly {
+          // Set the length of newTokens to currentTokens.length + 1
+          mstore(newTokens, add(mload(currentTokens), 1))
+
+          // Set pointers to the start of the token data in both arrays
+          let srcPtr := add(currentTokens, 0x20)
+          let destPtr := add(newTokens, 0x20)
+
+          // Calculate the size of data to copy (32 bytes per token)
+          let size := mul(length, 0x20)
+
+          // Copy all tokens from currentTokens to newTokens
+          for {
+            let i := 0
+          } lt(i, size) {
+            i := add(i, 0x20)
+          } {
+            mstore(add(destPtr, i), mload(add(srcPtr, i)))
+          }
+
+          // Add the new token at the end of newTokens
+          mstore(add(destPtr, size), _tokenToBorrow)
+        }
+      }
+      // Update the portfolio with the new token list
+      portfolio.updateTokenList(newTokens);
+    }
+
+    if (_getTokenBalanceOf(_tokenToBorrow, _vault) <= balanceBefore)
+      revert ErrorLibrary.BorrowFailed();
+
+    emit Borrowed(_tokenToBorrow, _amountToBorrow);
+  }
+
   function _getTokenBalanceForPartialRemoval(
     address _token,
     uint256 _percentage
@@ -280,7 +560,7 @@ contract Rebalancing is
     if (_percentage >= TOTAL_WEIGHT)
       revert ErrorLibrary.InvalidTokenRemovalPercentage();
 
-    uint256 tokenBalance = IERC20Upgradeable(_token).balanceOf(_vault);
+    uint256 tokenBalance = _getTokenBalanceOf(_token, _vault);
     tokenBalanceToRemove = (tokenBalance * _percentage) / TOTAL_WEIGHT;
   }
 
@@ -358,7 +638,7 @@ contract Rebalancing is
     );
 
     // Execute the claim operation using the provided calldata on the target contract
-    portfolio.claimRewardTokens(_target, _claimCalldata);
+    portfolio.vaultInteraction(_target, _claimCalldata);
 
     uint256[] memory tokenBalancesInVaultAfter = getTokenBalancesOf(
       tokens,
@@ -381,6 +661,11 @@ contract Rebalancing is
       if (tokenBalancesInVaultAfter[i] < tokenBalancesInVaultBefore[i])
         revert ErrorLibrary.ClaimFailed();
     }
+    emit ClaimedRewardTokens(
+      _tokenToBeClaimed,
+      _target,
+      rewardTokenBalanceAfter
+    );
   }
 
   /**

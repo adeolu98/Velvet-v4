@@ -5,6 +5,8 @@ import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
 import {IPortfolio} from "../interfaces/IPortfolio.sol";
 import {Dependencies} from "../config/Dependencies.sol";
 import {IAllowanceTransfer} from "../interfaces/IAllowanceTransfer.sol";
+import {IAssetManagementConfig} from "../../config/assetManagement/IAssetManagementConfig.sol";
+import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
 
 /**
  * @title ChecksAndValidations
@@ -32,15 +34,17 @@ abstract contract ChecksAndValidations is Dependencies {
    * Checks that the protocol is not paused and that the portfolio is properly initialized with tokens.
    */
   function _beforeDepositCheck(address _user, uint256 _tokensLength) internal {
+    IAssetManagementConfig assetManagementConfig = assetManagementConfig();
+    IProtocolConfig protocolConfig = protocolConfig();
     if (
-      !(assetManagementConfig().publicPortfolio() ||
-        assetManagementConfig().whitelistedUsers(_user)) ||
-      _user == assetManagementConfig().assetManagerTreasury() ||
-      _user == protocolConfig().velvetTreasury()
+      !(assetManagementConfig.publicPortfolio() ||
+        assetManagementConfig.whitelistedUsers(_user)) ||
+      _user == assetManagementConfig.assetManagerTreasury() ||
+      _user == protocolConfig.velvetTreasury()
     ) {
       revert ErrorLibrary.UserNotAllowedToDeposit();
     }
-    if (protocolConfig().isProtocolPaused()) {
+    if (protocolConfig.isProtocolPaused()) {
       revert ErrorLibrary.ProtocolIsPaused();
     }
     if (_tokensLength == 0) {
@@ -64,7 +68,8 @@ abstract contract ChecksAndValidations is Dependencies {
     uint256 _tokensLength,
     address[] memory _exemptionTokens
   ) internal view {
-    if (protocolConfig().isProtocolEmergencyPaused()) {
+    IProtocolConfig protocolConfig = protocolConfig();
+    if (protocolConfig.isProtocolEmergencyPaused()) {
       revert ErrorLibrary.ProtocolIsPaused();
     }
     uint256 balanceOfUser = portfolio.balanceOf(owner);
@@ -74,7 +79,7 @@ abstract contract ChecksAndValidations is Dependencies {
     uint256 balanceAfterRedemption = balanceOfUser - _tokenAmount;
     if (
       balanceAfterRedemption != 0 &&
-      balanceAfterRedemption < protocolConfig().minPortfolioTokenHoldingAmount()
+      balanceAfterRedemption < protocolConfig.minPortfolioTokenHoldingAmount()
     ) {
       revert ErrorLibrary.CallerNeedToMaintainMinTokenAmount();
     }
@@ -90,9 +95,10 @@ abstract contract ChecksAndValidations is Dependencies {
    * Ensures that the token address is not the zero address.
    */
   function _beforeInitCheck(address token) internal {
+    IAssetManagementConfig assetManagementConfig = assetManagementConfig();
     if (
-      (assetManagementConfig().tokenWhitelistingEnabled() &&
-        !assetManagementConfig().whitelistedTokens(token))
+      (assetManagementConfig.tokenWhitelistingEnabled() &&
+        !assetManagementConfig.isTokenWhitelisted(token))
     ) {
       revert ErrorLibrary.TokenNotWhitelisted();
     }

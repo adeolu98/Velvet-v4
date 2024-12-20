@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {IAllowanceTransfer} from "../core/interfaces/IAllowanceTransfer.sol";
-import {ErrorLibrary} from "../library/ErrorLibrary.sol";
-import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
-import {FunctionParameters} from "../FunctionParameters.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { IAllowanceTransfer } from "../core/interfaces/IAllowanceTransfer.sol";
+import { ErrorLibrary } from "../library/ErrorLibrary.sol";
+import { IPortfolio } from "../core/interfaces/IPortfolio.sol";
+import { FunctionParameters } from "../FunctionParameters.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title DepositBatch
@@ -33,7 +33,7 @@ contract DepositBatch is ReentrancyGuard {
 
     _multiTokenSwapAndDeposit(data, user);
 
-    (bool sent, ) = user.call{value: address(this).balance}("");
+    (bool sent, ) = user.call{ value: address(this).balance }("");
     if (!sent) revert ErrorLibrary.TransferFailed();
   }
 
@@ -88,8 +88,9 @@ contract DepositBatch is ReentrancyGuard {
       }
       if (balance == 0) revert ErrorLibrary.InvalidBalanceDiff();
 
-      IERC20(_token).approve(target, 0);
-      IERC20(_token).approve(target, balance);
+      TransferHelper.safeApprove(_token, target, 0);
+      TransferHelper.safeApprove(_token, target, balance);
+
       depositAmounts[i] = balance;
     }
 

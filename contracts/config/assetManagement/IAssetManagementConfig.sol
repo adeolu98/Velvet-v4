@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {FunctionParameters} from "../../FunctionParameters.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
 
 /**
  * @title IAssetManagementConfig
@@ -59,6 +59,12 @@ interface IAssetManagementConfig {
   function assetManagerTreasury() external returns (address);
 
   /**
+   * @notice Returns the address of the position manager.
+   * @return The address of the position manager.
+   */
+  function positionManager() external returns (address);
+
+  /**
    * @notice Checks if a token is whitelisted.
    * @param token The address of the token.
    * @return True if the token is whitelisted, false otherwise.
@@ -109,4 +115,8 @@ interface IAssetManagementConfig {
   function updateMinPortfolioTokenHoldingAmount(
     uint256 _minPortfolioTokenHoldingAmount
   ) external;
+
+  function isTokenWhitelisted(address _token) external returns (bool);
+
+  function owner() external view returns (address);
 }
