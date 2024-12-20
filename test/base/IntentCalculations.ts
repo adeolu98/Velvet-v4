@@ -46,7 +46,7 @@ export async function createEnsoCallDataRoute(
     receiver: receiver,
     spender: ensoHandler,
     amountIn: _amountIn,
-    slippage: 700,
+    slippage: 1000,
     tokenIn: _tokenIn,
     tokenOut: _tokenOut,
     routingStrategy: "delegate",
@@ -72,7 +72,7 @@ export async function createMetaAggregatorCalldata(
   _amountIn: any
 ): Promise<any> {
   const priceParams = {
-    slippage: 10,
+    slippage: 30,
     amount: _amountIn,
     tokenIn: _tokenIn,
     tokenOut: _tokenOut,
@@ -84,7 +84,7 @@ export async function createMetaAggregatorCalldata(
 
   const postUrl = "http://arbitrumcentral.velvetdao.xyz:3000/best-quotes";
 
-  //console.log("price params", priceParams);
+  console.log("price params", priceParams);
 
   return await axios.post(postUrl, priceParams);
 }

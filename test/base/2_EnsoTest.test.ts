@@ -44,6 +44,7 @@ import {
 } from "../../typechain";
 
 import { chainIdToAddresses } from "../../scripts/networkVariables";
+import { create } from "domain";
 
 var chai = require("chai");
 const axios = require("axios");
@@ -122,13 +123,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
       ensoHandler = await EnsoHandler.deploy(
-        "0x7A56e0BC2216D9b051F69eb0c79A77A3130B99ed"
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
       );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
       depositBatch = await DepositBatch.deploy(
-        "0x7A56e0BC2216D9b051F69eb0c79A77A3130B99ed"
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
       );
       await depositBatch.deployed();
 
@@ -138,7 +139,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
       withdrawBatch = await WithdrawBatch.deploy(
-        "0x7A56e0BC2216D9b051F69eb0c79A77A3130B99ed"
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
       );
       await withdrawBatch.deployed();
 
@@ -419,7 +420,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let postResponse: string[] = [];
 
         for (let i = 0; i < tokens.length; i++) {
-          let response = await createMetaAggregatorCalldata(
+          let response = await createEnsoCallDataRoute(
             depositBatch.address,
             depositBatch.address,
             "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
@@ -427,7 +428,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "1000000000000000000"
           );
 
-          postResponse.push(response.data.quotes[0].data);
+          postResponse.push(response.data.tx.data);
         }
 
         const data = await depositBatch.multiTokenSwapETHAndTransfer(
@@ -472,7 +473,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             const encodedata = abiCoder.encode(["uint"], [amountIn]);
             postResponse.push(encodedata);
           } else {
-            let response = await createMetaAggregatorCalldata(
+            let response = await createEnsoCallDataRoute(
               depositBatch.address,
               depositBatch.address,
               tokenToSwap,
@@ -480,7 +481,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-            postResponse.push(response.data.quotes[0].data);
+            postResponse.push(response.data.tx.data);
           }
         }
 
@@ -528,7 +529,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             const encodedata = abiCoder.encode(["uint"], [amountIn]);
             postResponse.push(encodedata);
           } else {
-            let response = await createMetaAggregatorCalldata(
+            let response = await createEnsoCallDataRoute(
               depositBatch.address,
               depositBatch.address,
               tokenToSwap,
@@ -536,7 +537,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-            postResponse.push(response.data.quotes[0].data);
+            postResponse.push(response.data.tx.data);
           }
         }
 
@@ -572,7 +573,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           await ERC20.attach(sellToken).balanceOf(vault)
         ).toString();
 
-        const postResponse = await createMetaAggregatorCalldata(
+        const postResponse = await createEnsoCallDataRoute(
           ensoHandler.address,
           ensoHandler.address,
           sellToken,
@@ -592,7 +593,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "uint256[]", // minExpectedOutputAmounts
           ],
           [
-            [[postResponse.data.quotes[0].data]],
+            [[postResponse.data.tx.data]],
             [],
             [[]],
             [[]],
@@ -659,7 +660,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           if (tokens[i] == tokenToSwapInto) {
             responses.push("0x");
           } else {
-            let response = await createMetaAggregatorCalldata(
+            let response = await createEnsoCallDataRoute(
               withdrawBatch.address,
               user.address,
               tokens[i],
@@ -667,7 +668,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               withdrawalAmount
             );
 
-            responses.push(response.data.quotes[0].data);
+            responses.push(response.data.tx.data);
           }
           userBalanceBefore.push(
             await ERC20.attach(tokens[i]).balanceOf(user.address)

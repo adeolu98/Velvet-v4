@@ -427,7 +427,20 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "1000000000000000000"
           );
 
-          postResponse.push(response.data.quotes[0].data);
+          interface Quote {
+            protocol: string;
+            data: string;
+          }
+
+          const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
+            (quote: Quote) => quote.protocol === "enso"
+          );
+
+          if (!zeroXQuote?.data) {
+            throw new Error("No valid enso quote found");
+          }
+
+          postResponse.push(zeroXQuote.data);
         }
 
         const data = await depositBatch.multiTokenSwapETHAndTransfer(
@@ -480,7 +493,20 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-            postResponse.push(response.data.quotes[0].data);
+            interface Quote {
+              protocol: string;
+              data: string;
+            }
+
+            const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
+              (quote: Quote) => quote.protocol === "enso"
+            );
+
+            if (!zeroXQuote?.data) {
+              throw new Error("No valid enso quote found");
+            }
+
+            postResponse.push(zeroXQuote.data);
           }
         }
 
@@ -536,7 +562,20 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-            postResponse.push(response.data.quotes[0].data);
+            interface Quote {
+              protocol: string;
+              data: string;
+            }
+
+            const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
+              (quote: Quote) => quote.protocol === "enso"
+            );
+
+            if (!zeroXQuote?.data) {
+              throw new Error("No valid enso quote found");
+            }
+
+            postResponse.push(zeroXQuote.data);
           }
         }
 
@@ -580,6 +619,19 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           balance
         );
 
+        interface Quote {
+          protocol: string;
+          data: string;
+        }
+
+        const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
+          (quote: Quote) => quote.protocol === "enso"
+        );
+
+        if (!zeroXQuote?.data) {
+          throw new Error("No valid enso quote found");
+        }
+
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
           [
             " bytes[][]", // callDataEnso
@@ -592,7 +644,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "uint256[]", // minExpectedOutputAmounts
           ],
           [
-            [[postResponse.data.quotes[0].data]],
+            [[zeroXQuote.data]],
             [],
             [[]],
             [[]],
@@ -667,7 +719,20 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               withdrawalAmount
             );
 
-            responses.push(response.data.quotes[0].data);
+            interface Quote {
+              protocol: string;
+              data: string;
+            }
+
+            const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
+              (quote: Quote) => quote.protocol === "enso"
+            );
+
+            if (!zeroXQuote?.data) {
+              throw new Error("No valid enso quote found");
+            }
+
+            responses.push(zeroXQuote.data);
           }
           userBalanceBefore.push(
             await ERC20.attach(tokens[i]).balanceOf(user.address)
