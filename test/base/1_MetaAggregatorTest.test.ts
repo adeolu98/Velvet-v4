@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
-import { ethers, upgrades } from "hardhat";
+import { ethers, upgrades, network } from "hardhat";
 import { BigNumber, Contract } from "ethers";
 import {
   PERMIT2_ADDRESS,
@@ -120,15 +120,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
       await tokenBalanceLibrary.deployed();
 
+
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
       ensoHandler = await EnsoHandler.deploy(
-        "0x7A56e0BC2216D9b051F69eb0c79A77A3130B99ed"
+        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
       );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
       depositBatch = await DepositBatch.deploy(
-        "0x7A56e0BC2216D9b051F69eb0c79A77A3130B99ed"
+        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
       );
       await depositBatch.deployed();
 
@@ -138,7 +139,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
       withdrawBatch = await WithdrawBatch.deploy(
-        "0x7A56e0BC2216D9b051F69eb0c79A77A3130B99ed"
+        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
       );
       await withdrawBatch.deployed();
 
@@ -412,6 +413,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       });
 
       it("should swap tokens for user using native token", async () => {
+
         let tokens = await portfolio.getTokens();
 
         console.log("SupplyBefore", await portfolio.totalSupply());
@@ -427,8 +429,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "1000000000000000000"
           );
 
-          postResponse.push(response.data.quotes[0].data);
+
+          const nonWowMaxQuotes = response.data.quotes.filter((quote: any) => quote.protocol !== 'wowMax');
+
+          postResponse.push(nonWowMaxQuotes[0].data);
         }
+
 
         const data = await depositBatch.multiTokenSwapETHAndTransfer(
           {
@@ -480,7 +486,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-            postResponse.push(response.data.quotes[0].data);
+
+            const nonWowMaxQuotes = response.data.quotes.filter((quote: any) => quote.protocol !== 'wowMax');
+
+            postResponse.push(nonWowMaxQuotes[0].data);
           }
         }
 
@@ -536,7 +545,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-            postResponse.push(response.data.quotes[0].data);
+
+            const nonWowMaxQuotes = response.data.quotes.filter((quote: any) => quote.protocol !== 'wowMax');
+
+            postResponse.push(nonWowMaxQuotes[0].data);
           }
         }
 
@@ -580,6 +592,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           balance
         );
 
+        
+        const nonWowMaxQuotes = postResponse.data.quotes.filter((quote:any) => quote.protocol !== 'wowMax');
+
+
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
           [
             " bytes[][]", // callDataEnso
@@ -592,7 +608,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "uint256[]", // minExpectedOutputAmounts
           ],
           [
-            [[postResponse.data.quotes[0].data]],
+            [[nonWowMaxQuotes[0].data]],
             [],
             [[]],
             [[]],
