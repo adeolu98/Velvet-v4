@@ -23,19 +23,24 @@ abstract contract PositionManagerAlgebraBase is PositionManagerAbstract {
    * @param _protocolConfig Address of the protocol configuration.
    * @param _assetManagerConfig Address of the asset management configuration.
    * @param _accessController Address of the access controller.
+   * @param _protocolId Protocol ID.
    */
   function PositionManagerAbstractAlgebra_init(
+    address _externalPositionStorage,
     address _nonFungiblePositionManagerAddress,
     address _swapRouter,
     address _protocolConfig,
     address _assetManagerConfig,
-    address _accessController
+    address _accessController,
+    bytes32 _protocolId
   ) internal {
     PositionManagerAbstract__init(
+      _externalPositionStorage,
       _nonFungiblePositionManagerAddress,
       _protocolConfig,
       _assetManagerConfig,
-      _accessController
+      _accessController,
+      _protocolId
     );
 
     router = ISwapRouter(_swapRouter);

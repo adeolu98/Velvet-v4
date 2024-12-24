@@ -62,6 +62,14 @@ const qs = require("qs");
 //use default BigNumber
 chai.use(require("chai-bignumber")());
 
+const thenaProtocolHash = ethers.utils.keccak256(
+  ethers.utils.toUtf8Bytes("THENA-CONCENTRATED-LIQUIDITY-V2")
+);
+
+const thenaProtocolHash2 = ethers.utils.keccak256(
+  ethers.utils.toUtf8Bytes("THENA-CONCENTRATED-LIQUIDITY-MANIPULATED")
+);
+
 describe.only("Tests for Deposit", () => {
   let accounts;
   let iaddress: IAddresses;
@@ -204,11 +212,7 @@ describe.only("Tests for Deposit", () => {
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
@@ -303,6 +307,12 @@ describe.only("Tests for Deposit", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -322,6 +332,7 @@ describe.only("Tests for Deposit", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -334,11 +345,6 @@ describe.only("Tests for Deposit", () => {
 
       portfolioFactory = PortfolioFactory.attach(
         portfolioFactoryInstance.address
-      );
-
-      await portfolioFactory.setPositionManagerAddresses(
-        "0xbf77b742eE1c0a6883c009Ce590A832DeBe74064",
-        "0x327dd3208f0bcf590a66110acb6e5e6941a4efa0"
       );
 
       await withdrawManager.initialize(
@@ -363,7 +369,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: true,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [thenaProtocolHash],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -383,7 +389,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: false,
+          _witelistedProtocolIds: [thenaProtocolHash],
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -438,7 +444,14 @@ describe.only("Tests for Deposit", () => {
       assetManagementConfig = AssetManagementConfig.attach(config);
       assetManagementConfig1 = AssetManagementConfig.attach(config1);
 
-      await assetManagementConfig.enableUniSwapV3Manager();
+      await protocolConfig.enableProtocol(
+        thenaProtocolHash,
+        "0xbf77b742eE1c0a6883c009Ce590A832DeBe74064",
+        "0x327dd3208f0bcf590a66110acb6e5e6941a4efa0",
+        positionWrapperBaseAddress.address
+      );
+
+      await assetManagementConfig.enableUniSwapV3Manager(thenaProtocolHash);
 
       let positionManagerAddress =
         await assetManagementConfig.positionManager();
@@ -453,7 +466,9 @@ describe.only("Tests for Deposit", () => {
     describe("Deposit Tests", function () {
       it("non owner should not be able to enable the uniswapV3 position manager", async () => {
         await expect(
-          assetManagementConfig.connect(nonOwner).enableUniSwapV3Manager()
+          assetManagementConfig
+            .connect(nonOwner)
+            .enableUniSwapV3Manager(thenaProtocolHash)
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
           "CallerNotAssetManager"
@@ -462,19 +477,21 @@ describe.only("Tests for Deposit", () => {
 
       it("owner should not be able to enable the uniswapV3 position manager after it has already been enabled", async () => {
         await expect(
-          assetManagementConfig.enableUniSwapV3Manager()
+          assetManagementConfig.enableUniSwapV3Manager(thenaProtocolHash)
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "UniSwapV3WrapperAlreadyEnabled"
+          "ProtocolManagerAlreadyEnabled"
         );
       });
 
       it("owner should not be able to enable the uniswapV3 position manager if not enabled during portfolio creation", async () => {
         await expect(
-          assetManagementConfig1.connect(nonOwner).enableUniSwapV3Manager()
+          assetManagementConfig1
+            .connect(nonOwner)
+            .enableUniSwapV3Manager(thenaProtocolHash2)
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
-          "ExternalPositionManagementNotWhitelisted"
+          "ProtocolNotEnabled"
         );
       });
 

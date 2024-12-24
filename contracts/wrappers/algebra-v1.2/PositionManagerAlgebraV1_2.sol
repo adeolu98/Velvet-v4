@@ -10,11 +10,13 @@ import { PositionManagerAbstractAlgebraV1_2, ErrorLibrary } from "./PositionMana
  */
 contract PositionManagerAlgebraV1_2 is PositionManagerAbstractAlgebraV1_2 {
   function init(
+    address _externalPositionStorage,
     address _protocolConfig,
     address _assetManagerConfig,
     address _accessController,
     address _nftManager,
-    address _swapRouter
+    address _swapRouter,
+    bytes32 _protocolId
   ) external initializer {
     // Add input validation
     if (
@@ -24,11 +26,13 @@ contract PositionManagerAlgebraV1_2 is PositionManagerAbstractAlgebraV1_2 {
     ) revert ErrorLibrary.InvalidAddress();
 
     PositionManagerAbstractAlgebra_init(
+      _externalPositionStorage,
       _nftManager,
       _swapRouter,
       _protocolConfig,
       _assetManagerConfig,
-      _accessController
+      _accessController,
+      _protocolId
     );
   }
 }

@@ -187,7 +187,7 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
 
     // Deploy and initialize the position wrapper.
     ERC1967Proxy positionWrapperProxy = new ERC1967Proxy(
-      protocolConfig.positionWrapperBaseImplementation(),
+      protocolConfig.getPositionWrapperBaseImplementation(protocolId),
       abi.encodeWithSelector(
         IPositionWrapper.init.selector,
         address(this),
@@ -207,7 +207,7 @@ abstract contract PositionManagerAbstractAlgebraV1_2 is
 
     // Register the new wrapper in the deployed position wrappers list and mark it as a valid wrapper.
     deployedPositionWrappers.push(address(positionWrapper));
-    isWrappedPosition[address(positionWrapper)] = true;
+    externalPositionStorage.addWrappedPosition(address(positionWrapper));
 
     emit NewPositionCreated(address(positionWrapper), _token0, _token1);
 
