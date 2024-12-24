@@ -38,7 +38,7 @@ import {
   FeeModule__factory,
   EnsoHandler,
   TokenBalanceLibrary,
-  BorrowManager,
+  BorrowManagerVenus,
   VenusAssetHandler,
   EnsoHandlerBundled,
   AccessController__factory,
@@ -77,7 +77,7 @@ describe.only("Tests for Deposit", () => {
   let tokenExclusionManager: any;
   let tokenExclusionManager1: any;
   let ensoHandler: EnsoHandler;
-  let borrowManager: BorrowManager;
+  let borrowManager: BorrowManagerVenus;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let depositBatch: DepositBatchExternalPositions;
   let depositBatch2: DepositBatch;
@@ -208,7 +208,9 @@ describe.only("Tests for Deposit", () => {
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      const BorrowManager = await ethers.getContractFactory(
+        "BorrowManagerVenus"
+      );
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
@@ -1239,7 +1241,8 @@ describe.only("Tests for Deposit", () => {
           );
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 

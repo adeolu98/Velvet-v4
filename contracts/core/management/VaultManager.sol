@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/IERC20Upgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
-import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import { IVelvetSafeModule } from "../../vault/IVelvetSafeModule.sol";
-import { IAssetManagementConfig } from "../../config/assetManagement/IAssetManagementConfig.sol";
-import { IPortfolio } from "../interfaces/IPortfolio.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/IERC20Upgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import {IVelvetSafeModule} from "../../vault/IVelvetSafeModule.sol";
+import {IAssetManagementConfig} from "../../config/assetManagement/IAssetManagementConfig.sol";
+import {IPortfolio} from "../interfaces/IPortfolio.sol";
 
-import { FeeManager } from "./FeeManager.sol";
-import { VaultConfig, ErrorLibrary } from "../config/VaultConfig.sol";
-import { VaultCalculations, Dependencies } from "../calculations/VaultCalculations.sol";
-import { MathUtils } from "../calculations/MathUtils.sol";
-import { PortfolioToken } from "../token/PortfolioToken.sol";
-import { IAllowanceTransfer } from "../interfaces/IAllowanceTransfer.sol";
+import {FeeManager} from "./FeeManager.sol";
+import {VaultConfig, ErrorLibrary} from "../config/VaultConfig.sol";
+import {VaultCalculations, Dependencies} from "../calculations/VaultCalculations.sol";
+import {MathUtils} from "../calculations/MathUtils.sol";
+import {PortfolioToken} from "../token/PortfolioToken.sol";
+import {IAllowanceTransfer} from "../interfaces/IAllowanceTransfer.sol";
 
-import { IProtocolConfig } from "../../config/protocol/IProtocolConfig.sol";
-import { FunctionParameters } from "../../FunctionParameters.sol";
-import { TokenBalanceLibrary } from "../calculations/TokenBalanceLibrary.sol";
-import { IBorrowManager } from "../interfaces/IBorrowManager.sol";
-import { IAssetHandler } from "../interfaces/IAssetHandler.sol";
+import {IProtocolConfig} from "../../config/protocol/IProtocolConfig.sol";
+import {FunctionParameters} from "../../FunctionParameters.sol";
+import {TokenBalanceLibrary} from "../calculations/TokenBalanceLibrary.sol";
+import {IBorrowManager} from "../interfaces/IBorrowManager.sol";
+import {IAssetHandler} from "../interfaces/IAssetHandler.sol";
 
 /**
  * @title VaultManager
@@ -485,6 +485,7 @@ abstract contract VaultManager is
     TokenBalanceLibrary.ControllerData[]
       memory controllersData = TokenBalanceLibrary.getControllersData(
         vault,
+        portfolioTokens,
         _protocolConfig
       );
 
@@ -547,8 +548,10 @@ abstract contract VaultManager is
       // This check is necessary because if there is any rebase token or the protocol sets the balance to zero,
       // we need to be able to withdraw other tokens. The balance for a withdrawal should always be >0,
       // except when the user accepts to lose this token.
-      if (tokenBalance == 0 && _exemptionTokens[exemptionIndex] != _token)
-        revert ErrorLibrary.WithdrawalAmountIsSmall();
+      if (tokenBalance == 0) {
+        if (_exemptionTokens[exemptionIndex] == _token) exemptionIndex += 1;
+        else revert ErrorLibrary.WithdrawalAmountIsSmall();
+      }
       return (tokenBalance, exemptionIndex);
     } catch {
       // Checking if exception token was mentioned in exceptionToken array

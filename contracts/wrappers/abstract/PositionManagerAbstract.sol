@@ -111,6 +111,7 @@ abstract contract PositionManagerAbstract is
     bytes32 _protocolId
   ) internal {
     __UUPSUpgradeable_init();
+    __ReentrancyGuard_init();
 
     externalPositionStorage = IExternalPositionStorage(
       _externalPositionStorage

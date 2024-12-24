@@ -49,7 +49,7 @@ import {
   WithdrawBatch,
   WithdrawManager,
   TokenBalanceLibrary,
-  BorrowManager,
+  BorrowManagerVenus,
   DepositBatchExternalPositions,
   DepositManagerExternalPositions,
   PositionManagerAlgebra,
@@ -85,7 +85,7 @@ describe.only("Tests for Deposit", () => {
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
-  let borrowManager: BorrowManager;
+  let borrowManager: BorrowManagerVenus;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let rebalancing: any;
   let rebalancing1: any;
@@ -206,7 +206,7 @@ describe.only("Tests for Deposit", () => {
       positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      const BorrowManager = await ethers.getContractFactory("BorrowManagerVenus");
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
