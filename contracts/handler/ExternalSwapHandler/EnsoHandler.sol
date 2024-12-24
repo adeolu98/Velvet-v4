@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {SafeERC20Upgradeable, IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
-import {ErrorLibrary} from "../../library/ErrorLibrary.sol";
-import {IIntentHandler} from "../IIntentHandler.sol";
-import {IPositionManager} from "../../wrappers/abstract/IPositionManager.sol";
-import {FunctionParameters} from "../../FunctionParameters.sol";
-import {ExternalPositionManagement} from "./ExternalPositionManagement.sol";
+import { SafeERC20Upgradeable, IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
+import { IIntentHandler } from "../IIntentHandler.sol";
+import { IPositionManager } from "../../wrappers/abstract/IPositionManager.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
+import { ExternalPositionManagement } from "./ExternalPositionManagement.sol";
+import { IExternalPositionStorage } from "../../wrappers/abstract/IExternalPositionStorage.sol";
 
 /**
  * @title EnsoHandler
@@ -141,7 +142,9 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
       // Handle wrapped positions for input tokens: Decreases liquidity from wrapped positions
       if (
         address(_params._positionManager) != address(0) && // PositionManager has not been initialized
-        _params._positionManager.isWrappedPosition(tokensIn[i])
+        IExternalPositionStorage(
+          IPositionManager(_params._positionManager).externalPositionStorage()
+        ).isWrappedPosition(tokensIn[i])
       ) {
         _handleWrappedPositionDecrease(
           address(_params._positionManager),
@@ -155,7 +158,9 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
       // Handle wrapped positions for output tokens: Approves position manager to spend underlying tokens + increases liquidity
       if (
         address(_params._positionManager) != address(0) && // PositionManager has not been initialized
-        _params._positionManager.isWrappedPosition(token)
+        IExternalPositionStorage(
+          IPositionManager(_params._positionManager).externalPositionStorage()
+        ).isWrappedPosition(token)
       ) {
         _handleWrappedPositionIncrease(
           increaseLiquidityTarget[i],
