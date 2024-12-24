@@ -1269,7 +1269,7 @@ describe("Coverage test", async () => {
         const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(token2.address, nativeToken, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false)
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })).to.be.reverted
     })
-    it("should revert when eth value sent is not equal to amount in swap eth delegate call", async () => {
+    it("should revert when eth value sent is smaller to amount in swap eth delegate call", async () => {
         const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract } = await loadFixture(setupTest);
 
 
@@ -1280,7 +1280,7 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount / 2, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount * 2, token2Amount, receiverContract.address, false)
 
 
 
