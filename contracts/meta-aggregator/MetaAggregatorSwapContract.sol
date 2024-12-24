@@ -101,14 +101,6 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
     }
 
     /**
-     * @dev Returns true if the reentrancy guard is currently set to "entered", which indicates there is a
-     * `nonReentrant` function in the call stack.
-     */
-    function _reentrancyGuardEntered() internal view returns (bool) {
-        return _status == _ENTERED;
-    }
-
-    /**
      * @dev Swaps ETH for an ERC20 token.
      * @param tokenIn must be the native token.
      * @param tokenOut The ERC20 token to swap to.
