@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IMetaAggregatorSwapContract} from "./interfaces/IMetaAggregatorSwapContract.sol";
 import {TransferHelper} from "./libraries/TransferHelper.sol";
 
@@ -10,14 +9,14 @@ import {TransferHelper} from "./libraries/TransferHelper.sol";
  * @title MetaAggregatorSwapContract
  * @dev Facilitates swapping between ETH and ERC20 tokens or between two ERC20 tokens using an aggregator.
  */
-contract MetaAggregatorSwapContract is
-    ReentrancyGuard,
-    IMetaAggregatorSwapContract
-{
+contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
     address constant nativeToken = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // Represent native ETH token
     address immutable usdt; // Address of USDT token
     address immutable SWAP_TARGET; // Address of the swap target for delegatecall operations
     address immutable _this; // Address of this contract instance
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
 
     // Custom error messages for efficient error handling
     error CannotSwapTokens();
@@ -61,6 +60,52 @@ contract MetaAggregatorSwapContract is
         SWAP_TARGET = _ensoSwapContract;
         usdt = _usdt;
         _this = address(this);
+        _status = _NOT_ENTERED;
+    }
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * Calling a `nonReentrant` function from another `nonReentrant`
+     * function is not supported. It is possible to prevent this from happening
+     * by making the `nonReentrant` function external, and making it call a
+     * `private` function that does the actual work.
+     */
+    modifier nonReentrant() {
+        _nonReentrantBefore();
+        _;
+        _nonReentrantAfter();
+    }
+
+    /**
+     * @dev only checks for re-entrancy when the call is not delegate.
+     */
+    function _nonReentrantBefore() private {
+        if (address(this) == _this) {
+            // On the first call to nonReentrant, _status will be _NOT_ENTERED
+            require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+            // Any calls to nonReentrant after this point will fail
+            _status = _ENTERED;
+        }
+    }
+
+    /**
+     * @dev only checks for re-entrancy when the call is not delegate.
+     */
+    function _nonReentrantAfter() private {
+        if (address(this) == _this) {
+            // By storing the original value once again, a refund is triggered (see
+            // https://eips.ethereum.org/EIPS/eip-2200)
+            _status = _NOT_ENTERED;
+        }
+    }
+
+    /**
+     * @dev Returns true if the reentrancy guard is currently set to "entered", which indicates there is a
+     * `nonReentrant` function in the call stack.
+     */
+    function _reentrancyGuardEntered() internal view returns (bool) {
+        return _status == _ENTERED;
     }
 
     /**
@@ -84,7 +129,9 @@ contract MetaAggregatorSwapContract is
         address receiver,
         bool isDelegate
     ) external payable nonReentrant {
-        if (address(tokenIn) != nativeToken) revert CannotSwapTokens();
+        if (address(tokenIn) != nativeToken) {
+            revert CannotSwapTokens();
+        }
         uint256 amountOut = _swapETH(
             tokenIn,
             tokenOut,
@@ -137,8 +184,6 @@ contract MetaAggregatorSwapContract is
         emit ETHSwappedForToken(amountOut, address(tokenOut), receiver);
     }
 
- 
-
     /**
      * @dev Internal function to perform the swap from ETH to ERC20.
      * @param tokenIn must be the native token.
@@ -168,7 +213,8 @@ contract MetaAggregatorSwapContract is
             minAmountOut,
             receiver
         );
-        if (msg.value != amountIn) revert IncorrectEtherAmountSent();
+
+        if (msg.value < amountIn) revert IncorrectEtherAmountSent();
 
         uint256 balanceBefore = tokenOut.balanceOf(address(this));
         _executeAggregatorCall(swapData, isDelegate, aggregator, amountIn);
