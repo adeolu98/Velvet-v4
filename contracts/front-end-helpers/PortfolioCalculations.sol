@@ -2,25 +2,25 @@
 
 pragma solidity 0.8.17;
 
-import {IPortfolio} from "../core/interfaces/IPortfolio.sol";
-import {ITokenExclusionManager} from "../core/interfaces/ITokenExclusionManager.sol";
-import {IFeeModule} from "../fee/IFeeModule.sol";
-import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
-import {IProtocolConfig} from "../config/protocol/IProtocolConfig.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import {IPriceOracle} from "../../contracts/oracle/IPriceOracle.sol";
-import {IVenusPool} from "../core/interfaces/IVenusPool.sol";
-import {IThena} from "../core/interfaces/IThena.sol";
-import {IAssetHandler} from "../core/interfaces/IAssetHandler.sol";
-import {FunctionParameters} from "../FunctionParameters.sol";
-import {IVenusComptroller, IVAIController} from "../handler/Venus/IVenusComptroller.sol";
-import {ExponentialNoError} from "../handler/Venus/ExponentialNoError.sol";
-import {ErrorLibrary} from "../library/ErrorLibrary.sol";
-import {TokenBalanceLibrary} from "../core/calculations/TokenBalanceLibrary.sol";
-import {IAavePriceOracle} from "../handler/Aave/IAavePriceOracle.sol";
-import {IPoolDataProvider} from "../handler/Aave/IPoolDataProvider.sol";
-import {IAaveToken} from "../handler/Aave/IAaveToken.sol";
+import { IPortfolio } from "../core/interfaces/IPortfolio.sol";
+import { ITokenExclusionManager } from "../core/interfaces/ITokenExclusionManager.sol";
+import { IFeeModule } from "../fee/IFeeModule.sol";
+import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
+import { IProtocolConfig } from "../config/protocol/IProtocolConfig.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import { IPriceOracle } from "../../contracts/oracle/IPriceOracle.sol";
+import { IVenusPool } from "../core/interfaces/IVenusPool.sol";
+import { IThena } from "../core/interfaces/IThena.sol";
+import { IAssetHandler } from "../core/interfaces/IAssetHandler.sol";
+import { FunctionParameters } from "../FunctionParameters.sol";
+import { IVenusComptroller, IVAIController } from "../handler/Venus/IVenusComptroller.sol";
+import { ExponentialNoError } from "../handler/Venus/ExponentialNoError.sol";
+import { ErrorLibrary } from "../library/ErrorLibrary.sol";
+import { TokenBalanceLibrary } from "../core/calculations/TokenBalanceLibrary.sol";
+import { IAavePriceOracle } from "../handler/Aave/IAavePriceOracle.sol";
+import { IPoolDataProvider } from "../handler/Aave/IPoolDataProvider.sol";
+import { IAaveToken } from "../handler/Aave/IAaveToken.sol";
 
 contract PortfolioCalculations is ExponentialNoError {
   uint256 internal constant ONE_ETH_IN_WEI = 10 ** 18;
@@ -496,7 +496,9 @@ contract PortfolioCalculations is ExponentialNoError {
     uint256 performanceIncrease = _currentPrice - _highWaterMark;
     uint256 performanceFee = (performanceIncrease *
       _totalSupply *
-      _feePercentage) / ONE_ETH_IN_WEI / TOTAL_WEIGHT;
+      _feePercentage) /
+      ONE_ETH_IN_WEI /
+      TOTAL_WEIGHT;
 
     tokensToMint =
       (performanceFee * _totalSupply) /
@@ -659,9 +661,9 @@ contract PortfolioCalculations is ExponentialNoError {
     address _user,
     address _controller,
     address _venusAssetHandler,
-    address _protocolToken,
+    address[] memory _protocolToken,
     address[] memory _portfolioTokens,
-    uint256 _debtRepayAmount,
+    uint256[] memory _debtRepayAmount,
     uint256 feeUnit, //Flash loan fee unit
     uint256 bufferUnit //Buffer unit is the buffer percentage in terms of 1/100000
   ) external view returns (uint256[] memory amounts) {
@@ -677,44 +679,47 @@ contract PortfolioCalculations is ExponentialNoError {
 
     amounts = new uint256[](tokenAddresses.lendTokens.length);
 
-    uint256 borrowBalance = IVenusPool(_protocolToken).borrowBalanceStored(
-      _user
-    );
+    for (uint256 i; i < _protocolToken.length; i++) {
+      uint256 borrowBalance = IVenusPool(_protocolToken[i]).borrowBalanceStored(
+        _user
+      );
 
-    uint256 oraclePriceMantissa = IVenusComptroller(_controller)
-      .oracle()
-      .getUnderlyingPrice(_protocolToken);
+      uint256 oraclePriceMantissa = IVenusComptroller(_controller)
+        .oracle()
+        .getUnderlyingPrice(_protocolToken[i]);
 
-    Exp memory oraclePrice = Exp({mantissa: oraclePriceMantissa});
-    // sumBorrowPlusEffects += oraclePrice * borrowBalance
-    uint256 sumBorrowPlusEffects;
-    sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
-      oraclePrice,
-      borrowBalance,
-      sumBorrowPlusEffects
-    );
+      Exp memory oraclePrice = Exp({ mantissa: oraclePriceMantissa });
+      address _account = _user;
+      address comptroller = _controller;
+      // sumBorrowPlusEffects += oraclePrice * borrowBalance
+      uint256 sumBorrowPlusEffects;
+      sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
+        oraclePrice,
+        borrowBalance,
+        sumBorrowPlusEffects
+      );
 
-    address _account = _user;
-    sumBorrowPlusEffects = handleVAIController(
-      _controller,
-      _account,
-      sumBorrowPlusEffects
-    );
+      sumBorrowPlusEffects = handleVAIController(
+        comptroller,
+        _account,
+        sumBorrowPlusEffects
+      );
 
-    (, uint256 percentageToRemove) = calculateDebtAndPercentage(
-      _debtRepayAmount,
-      feeUnit,
-      sumBorrowPlusEffects / 10 ** 10,
-      borrowBalance,
-      accountData.totalCollateral
-    );
+      (, uint256 percentageToRemove) = calculateDebtAndPercentage(
+        _debtRepayAmount[i],
+        feeUnit,
+        sumBorrowPlusEffects / 10 ** 10,
+        borrowBalance,
+        accountData.totalCollateral
+      );
 
-    for (uint256 i; i < tokenAddresses.lendTokens.length; i++) {
-      uint256 balance = IERC20Upgradeable(tokenAddresses.lendTokens[i])
-        .balanceOf(_account);
-      uint256 amountToSell = (balance * percentageToRemove);
-      amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
-      amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
+      for (uint256 j; j < tokenAddresses.lendTokens.length; j++) {
+        uint256 balance = IERC20Upgradeable(tokenAddresses.lendTokens[j])
+          .balanceOf(_account);
+        uint256 amountToSell = (balance * percentageToRemove);
+        amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
+        amounts[j] += (amountToSell / 10 ** 18); // Calculate the amount to sell
+      }
     }
   }
 
@@ -735,9 +740,9 @@ contract PortfolioCalculations is ExponentialNoError {
     address _user,
     address _controller,
     address _aaveAssetHandler,
-    address _protocolToken,
+    address[] memory _protocolToken,
     address[] memory _portfolioTokens,
-    uint256 _debtRepayAmount,
+    uint256[] memory _debtRepayAmount,
     uint256 feeUnit, //Flash loan fee unit
     uint256 bufferUnit
   ) public view returns (uint256[] memory amounts) {
@@ -751,44 +756,44 @@ contract PortfolioCalculations is ExponentialNoError {
       );
 
     amounts = new uint256[](tokenAddresses.lendTokens.length);
-
-    //Get borrow balance for _protocolToken
-    address _underlyingToken = IAaveToken(_protocolToken)
-      .UNDERLYING_ASSET_ADDRESS();
-    (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
-      0x7F23D86Ee20D869112572136221e173428DD740B
-    ).getUserReserveData(_underlyingToken, _user);
-
-    //Convert underlyingToken to 18 decimal
-    uint borrowBalance = currentVariableDebt *
-      10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
-
-
     address _account = _user;
-    //Get price for _protocolToken token
-    uint _oraclePrice = IAavePriceOracle(
-      0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7
-    ).getAssetPrice(_underlyingToken);
-    //Get price for borrow Balance (amount * price)
+    for (uint256 i; i < _protocolToken.length; i++) {
+      //Get borrow balance for _protocolToken
+      address _underlyingToken = IAaveToken(_protocolToken[i])
+        .UNDERLYING_ASSET_ADDRESS();
+      (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
+        0x7F23D86Ee20D869112572136221e173428DD740B
+      ).getUserReserveData(_underlyingToken, _account);
 
-    uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
+      //Convert underlyingToken to 18 decimal
+      uint borrowBalance = currentVariableDebt *
+        10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
 
-    //calculateDebtAndPercentage
-    (, uint256 percentageToRemove) = calculateDebtAndPercentage(
-      _debtRepayAmount,
-      feeUnit,
-      _tokenPrice,
-      borrowBalance,
-      accountData.totalCollateral
-    );
+      //Get price for _protocolToken token
+      uint _oraclePrice = IAavePriceOracle(
+        0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7
+      ).getAssetPrice(_underlyingToken);
+      //Get price for borrow Balance (amount * price)
 
-    // Calculate the amounts to sell for each lending token
-    for (uint256 i; i < tokenAddresses.lendTokens.length; i++) {
-      uint256 balance = IERC20Upgradeable(tokenAddresses.lendTokens[i])
-        .balanceOf(_account);
-      uint256 amountToSell = (balance * percentageToRemove);
-      amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
-      amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
+      uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
+
+      //calculateDebtAndPercentage
+      (, uint256 percentageToRemove) = calculateDebtAndPercentage(
+        _debtRepayAmount[i],
+        feeUnit,
+        _tokenPrice,
+        borrowBalance,
+        accountData.totalCollateral
+      );
+
+      // Calculate the amounts to sell for each lending token
+      for (uint256 j; j < tokenAddresses.lendTokens.length; j++) {
+        uint256 balance = IERC20Upgradeable(tokenAddresses.lendTokens[j])
+          .balanceOf(_account);
+        uint256 amountToSell = (balance * percentageToRemove);
+        amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
+        amounts[j] += (amountToSell / 10 ** 18); // Calculate the amount to sell
+      }
     }
   }
 

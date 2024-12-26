@@ -156,9 +156,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         ProtocolConfig,
         [
           treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+          priceOracle.address],
         { kind: "uups" }
       );
 
@@ -311,6 +309,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -329,6 +333,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -365,7 +370,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -385,7 +390,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -818,6 +823,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       it("should repay half of ARB using flashloan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let tokens = await portfolio.getTokens();
 
         let flashloanBufferUnit = 30; //Flashloan buffer unit in 1/10000
         let bufferUnit = 320; //Buffer unit for collateral amount in 1/100000
@@ -834,7 +840,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const userData = await aaveAssetHandler.getUserAccountData(
           vault,
           addresses.aavePool,
-          portfolio.getTokens()
+          tokens
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -873,9 +879,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             vault,
             addresses.aavePool,
             aaveAssetHandler.address,
-            addresses.aArbARB,
-            portfolio.address,
-            balanceToRepay,
+            [addresses.aArbARB],
+            tokens,
+            [balanceToRepay],
             flashLoanFee, //Flash loan fee
             "310" //Buffer unit for collateral amount
           );
@@ -1053,35 +1059,35 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               )
             );
           }
+        }
 
-          const amounToSell =
-            await portfolioCalculations.getAaveCollateralAmountToSell(
-              vault,
-              addresses.aavePool,
-              aaveAssetHandler.address,
-              borrowedTokens[i],
-              portfolio.address,
-              borrowedPortion[i],
-              flashLoanFee, //Flash loan fee
-              bufferUnit //Buffer unit for collateral amount
-            );
+        const amounToSell =
+          await portfolioCalculations.getAaveCollateralAmountToSell(
+            vault,
+            addresses.aavePool,
+            aaveAssetHandler.address,
+            borrowedTokens,
+            tokens,
+            borrowedPortion,
+            flashLoanFee, //Flash loan fee
+            bufferUnit //Buffer unit for collateral amount
+          );
 
-          for (let j = 0; j < lendTokens.length; j++) {
-            const postResponse1 = await createEnsoCallDataRoute(
-              ensoHandler.address,
-              ensoHandler.address,
-              lendTokens[j],
-              flashLoanToken,
-              amounToSell[j].toString() //Need calculation here
-            );
+        for (let j = 0; j < lendTokens.length; j++) {
+          const postResponse1 = await createEnsoCallDataRoute(
+            ensoHandler.address,
+            ensoHandler.address,
+            lendTokens[j],
+            flashLoanToken,
+            amounToSell[j].toString() //Need calculation here
+          );
 
-            encodedParameters1.push(
-              ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
-              )
-            );
-          }
+          encodedParameters1.push(
+            ethers.utils.defaultAbiCoder.encode(
+              ["bytes[]", "address[]", "uint256[]"],
+              [[postResponse1.data.tx.data], [flashLoanToken], [0]]
+            )
+          );
         }
 
         await withdrawManager.withdraw(

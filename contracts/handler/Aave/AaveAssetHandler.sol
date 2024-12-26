@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IAssetHandler} from "../../core/interfaces/IAssetHandler.sol";
-import {FunctionParameters} from "../../FunctionParameters.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
-import {IAavePool, DataTypes} from "./IAavePool.sol";
-import {IPoolDataProvider} from "./IPoolDataProvider.sol";
-import {IAaveToken} from "./IAaveToken.sol";
-import {IAavePriceOracle} from "./IAavePriceOracle.sol";
-import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import {IPortfolio} from "../../core/interfaces/IPortfolio.sol";
+import { IAssetHandler } from "../../core/interfaces/IAssetHandler.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
+import { IAavePool, DataTypes } from "./IAavePool.sol";
+import { IPoolDataProvider } from "./IPoolDataProvider.sol";
+import { IAaveToken } from "./IAaveToken.sol";
+import { IAavePriceOracle } from "./IAavePriceOracle.sol";
+import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import { IPortfolio } from "../../core/interfaces/IPortfolio.sol";
 
 contract AaveAssetHandler is IAssetHandler {
   address immutable DATA_PROVIDER_ADDRESS =
@@ -495,52 +495,43 @@ contract AaveAssetHandler is IAssetHandler {
     uint256 fee,
     FunctionParameters.FlashLoanData memory flashData
   ) internal view returns (MultiTransaction[] memory transactions) {
-    uint256 amountLength = flashData.debtRepayAmount.length; // Get the number of repayment amounts
-    transactions = new MultiTransaction[](
-      amountLength * 2 * lendingTokens.length
-    ); // Initialize the transactions array
+    transactions = new MultiTransaction[](lendingTokens.length); // Initialize the transactions array
     uint256 count; // Count for the transactions
     uint256 swapDataCount; // Count for the swap data
-    // Loop through the repayment amounts to handle withdrawals
-    for (uint i = 0; i < amountLength; ) {
-      // Get the amounts to sell based on the collateral
-      uint256[] memory sellAmounts = getCollateralAmountToSell(
-        user,
-        controller,
-        flashData.protocolTokens[i],
-        lendingTokens,
-        flashData.debtRepayAmount[i],
-        fee,
-        totalCollateral,
-        flashData.bufferUnit
-      );
+    // Get the amounts to sell based on the collateral
+    uint256[] memory sellAmounts = getCollateralAmountToSell(
+      user,
+      controller,
+      flashData.protocolTokens,
+      lendingTokens,
+      flashData.debtRepayAmount,
+      fee,
+      totalCollateral,
+      flashData.bufferUnit
+    );
 
-      // Loop through the lending tokens to process each one
-      for (uint j = 0; j < lendingTokens.length; ) {
-        // Pull the token from the vault
-        transactions[count].to = executor;
-        transactions[count].txData = abi.encodeWithSelector(
-          bytes4(keccak256("pullFromVault(address,uint256,address)")),
-          lendingTokens[j], // The address of the lending token
-          sellAmounts[j], // The amount to sell
-          flashData.solverHandler // The solver handler address
-        );
-        count++;
-        // Swap the token and transfer it to the receiver
-        transactions[count].to = flashData.solverHandler;
-        transactions[count].txData = abi.encodeWithSelector(
-          bytes4(keccak256("multiTokenSwapAndTransfer(address,bytes)")),
-          receiver,
-          flashData.secondSwapData[swapDataCount]
-        );
-        count++;
-        swapDataCount++;
-        unchecked {
-          ++j;
-        }
-      }
+    // Loop through the lending tokens to process each one
+    for (uint j = 0; j < lendingTokens.length; ) {
+      // Pull the token from the vault
+      transactions[count].to = executor;
+      transactions[count].txData = abi.encodeWithSelector(
+        bytes4(keccak256("pullFromVault(address,uint256,address)")),
+        lendingTokens[j], // The address of the lending token
+        sellAmounts[j], // The amount to sell
+        flashData.solverHandler // The solver handler address
+      );
+      count++;
+      // Swap the token and transfer it to the receiver
+      transactions[count].to = flashData.solverHandler;
+      transactions[count].txData = abi.encodeWithSelector(
+        bytes4(keccak256("multiTokenSwapAndTransfer(address,bytes)")),
+        receiver,
+        flashData.secondSwapData[swapDataCount]
+      );
+      count++;
+      swapDataCount++;
       unchecked {
-        ++i;
+        ++j;
       }
     }
   }
@@ -559,46 +550,54 @@ contract AaveAssetHandler is IAssetHandler {
   function getCollateralAmountToSell(
     address _user,
     address,
-    address _protocolToken,
+    address[] memory _protocolToken,
     address[] memory lendTokens,
-    uint256 _debtRepayAmount,
+    uint256[] memory _debtRepayAmount,
     uint256 feeUnit, //flash loan fee unit
     uint256 totalCollateral,
     uint256 bufferUnit //buffer unit for collateral amount
   ) public view returns (uint256[] memory amounts) {
-    //Get borrow balance for _protocolToken
-    address _underlyingToken = IAaveToken(_protocolToken)
-      .UNDERLYING_ASSET_ADDRESS();
-    (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
-      DATA_PROVIDER_ADDRESS
-    ).getUserReserveData(_underlyingToken, _user);
+    amounts = new uint256[](lendTokens.length);
+    for (uint256 i; i < _protocolToken.length; ) {
+      //Get borrow balance for _protocolToken
+      address _underlyingToken = IAaveToken(_protocolToken[i])
+        .UNDERLYING_ASSET_ADDRESS();
+      (, , uint currentVariableDebt, , , , , , ) = IPoolDataProvider(
+        DATA_PROVIDER_ADDRESS
+      ).getUserReserveData(_underlyingToken, _user);
 
-    //Convert underlyingToken to 18 decimal
-    uint borrowBalance = currentVariableDebt *
-      10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
+      //Convert underlyingToken to 18 decimal
+      uint borrowBalance = currentVariableDebt *
+        10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
 
-    //Get price for _protocolToken token
-    uint _oraclePrice = IAavePriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
-      _underlyingToken
-    );
+      //Get price for _protocolToken token
+      uint _oraclePrice = IAavePriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
+        _underlyingToken
+      );
 
-    //Get price for borrow Balance (amount * price)
-    uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
-    //calculateDebtAndPercentage
-    (, uint256 percentageToRemove) = calculateDebtAndPercentage(
-      _debtRepayAmount,
-      feeUnit,
-      _tokenPrice,
-      borrowBalance,
-      totalCollateral
-    );
-    // Calculate the amounts to sell for each lending token
-    amounts = calculateAmountsToSell(
-      _user,
-      lendTokens,
-      percentageToRemove,
-      bufferUnit
-    );
+      address user = _user;
+      //Get price for borrow Balance (amount * price)
+      uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
+      //calculateDebtAndPercentage
+      (, uint256 percentageToRemove) = calculateDebtAndPercentage(
+        _debtRepayAmount[i],
+        feeUnit,
+        _tokenPrice,
+        borrowBalance,
+        totalCollateral
+      );
+      // Calculate the amounts to sell for each lending token
+      amounts = calculateAmountsToSell(
+        user,
+        lendTokens,
+        percentageToRemove,
+        bufferUnit,
+        amounts
+      );
+      unchecked {
+        ++i;
+      }
+    }
   }
 
   /**
@@ -635,20 +634,20 @@ contract AaveAssetHandler is IAssetHandler {
     address _user,
     address[] memory lendTokens,
     uint256 percentageToRemove,
-    uint256 bufferUnit
-  ) internal view returns (uint256[] memory amounts) {
-    amounts = new uint256[](lendTokens.length); // Initialize the amounts array
-
+    uint256 bufferUnit,
+    uint256[] memory amounts
+  ) internal view returns (uint256[] memory) {
     // Loop through the lent tokens to calculate the amount to sell
     for (uint256 i; i < lendTokens.length; ) {
       uint256 balance = IERC20Upgradeable(lendTokens[i]).balanceOf(_user); // Get the balance of the token
       uint256 amountToSell = (balance * percentageToRemove);
       amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
-      amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
+      amounts[i] += (amountToSell / 10 ** 18); // Calculate the amount to sell
       unchecked {
         ++i;
       }
     }
+    return amounts;
   }
 
   function executeUserFlashLoan(

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IAssetHandler} from "../../core/interfaces/IAssetHandler.sol";
-import {IVenusPool} from "../../core/interfaces/IVenusPool.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
-import {IVenusComptroller, IVAIController, IPriceOracle} from "./IVenusComptroller.sol";
-import {FunctionParameters} from "../../FunctionParameters.sol";
-import {IThena} from "../../core/interfaces/IThena.sol";
-import {IAlgebraPool} from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+import { IAssetHandler } from "../../core/interfaces/IAssetHandler.sol";
+import { IVenusPool } from "../../core/interfaces/IVenusPool.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
+import { IVenusComptroller, IVAIController, IPriceOracle } from "./IVenusComptroller.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
+import { IThena } from "../../core/interfaces/IThena.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import "./ExponentialNoError.sol";
 
 /**
@@ -440,8 +440,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     // Get the collateral factor from the market
     (, uint collateralFactorMantissa, ) = IVenusComptroller(comptroller)
       .markets(address(asset));
-    vars.collateralFactor = Exp({mantissa: collateralFactorMantissa});
-    vars.exchangeRate = Exp({mantissa: vars.exchangeRateMantissa});
+    vars.collateralFactor = Exp({ mantissa: collateralFactorMantissa });
+    vars.exchangeRate = Exp({ mantissa: vars.exchangeRateMantissa });
 
     // Get the normalized price of the asset
     vars.oraclePriceMantissa = IVenusComptroller(comptroller)
@@ -450,7 +450,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     if (vars.oraclePriceMantissa == 0) {
       return (lendCount, borrowCount); // Skip if the price is zero
     }
-    vars.oraclePrice = Exp({mantissa: vars.oraclePriceMantissa});
+    vars.oraclePrice = Exp({ mantissa: vars.oraclePriceMantissa });
 
     // Pre-compute a conversion factor from tokens to BNB (normalized price value)
     vars.tokensToDenom = mul_(
@@ -616,21 +616,21 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     address _user,
     address[] memory lendTokens,
     uint256 percentageToRemove,
-    uint256 bufferUnit
-  ) internal view returns (uint256[] memory amounts) {
-    amounts = new uint256[](lendTokens.length); // Initialize the amounts array
-
+    uint256 bufferUnit,
+    uint256[] memory amounts
+  ) internal view returns (uint256[] memory) {
     // Loop through the lent tokens to calculate the amount to sell
     for (uint256 i; i < lendTokens.length; ) {
       uint256 balance = IERC20Upgradeable(lendTokens[i]).balanceOf(_user); // Get the balance of the token
 
       uint256 amountToSell = (balance * percentageToRemove);
       amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%
-      amounts[i] = amountToSell / 10 ** 18; // Calculate the amount to sell
+      amounts[i] += (amountToSell / 10 ** 18); // Calculate the amount to sell
       unchecked {
         ++i;
       }
     }
+    return amounts;
   }
 
   /**
@@ -851,52 +851,43 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     uint256 fee,
     FunctionParameters.FlashLoanData memory flashData
   ) internal view returns (MultiTransaction[] memory transactions) {
-    uint256 amountLength = flashData.debtRepayAmount.length; // Get the number of repayment amounts
-    transactions = new MultiTransaction[](
-      amountLength * 2 * lendingTokens.length
-    ); // Initialize the transactions array
+    transactions = new MultiTransaction[](lendingTokens.length); // Initialize the transactions array
     uint256 count; // Count for the transactions
     uint256 swapDataCount; // Count for the swap data
-    // Loop through the repayment amounts to handle withdrawals
-    for (uint i = 0; i < amountLength; ) {
-      // Get the amounts to sell based on the collateral
-      uint256[] memory sellAmounts = getCollateralAmountToSell(
-        user,
-        controller,
-        flashData.protocolTokens[i],
-        lendingTokens,
-        flashData.debtRepayAmount[i],
-        fee,
-        totalCollateral,
-        flashData.bufferUnit
-      );
+    // Get the amounts to sell based on the collateral
+    uint256[] memory sellAmounts = getCollateralAmountToSell(
+      user,
+      controller,
+      flashData.protocolTokens,
+      lendingTokens,
+      flashData.debtRepayAmount,
+      fee,
+      totalCollateral,
+      flashData.bufferUnit
+    );
 
-      // Loop through the lending tokens to process each one
-      for (uint j = 0; j < lendingTokens.length; ) {
-        // Pull the token from the vault
-        transactions[count].to = executor;
-        transactions[count].txData = abi.encodeWithSelector(
-          bytes4(keccak256("pullFromVault(address,uint256,address)")),
-          lendingTokens[j], // The address of the lending token
-          sellAmounts[j], // The amount to sell
-          flashData.solverHandler // The solver handler address
-        );
-        count++;
-        // Swap the token and transfer it to the receiver
-        transactions[count].to = flashData.solverHandler;
-        transactions[count].txData = abi.encodeWithSelector(
-          bytes4(keccak256("multiTokenSwapAndTransfer(address,bytes)")),
-          receiver,
-          flashData.secondSwapData[swapDataCount]
-        );
-        count++;
-        swapDataCount++;
-        unchecked {
-          ++j;
-        }
-      }
+    // Loop through the lending tokens to process each one
+    for (uint j = 0; j < lendingTokens.length; ) {
+      // Pull the token from the vault
+      transactions[count].to = executor;
+      transactions[count].txData = abi.encodeWithSelector(
+        bytes4(keccak256("pullFromVault(address,uint256,address)")),
+        lendingTokens[j], // The address of the lending token
+        sellAmounts[j], // The amount to sell
+        flashData.solverHandler // The solver handler address
+      );
+      count++;
+      // Swap the token and transfer it to the receiver
+      transactions[count].to = flashData.solverHandler;
+      transactions[count].txData = abi.encodeWithSelector(
+        bytes4(keccak256("multiTokenSwapAndTransfer(address,bytes)")),
+        receiver,
+        flashData.secondSwapData[swapDataCount]
+      );
+      count++;
+      swapDataCount++;
       unchecked {
-        ++i;
+        ++j;
       }
     }
   }
@@ -1011,53 +1002,57 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
   function getCollateralAmountToSell(
     address _user,
     address _controller,
-    address _protocolToken,
+    address[] memory _protocolToken,
     address[] memory lendTokens,
-    uint256 _debtRepayAmount,
+    uint256[] memory _debtRepayAmount,
     uint256 feeUnit, //flash loan fee unit
     uint256 totalCollateral,
     uint256 bufferUnit //buffer unit for collateral amount
   ) public view returns (uint256[] memory amounts) {
-    uint256 borrowBalance = IVenusPool(_protocolToken).borrowBalanceStored(
-      _user
-    ); // Get the borrow balance for the protocol token
+    amounts = new uint256[](lendTokens.length);
+    for (uint256 i; i < _protocolToken.length; ) {
+      uint256 borrowBalance = IVenusPool(_protocolToken[i]).borrowBalanceStored(
+        _user
+      ); // Get the borrow balance for the protocol token
 
-    uint256 oraclePriceMantissa = IVenusComptroller(_controller)
-      .oracle()
-      .getUnderlyingPrice(_protocolToken); // Get the oracle price for the protocol token
+      uint256 oraclePriceMantissa = IVenusComptroller(_controller)
+        .oracle()
+        .getUnderlyingPrice(_protocolToken[i]); // Get the oracle price for the protocol token
 
-    Exp memory oraclePrice = Exp({mantissa: oraclePriceMantissa}); // Create an Exp structure for the oracle price
-    uint256 sumBorrowPlusEffects;
+      Exp memory oraclePrice = Exp({ mantissa: oraclePriceMantissa }); // Create an Exp structure for the oracle price
+      uint256 sumBorrowPlusEffects;
 
-    // Update the sumBorrowPlusEffects value
-    sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
-      oraclePrice,
-      borrowBalance,
-      sumBorrowPlusEffects
-    );
+      // Update the sumBorrowPlusEffects value
+      sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(
+        oraclePrice,
+        borrowBalance,
+        sumBorrowPlusEffects
+      );
 
-    // Handle the VAI controller logic
-    sumBorrowPlusEffects = handleVAIController(
-      _controller,
-      _user,
-      sumBorrowPlusEffects
-    );
+      // Handle the VAI controller logic
+      sumBorrowPlusEffects = handleVAIController(
+        _controller,
+        _user,
+        sumBorrowPlusEffects
+      );
 
-    // Calculate the percentage to remove based on the debt repayment amount
-    (, uint256 percentageToRemove) = calculateDebtAndPercentage(
-      _debtRepayAmount,
-      feeUnit,
-      sumBorrowPlusEffects / 10 ** 10,
-      borrowBalance,
-      totalCollateral
-    );
+      // Calculate the percentage to remove based on the debt repayment amount
+      (, uint256 percentageToRemove) = calculateDebtAndPercentage(
+        _debtRepayAmount[i],
+        feeUnit,
+        sumBorrowPlusEffects / 10 ** 10,
+        borrowBalance,
+        totalCollateral
+      );
 
-    // Calculate the amounts to sell for each lending token
-    amounts = calculateAmountsToSell(
-      _user,
-      lendTokens,
-      percentageToRemove,
-      bufferUnit
-    );
+      // Calculate the amounts to sell for each lending token
+      amounts = calculateAmountsToSell(
+        _user,
+        lendTokens,
+        percentageToRemove,
+        bufferUnit,
+        amounts
+      );
+    }
   }
 }

@@ -104,9 +104,9 @@ interface IAssetHandler {
   function getCollateralAmountToSell(
     address _user,
     address _controller,
-    address _protocolToken,
+    address[] memory _protocolToken,
     address[] memory lendTokens,
-    uint256 _debtRepayAmount,
+    uint256[] memory _debtRepayAmount,
     uint256 feeUnit,
     uint256 totalCollateral,
     uint256 bufferUnit
