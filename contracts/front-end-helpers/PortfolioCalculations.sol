@@ -250,8 +250,8 @@ contract PortfolioCalculations is ExponentialNoError {
     TokenBalanceLibrary.ControllerData[]
       memory controllersData = TokenBalanceLibrary.getControllersData(
         _vault,
-        _protocolConfig,
-        _tokens
+        _tokens,
+        _protocolConfig
       );
 
     for (uint256 i = 0; i < tokensLength; i++) {
@@ -494,9 +494,9 @@ contract PortfolioCalculations is ExponentialNoError {
     }
 
     uint256 performanceIncrease = _currentPrice - _highWaterMark;
-    uint256 performanceFee = ((performanceIncrease *
+    uint256 performanceFee = (performanceIncrease *
       _totalSupply *
-      _feePercentage) * ONE_ETH_IN_WEI) / TOTAL_WEIGHT;
+      _feePercentage) / ONE_ETH_IN_WEI / TOTAL_WEIGHT;
 
     tokensToMint =
       (performanceFee * _totalSupply) /

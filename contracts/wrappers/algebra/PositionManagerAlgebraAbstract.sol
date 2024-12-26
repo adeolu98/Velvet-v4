@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable, IProtocolConfig } from "../abstract/PositionManagerAbstract.sol";
+import { PositionManagerAbstract, IPositionWrapper, WrapperFunctionParameters, ErrorLibrary, IERC20Upgradeable, IProtocolConfig, TransferHelper } from "../abstract/PositionManagerAbstract.sol";
 import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IFactory } from "./IFactory.sol";
@@ -25,17 +25,21 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
    * @param _accessController Address of the access controller.
    */
   function PositionManagerAbstractAlgebra_init(
+    address _externalPositionStorage,
     address _nonFungiblePositionManagerAddress,
     address _swapRouter,
     address _protocolConfig,
     address _assetManagerConfig,
-    address _accessController
+    address _accessController,
+    bytes32 _protocolId
   ) internal {
     PositionManagerAbstract__init(
+      _externalPositionStorage,
       _nonFungiblePositionManagerAddress,
       _protocolConfig,
       _assetManagerConfig,
-      _accessController
+      _accessController,
+      _protocolId
     );
 
     router = ISwapRouter(_swapRouter);
@@ -211,7 +215,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
 
     // Deploy and initialize the position wrapper.
     ERC1967Proxy positionWrapperProxy = new ERC1967Proxy(
-      protocolConfig.positionWrapperBaseImplementation(),
+      protocolConfig.getPositionWrapperBaseImplementation(protocolId),
       abi.encodeWithSelector(
         IPositionWrapper.init.selector,
         address(this),
@@ -231,7 +235,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
 
     // Register the new wrapper in the deployed position wrappers list and mark it as a valid wrapper.
     deployedPositionWrappers.push(address(positionWrapper));
-    isWrappedPosition[address(positionWrapper)] = true;
+    externalPositionStorage.addWrappedPosition(address(positionWrapper));
 
     emit NewPositionCreated(address(positionWrapper), _token0, _token1);
 
@@ -379,7 +383,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       revert ErrorLibrary.InvalidTokenAddress();
     }
 
-    IERC20Upgradeable(tokenIn).approve(address(router), _params._amountIn);
+    TransferHelper.safeApprove(tokenIn, address(router), _params._amountIn);
 
     uint256 balanceTokenInBeforeSwap = IERC20Upgradeable(tokenIn).balanceOf(
       address(this)

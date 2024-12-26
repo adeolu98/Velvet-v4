@@ -32,8 +32,8 @@ library TokenBalanceLibrary {
    */
   function getControllersData(
     address vault,
-    IProtocolConfig _protocolConfig,
-    address[] memory portfolioTokens
+    address[] memory portfolioTokens,
+    IProtocolConfig _protocolConfig
   ) public view returns (ControllerData[] memory controllersData) {
     address[] memory controllers = _protocolConfig.getSupportedControllers();
     controllersData = new ControllerData[](controllers.length);
@@ -113,8 +113,8 @@ library TokenBalanceLibrary {
 
     controllersData = getControllersData(
       _vault,
-      _protocolConfig,
-      portfolioTokens
+      portfolioTokens,
+      _protocolConfig
     );
 
     for (uint256 i; i < portfolioLength; ) {
