@@ -120,7 +120,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       tokenBalanceLibrary = await TokenBalanceLibrary.deploy();
       await tokenBalanceLibrary.deployed();
 
-
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
       ensoHandler = await EnsoHandler.deploy(
         "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
@@ -413,7 +412,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       });
 
       it("should swap tokens for user using native token", async () => {
-
         let tokens = await portfolio.getTokens();
 
         console.log("SupplyBefore", await portfolio.totalSupply());
@@ -429,12 +427,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "1000000000000000000"
           );
 
-
-          const nonWowMaxQuotes = response.data.quotes.filter((quote: any) => quote.protocol !== 'wowMax');
-
-          postResponse.push(nonWowMaxQuotes[0].data);
+          postResponse.push(response.data.quotes[0].data);
         }
-
 
         const data = await depositBatch.multiTokenSwapETHAndTransfer(
           {
@@ -486,10 +480,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-
-            const nonWowMaxQuotes = response.data.quotes.filter((quote: any) => quote.protocol !== 'wowMax');
-
-            postResponse.push(nonWowMaxQuotes[0].data);
+            postResponse.push(response.data.quotes[0].data);
           }
         }
 
@@ -545,10 +536,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-
-            const nonWowMaxQuotes = response.data.quotes.filter((quote: any) => quote.protocol !== 'wowMax');
-
-            postResponse.push(nonWowMaxQuotes[0].data);
+            postResponse.push(response.data.quotes[0].data);
           }
         }
 
@@ -592,10 +580,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           balance
         );
 
-        
-        const nonWowMaxQuotes = postResponse.data.quotes.filter((quote:any) => quote.protocol !== 'wowMax');
-
-
         const encodedParameters = ethers.utils.defaultAbiCoder.encode(
           [
             " bytes[][]", // callDataEnso
@@ -608,7 +592,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "uint256[]", // minExpectedOutputAmounts
           ],
           [
-            [[nonWowMaxQuotes[0].data]],
+            [[postResponse.data.quotes[0].data]],
             [],
             [[]],
             [[]],
