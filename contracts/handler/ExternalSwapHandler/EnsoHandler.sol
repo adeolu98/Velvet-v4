@@ -20,8 +20,12 @@ import { IExternalPositionStorage } from "../../wrappers/abstract/IExternalPosit
  * thresholds for swap operations.
  */
 contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
-  // The address of Enso's swap execution logic; swaps are delegated to this target.
-  address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52;
+  // The address of Solver's swap execution logic; swaps are delegated to this target.
+  address immutable SWAP_TARGET;
+
+  constructor(address _swapTarget) {
+    SWAP_TARGET = _swapTarget;
+  }
 
   /**
    * @notice Conducts a token swap operation via the Enso platform and transfers the output tokens
