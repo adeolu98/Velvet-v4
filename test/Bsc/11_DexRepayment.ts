@@ -113,15 +113,11 @@ describe.only("Tests for Deposit", () => {
       iaddress = await tokenAddresses();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
-      ensoHandler = await EnsoHandler.deploy(
-        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
-      );
+      ensoHandler = await EnsoHandler.deploy();
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
-      depositBatch = await DepositBatch.deploy(
-        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
-      );
+      depositBatch = await DepositBatch.deploy();
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory("DepositManager");
@@ -129,9 +125,7 @@ describe.only("Tests for Deposit", () => {
       await depositManager.deployed();
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
-      withdrawBatch = await WithdrawBatch.deploy(
-        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
-      );
+      withdrawBatch = await WithdrawBatch.deploy();
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
@@ -163,7 +157,11 @@ describe.only("Tests for Deposit", () => {
 
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [treasury.address, priceOracle.address],
+        [
+          treasury.address,
+          priceOracle.address,
+          positionWrapperBaseAddress.address,
+        ],
         { kind: "uups" }
       );
 
@@ -340,12 +338,6 @@ describe.only("Tests for Deposit", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
-      const ExternalPositionStorage = await ethers.getContractFactory(
-        "ExternalPositionStorage"
-      );
-      const externalPositionStorage = await ExternalPositionStorage.deploy();
-      await externalPositionStorage.deployed();
-
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -363,7 +355,6 @@ describe.only("Tests for Deposit", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
-            _baseExternalPositionStorage: externalPositionStorage.address,
             _baseBorrowManager: borrowManager.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
@@ -401,7 +392,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
-          _witelistedProtocolIds: [],
+          _externalPositionManagementWhitelisted: true,
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -421,7 +412,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _witelistedProtocolIds: [],
+          _externalPositionManagementWhitelisted: true,
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -1073,7 +1064,7 @@ describe.only("Tests for Deposit", () => {
           secondSwapData: encodedParameters1,
           isMaxRepayment: true,
           _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-          isDexRepayment: false,
+          isDexRepayment: true,
         });
 
         balanceBorrowed =
@@ -1337,7 +1328,7 @@ describe.only("Tests for Deposit", () => {
             secondSwapData: [],
             isMaxRepayment: false,
             _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-            isDexRepayment: false,
+            isDexRepayment: true,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidFactoryAddress");
       });
@@ -1363,7 +1354,7 @@ describe.only("Tests for Deposit", () => {
             secondSwapData: [],
             isMaxRepayment: false,
             _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-            isDexRepayment: false,
+            isDexRepayment: true,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidSolver");
       });
@@ -1388,7 +1379,7 @@ describe.only("Tests for Deposit", () => {
             secondSwapData: [],
             isMaxRepayment: false,
             _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-            isDexRepayment: false,
+            isDexRepayment: true,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidSolver");
       });
@@ -1413,7 +1404,7 @@ describe.only("Tests for Deposit", () => {
             secondSwapData: [],
             isMaxRepayment: false,
             _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-            isDexRepayment: false,
+            isDexRepayment: true,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidBufferUnit");
       });
@@ -1468,12 +1459,6 @@ describe.only("Tests for Deposit", () => {
             [addresses.vDAI_Address],
             vault
           );
-        const userData = await venusAssetHandler.getUserAccountData(
-          vault,
-          addresses.corePool_controller,
-          portfolio.getTokens()
-        );
-        const lendTokens = userData[1].lendTokens;
 
         console.log("balanceBorrowed before repay", balanceBorrowed);
 
@@ -1492,51 +1477,6 @@ describe.only("Tests for Deposit", () => {
         console.log("balanceToRepay", balanceToRepay);
         console.log("balanceToSwap", balanceToSwap);
 
-        const postResponse = await createEnsoCallDataRoute(
-          ensoHandler.address,
-          ensoHandler.address,
-          addresses.USDT,
-          addresses.DAI_Address,
-          balanceToSwap
-        );
-
-        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-          ["bytes[]", "address[]", "uint256[]"],
-          [[postResponse.data.tx.data], [addresses.DAI_Address], [0]]
-        );
-
-        let encodedParameters1 = [];
-        //Because repay(rebalance) is one borrow token at a time
-        const amounToSell =
-          await portfolioCalculations.getCollateralAmountToSell(
-            vault,
-            addresses.corePool_controller,
-            venusAssetHandler.address,
-            addresses.vDAI_Address,
-            balanceToRepay,
-            "10", //Flash loan fee
-            bufferUnit //Buffer unit for collateral amount
-          );
-        console.log("amounToSell", amounToSell);
-        console.log("lendTokens", lendTokens);
-
-        for (let j = 0; j < lendTokens.length; j++) {
-          const postResponse1 = await createEnsoCallDataRoute(
-            ensoHandler.address,
-            ensoHandler.address,
-            lendTokens[j],
-            addresses.USDT,
-            amounToSell[j].toString() //Need calculation here
-          );
-
-          encodedParameters1.push(
-            ethers.utils.defaultAbiCoder.encode(
-              ["bytes[]", "address[]", "uint256[]"],
-              [[postResponse1.data.tx.data], [addresses.USDT], [0]]
-            )
-          );
-        }
-
         await rebalancing.repay(addresses.corePool_controller, {
           _factory: addresses.thena_factory,
           _token0: addresses.USDT, //USDT - Pool token
@@ -1549,11 +1489,11 @@ describe.only("Tests for Deposit", () => {
           _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
-          firstSwapData: [encodedParameters],
-          secondSwapData: encodedParameters1,
+          firstSwapData: [],
+          secondSwapData: [],
           isMaxRepayment: false,
           _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-          isDexRepayment: false,
+          isDexRepayment: true,
         });
 
         console.log(
@@ -1634,93 +1574,7 @@ describe.only("Tests for Deposit", () => {
             flashloanBufferUnit
           );
 
-        const borrowedPortion = values[0];
         const flashLoanAmount = values[1];
-        const underlyings = values[2];
-        const borrowedTokens = values[3];
-
-        const userData = await venusAssetHandler.getUserAccountData(
-          vault,
-          addresses.corePool_controller,
-          portfolio.getTokens()
-        );
-        const lendTokens = userData[1].lendTokens;
-
-        let balanceBorrowed =
-          await portfolioCalculations.getVenusTokenBorrowedBalance(
-            [addresses.vUSDT_Address],
-            vault
-          );
-
-        console.log("balanceBorrowed before withdraw", balanceBorrowed);
-
-        console.log(
-          "Balance of vToken before",
-          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
-        );
-
-        let tokenBalanceBefore: any = [];
-        for (let i = 0; i < tokens.length; i++) {
-          tokenBalanceBefore[i] = await ERC20.attach(tokens[i]).balanceOf(
-            owner.address
-          );
-        }
-
-        let encodedParameters = [];
-        let encodedParameters1 = [];
-        for (let i = 0; i < flashLoanAmount.length; i++) {
-          console.log("underlyings token", underlyings[i]);
-          if (flashLoanToken != underlyings[i]) {
-            const postResponse = await createEnsoCallDataRoute(
-              ensoHandler.address,
-              ensoHandler.address,
-              flashLoanToken,
-              underlyings[i],
-              flashLoanAmount[i].toString()
-            );
-            encodedParameters.push(
-              ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse.data.tx.data], [underlyings[i]], [0]]
-              )
-            );
-          } else {
-            encodedParameters.push(
-              ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [["0x"], [underlyings[i]], [0]]
-              )
-            );
-          }
-
-          const amounToSell =
-            await portfolioCalculations.getCollateralAmountToSell(
-              vault,
-              addresses.corePool_controller,
-              venusAssetHandler.address,
-              borrowedTokens[i],
-              borrowedPortion[i],
-              "10", //Flash loan fee
-              bufferUnit //Buffer unit for collateral amount
-            );
-
-          for (let j = 0; j < lendTokens.length; j++) {
-            const postResponse1 = await createEnsoCallDataRoute(
-              ensoHandler.address,
-              ensoHandler.address,
-              lendTokens[j],
-              flashLoanToken,
-              amounToSell[j].toString() //Need calculation here
-            );
-
-            encodedParameters1.push(
-              ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
-              )
-            );
-          }
-        }
 
         await withdrawManager.withdraw(
           portfolio.address,
@@ -1736,10 +1590,10 @@ describe.only("Tests for Deposit", () => {
             _solverHandler: ensoHandler.address, //Handler to swap
             _swapHandler: swapHandler.address,
             _flashLoanAmount: flashLoanAmount,
-            firstSwapData: encodedParameters,
-            secondSwapData: encodedParameters1,
+            firstSwapData: [],
+            secondSwapData: [],
             _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-            isDexRepayment: false,
+            isDexRepayment: true,
           },
           responses
         );
@@ -1830,93 +1684,7 @@ describe.only("Tests for Deposit", () => {
             flashloanBufferUnit
           );
 
-        const borrowedPortion = values[0];
         const flashLoanAmount = values[1];
-        const underlyings = values[2];
-        const borrowedTokens = values[3];
-
-        const userData = await venusAssetHandler.getUserAccountData(
-          vault,
-          addresses.corePool_controller,
-          portfolio.getTokens()
-        );
-        const lendTokens = userData[1].lendTokens;
-
-        let balanceBorrowed =
-          await portfolioCalculations.getVenusTokenBorrowedBalance(
-            [addresses.vUSDT_Address],
-            vault
-          );
-
-        console.log("balanceBorrowed before withdraw", balanceBorrowed);
-
-        console.log(
-          "Balance of vToken before",
-          await ERC20.attach(addresses.vBNB_Address).balanceOf(vault)
-        );
-
-        let tokenBalanceBefore: any = [];
-        for (let i = 0; i < tokens.length; i++) {
-          tokenBalanceBefore[i] = await ERC20.attach(tokens[i]).balanceOf(
-            user.address
-          );
-        }
-
-        let encodedParameters = [];
-        let encodedParameters1 = [];
-        for (let i = 0; i < flashLoanAmount.length; i++) {
-          console.log("underlyings token", underlyings[i]);
-          if (flashLoanToken != underlyings[i]) {
-            const postResponse = await createEnsoCallDataRoute(
-              ensoHandler.address,
-              ensoHandler.address,
-              flashLoanToken,
-              underlyings[i],
-              flashLoanAmount[i].toString()
-            );
-            encodedParameters.push(
-              ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse.data.tx.data], [underlyings[i]], [0]]
-              )
-            );
-          } else {
-            encodedParameters.push(
-              ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [["0x"], [underlyings[i]], [0]]
-              )
-            );
-          }
-
-          const amounToSell =
-            await portfolioCalculations.getCollateralAmountToSell(
-              vault,
-              addresses.corePool_controller,
-              venusAssetHandler.address,
-              borrowedTokens[i],
-              borrowedPortion[i],
-              "10", //Flash loan fee
-              bufferUnit //Buffer unit for collateral amount
-            );
-
-          for (let j = 0; j < lendTokens.length; j++) {
-            const postResponse1 = await createEnsoCallDataRoute(
-              ensoHandler.address,
-              ensoHandler.address,
-              lendTokens[j],
-              flashLoanToken,
-              amounToSell[j].toString() //Need calculation here
-            );
-
-            encodedParameters1.push(
-              ethers.utils.defaultAbiCoder.encode(
-                ["bytes[]", "address[]", "uint256[]"],
-                [[postResponse1.data.tx.data], [flashLoanToken], [0]]
-              )
-            );
-          }
-        }
 
         await withdrawManager.connect(user).withdraw(
           portfolio.address,
@@ -1932,10 +1700,10 @@ describe.only("Tests for Deposit", () => {
             _solverHandler: ensoHandler.address, //Handler to swap
             _swapHandler: swapHandler.address,
             _flashLoanAmount: flashLoanAmount,
-            firstSwapData: encodedParameters,
-            secondSwapData: encodedParameters1,
+            firstSwapData: [],
+            secondSwapData: [],
             _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-            isDexRepayment: false,
+            isDexRepayment: true,
           },
           responses
         );

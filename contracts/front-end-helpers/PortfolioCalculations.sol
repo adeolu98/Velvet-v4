@@ -763,7 +763,6 @@ contract PortfolioCalculations is ExponentialNoError {
     uint borrowBalance = currentVariableDebt *
       10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
 
-
     address _account = _user;
     //Get price for _protocolToken token
     uint _oraclePrice = IAavePriceOracle(
@@ -877,7 +876,7 @@ contract PortfolioCalculations is ExponentialNoError {
         borrowedPortion[i],
         flashLoanAmount[i],
         underlyingTokens[i]
-      ) = calculateTokenDetails(borrowedTokens[i], params);
+      ) = calculateAaveTokenDetails(borrowedTokens[i], params);
     }
   }
 

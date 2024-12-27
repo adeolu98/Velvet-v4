@@ -185,6 +185,13 @@ interface IProtocolConfig {
   function isSolver(address _handler) external view returns (bool);
 
   /**
+   * @notice Checks if a specific address is a swapHandler.
+   * @param _handler The address to check.
+   * @return True if the address is a swapHandler, false otherwise.
+   */
+  function isSwapHandler(address _handler) external view returns (bool);
+
+  /**
    * @notice Enables a solver handler.
    * @param _handler The address of the solver handler to enable.
    */

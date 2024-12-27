@@ -10,6 +10,8 @@ import {IAssetHandler} from "../../interfaces/IAssetHandler.sol";
 import {ErrorLibrary} from "../../../library/ErrorLibrary.sol";
 import {AccessModifiers} from "../../access/AccessModifiers.sol";
 import {IPortfolio} from "../../../core/interfaces/IPortfolio.sol";
+import {TransferHelper} from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 /**
  * @title AbstractBorrowManager
@@ -73,6 +75,7 @@ abstract contract AbstractBorrowManager is
     beforeRepayVerification(
       repayData._factory,
       repayData._solverHandler,
+      repayData._swapHandler,
       repayData._bufferUnit
     );
 
@@ -132,6 +135,7 @@ abstract contract AbstractBorrowManager is
     beforeRepayVerification(
       repayData._factory,
       repayData._solverHandler,
+      repayData._swapHandler,
       repayData._bufferUnit
     );
 
@@ -164,6 +168,13 @@ abstract contract AbstractBorrowManager is
       assetHandler.getBorrowedTokens(_vault, _controller)
     ).length;
 
+    // Transfer any remaining dust balance back to the vault
+    TransferHelper.safeTransfer(
+      repayData._flashLoanToken,
+      _vault,
+      IERC20Upgradeable(repayData._flashLoanToken).balanceOf(address(this))
+    );
+
     // Return true if we successfully reduced the number of borrowed tokens
     // This indicates that at least one borrow position was fully repaid
     return borrowedLengthAfter < borrowedLengthBefore;
@@ -180,6 +191,7 @@ abstract contract AbstractBorrowManager is
   function beforeRepayVerification(
     address _factory,
     address _solverHandler,
+    address _swapHandler,
     uint256 _bufferUnit
   ) internal view {
     if (!_protocolConfig.isSupportedFactory(_factory))
@@ -187,6 +199,9 @@ abstract contract AbstractBorrowManager is
 
     if (!_protocolConfig.isSolver(_solverHandler))
       revert ErrorLibrary.InvalidSolver();
+
+    if(!_protocolConfig.isSwapHandler(_swapHandler))
+      revert ErrorLibrary.InvalidSwapHandler();
 
     if (_protocolConfig.MAX_COLLATERAL_BUFFER_UNIT() < _bufferUnit)
       revert ErrorLibrary.InvalidBufferUnit();
