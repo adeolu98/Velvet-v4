@@ -32,7 +32,7 @@ import {
   UniswapV2Handler,
   AssetManagementConfig,
   TokenBalanceLibrary,
-  BorrowManager,
+  BorrowManagerAave,
   AccessControl,
   TokenExclusionManager,
   TokenExclusionManager__factory,
@@ -56,7 +56,7 @@ describe.only("Tests for Portfolio Config", () => {
   let assetManagementConfig0: AssetManagementConfig;
   let assetManagementConfig1: AssetManagementConfig;
   let assetManagementConfig2: AssetManagementConfig;
-  let borrowManager: BorrowManager;
+  let borrowManager: BorrowManagerAave;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let accessController0: any;
   let accessController2: any;
@@ -130,11 +130,7 @@ describe.only("Tests for Portfolio Config", () => {
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
@@ -151,7 +147,7 @@ describe.only("Tests for Portfolio Config", () => {
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      const BorrowManager = await ethers.getContractFactory("BorrowManagerAave");
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
@@ -223,6 +219,12 @@ describe.only("Tests for Portfolio Config", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -242,6 +244,7 @@ describe.only("Tests for Portfolio Config", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -273,7 +276,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -294,7 +297,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
 
       const portfolioFactoryCreate3 =
@@ -313,7 +316,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: true,
           _transferableToPublic: false,
           _whitelistTokens: true,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
 
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
@@ -381,7 +384,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: false,
-              _externalPositionManagementWhitelisted: true,
+              _witelistedProtocolIds: [],
             },
             [],
             1
@@ -407,7 +410,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: false,
-              _externalPositionManagementWhitelisted: true,
+              _witelistedProtocolIds: [],
             },
             [owner.address],
             2
@@ -436,7 +439,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: true,
-              _externalPositionManagementWhitelisted: true,
+              _witelistedProtocolIds: [],
             },
             [owner.address],
             1
@@ -470,7 +473,7 @@ describe.only("Tests for Portfolio Config", () => {
             _transferable: false,
             _transferableToPublic: false,
             _whitelistTokens: false,
-            _externalPositionManagementWhitelisted: true,
+            _witelistedProtocolIds: [],
           })
         ).to.be.revertedWithCustomError(
           assetManagementConfig,
@@ -506,7 +509,7 @@ describe.only("Tests for Portfolio Config", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
       });
 
@@ -574,7 +577,7 @@ describe.only("Tests for Portfolio Config", () => {
               _transferable: true,
               _transferableToPublic: true,
               _whitelistTokens: true,
-              _externalPositionManagementWhitelisted: true,
+              _witelistedProtocolIds: [],
             },
             [owner.address],
             1

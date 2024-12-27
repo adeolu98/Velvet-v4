@@ -32,7 +32,7 @@ import {
   VelvetSafeModule,
   FeeModule,
   TokenBalanceLibrary,
-  BorrowManager,
+  BorrowManagerAave,
   UniswapV2Handler,
   DepositBatchExternalPositions,
   DepositManagerExternalPositions,
@@ -66,7 +66,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let ensoHandler: EnsoHandler;
   let depositBatch: DepositBatchExternalPositions;
   let depositManager: DepositManagerExternalPositions;
-  let borrowManager: BorrowManager;
+  let borrowManager: BorrowManagerAave;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let withdrawBatch: WithdrawBatch;
   let withdrawManager: WithdrawManager;
@@ -113,6 +113,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   const provider = ethers.provider;
   const chainId: any = process.env.CHAIN_ID;
   const addresses = chainIdToAddresses[chainId];
+
+  const uniswapV3ProtocolHash = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UNISWAP-V3")
+  );
 
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -194,11 +198,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
@@ -212,6 +212,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         addresses.WBTC,
         addresses.WETH,
       ]);
+
+      await protocolConfig.enableProtocol(
+        uniswapV3ProtocolHash,
+        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+        "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        positionWrapperBaseAddress.address
+      );
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
@@ -229,7 +236,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const assetManagementConfigBase = await AssetManagementConfig.deploy();
       await assetManagementConfigBase.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      const BorrowManager = await ethers.getContractFactory("BorrowManagerAave");
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
@@ -293,6 +300,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -312,6 +325,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -324,11 +338,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       portfolioFactory = PortfolioFactory.attach(
         portfolioFactoryInstance.address
-      );
-
-      await portfolioFactory.setPositionManagerAddresses(
-        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
-        "0xE592427A0AEce92De3Edee1F18E0157C05861564"
       );
 
       await withdrawManager.initialize(
@@ -353,7 +362,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [uniswapV3ProtocolHash],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -373,7 +382,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [uniswapV3ProtocolHash],
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -426,7 +435,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       assetManagementConfig = AssetManagementConfig.attach(config);
 
-      await assetManagementConfig.enableUniSwapV3Manager();
+      await assetManagementConfig.enableUniSwapV3Manager(uniswapV3ProtocolHash);
 
       let positionManagerAddress =
         await assetManagementConfig.positionManager();
@@ -545,6 +554,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           },
           {
             value: "1000000000000000000",
@@ -619,6 +629,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -695,6 +706,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 

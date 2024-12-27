@@ -33,7 +33,7 @@ import {
   FeeModule,
   UniswapV2Handler,
   TokenBalanceLibrary,
-  BorrowManager,
+  BorrowManagerAave,
   TokenExclusionManager,
   TokenExclusionManager__factory,
 } from "../../typechain";
@@ -66,7 +66,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let rebalancing1: any;
   let rebalancing2: any;
   let protocolConfig: ProtocolConfig;
-  let borrowManager: BorrowManager;
+  let borrowManager: BorrowManagerAave;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let txObject;
   let owner: SignerWithAddress;
@@ -127,11 +127,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
@@ -155,7 +151,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const assetManagementConfig = await AssetManagementConfig.deploy();
       await assetManagementConfig.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      const BorrowManager = await ethers.getContractFactory("BorrowManagerAave");
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
@@ -228,6 +224,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -246,6 +248,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -277,7 +280,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: true,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -297,7 +300,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
 
       const portfolioFactoryCreate3 =
@@ -316,7 +319,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);

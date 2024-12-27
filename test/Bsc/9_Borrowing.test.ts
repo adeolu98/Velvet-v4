@@ -27,7 +27,7 @@ import {
   AccessController__factory,
   TokenExclusionManager__factory,
   TokenBalanceLibrary,
-  BorrowManager,
+  BorrowManagerVenus,
   DepositBatch,
   DepositManager,
   WithdrawBatch,
@@ -55,7 +55,7 @@ describe.only("Tests for Deposit", () => {
   let portfolioCalculations: any;
   let tokenExclusionManager: any;
   let tokenExclusionManager1: any;
-  let borrowManager: BorrowManager;
+  let borrowManager: BorrowManagerVenus;
   let ensoHandler: EnsoHandler;
   let depositBatch: DepositBatch;
   let depositManager: DepositManager;
@@ -163,11 +163,7 @@ describe.only("Tests for Deposit", () => {
 
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
@@ -240,7 +236,7 @@ describe.only("Tests for Deposit", () => {
       venusAssetHandler = await VenusAssetHandler.deploy();
       await venusAssetHandler.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      const BorrowManager = await ethers.getContractFactory("BorrowManagerVenus");
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
@@ -335,6 +331,12 @@ describe.only("Tests for Deposit", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -352,6 +354,7 @@ describe.only("Tests for Deposit", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _baseBorrowManager: borrowManager.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
@@ -389,7 +392,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -409,7 +412,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -978,7 +981,8 @@ describe.only("Tests for Deposit", () => {
           );
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1442,7 +1446,8 @@ describe.only("Tests for Deposit", () => {
           );
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1609,7 +1614,8 @@ describe.only("Tests for Deposit", () => {
 
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1801,7 +1807,8 @@ describe.only("Tests for Deposit", () => {
 
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
-          addresses.corePool_controller
+          addresses.corePool_controller,
+          portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 

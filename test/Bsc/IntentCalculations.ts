@@ -14,6 +14,8 @@ import { Sign } from "crypto";
 const axios = require("axios");
 const qs = require("qs");
 
+const WETH = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
+
 export async function createEnsoCallData(
   data: any,
   ensoHandler: string
@@ -169,14 +171,27 @@ export async function swapTokensToLPTokens(
   const balanceT1Before = await ERC20Upgradeable.attach(token1).balanceOf(
     user.address
   );
+  if (token0 != WETH) {
+    await swapHandler
+      .connect(user)
+      .swapETHToTokens("500", token0, user.address, {
+        value: swapAmount0,
+      });
+  } else {
+    const IWETH = await ethers.getContractAt("IWETH", token0);
+    await IWETH.connect(user).deposit({ value: swapAmount0 });
+  }
 
-  await swapHandler.swapETHToTokens("500", token0, user.address, {
-    value: swapAmount0,
-  });
-
-  await swapHandler.swapETHToTokens("500", token1, user.address, {
-    value: swapAmount1,
-  });
+  if (token1 != WETH) {
+    await swapHandler
+      .connect(user)
+      .swapETHToTokens("500", token1, user.address, {
+        value: swapAmount1,
+      });
+  } else {
+    const IWETH = await ethers.getContractAt("IWETH", token1);
+    await IWETH.connect(user).deposit({ value: swapAmount1 });
+  }
 
   const balanceT0After = await ERC20Upgradeable.attach(token0).balanceOf(
     user.address

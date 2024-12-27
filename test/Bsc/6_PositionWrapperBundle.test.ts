@@ -37,7 +37,7 @@ import {
   FeeModule__factory,
   EnsoHandler,
   TokenBalanceLibrary,
-  BorrowManager,
+  BorrowManagerVenus,
   EnsoHandlerBundled,
   AccessController__factory,
   TokenExclusionManager__factory,
@@ -74,7 +74,7 @@ describe.only("Tests for Deposit", () => {
   let tokenExclusionManager: any;
   let tokenExclusionManager1: any;
   let ensoHandler: EnsoHandler;
-  let borrowManager: BorrowManager;
+  let borrowManager: BorrowManagerVenus;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let depositBatch: DepositBatchExternalPositions;
   let depositManager: DepositManagerExternalPositions;
@@ -110,6 +110,10 @@ describe.only("Tests for Deposit", () => {
 
   const assetManagerHash = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("ASSET_MANAGER")
+  );
+
+  const thenaProtocolHash = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("THENA-CONCENTRATED-LIQUIDITY")
   );
 
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -212,18 +216,14 @@ describe.only("Tests for Deposit", () => {
       const positionWrapperBaseAddress = await PositionWrapper.deploy();
       await positionWrapperBaseAddress.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      const BorrowManager = await ethers.getContractFactory("BorrowManagerVenus");
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
@@ -237,6 +237,13 @@ describe.only("Tests for Deposit", () => {
         iaddress.usdcAddress,
         iaddress.usdtAddress,
       ]);
+
+      await protocolConfig.enableProtocol(
+        thenaProtocolHash,
+        "0xa51adb08cbe6ae398046a23bec013979816b77ab",
+        "0x327dd3208f0bcf590a66110acb6e5e6941a4efa0",
+        positionWrapperBaseAddress.address
+      );
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
@@ -324,6 +331,12 @@ describe.only("Tests for Deposit", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -343,6 +356,7 @@ describe.only("Tests for Deposit", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -384,7 +398,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [thenaProtocolHash],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -404,7 +418,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [thenaProtocolHash],
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -457,7 +471,7 @@ describe.only("Tests for Deposit", () => {
 
       assetManagementConfig = AssetManagementConfig.attach(config);
 
-      await assetManagementConfig.enableUniSwapV3Manager();
+      await assetManagementConfig.enableUniSwapV3Manager(thenaProtocolHash);
 
       let positionManagerAddress =
         await assetManagementConfig.positionManager();
@@ -582,6 +596,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           },
           {
             value: "1000000000000000000",
@@ -665,6 +680,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -746,6 +762,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -803,7 +820,7 @@ describe.only("Tests for Deposit", () => {
         // get underlying amounts of position
         let percentage = await amountCalculationsAlgebra.getPercentage(
           sellTokenBalance,
-          await removedPosition.totalSupply()
+          (await positionWrapper.totalSupply()).toString()
         );
 
         let withdrawAmounts = await calculateOutputAmounts(
@@ -1002,7 +1019,7 @@ describe.only("Tests for Deposit", () => {
 
         // Define the ABI with the correct structure of WrapperDepositParams
         let ABI = [
-          "function initializePositionAndDeposit(address _dustReceiver, address _positionWrapper, (uint256 _amount0Desired, uint256 _amount1Desired, uint256 _amount0Min, uint256 _amount1Min) params)",
+          "function initializePositionAndDeposit(address _dustReceiver, address _positionWrapper, (uint256 _amount0Desired, uint256 _amount1Desired, uint256 _amount0Min, uint256 _amount1Min, address _deployer) params)",
         ];
 
         let abiEncode = new ethers.utils.Interface(ABI);
@@ -1018,6 +1035,7 @@ describe.only("Tests for Deposit", () => {
               _amount1Desired: (depositAmounts.amount1 * 0.999).toFixed(0),
               _amount0Min: 0,
               _amount1Min: 0,
+              _deployer: zeroAddress,
             },
           ]
         );
@@ -1092,7 +1110,7 @@ describe.only("Tests for Deposit", () => {
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
+              (await positionWrapperCurrent.totalSupply()).toString()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1215,7 +1233,7 @@ describe.only("Tests for Deposit", () => {
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
+              (await positionWrapperCurrent.totalSupply()).toString()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1370,6 +1388,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -1464,6 +1483,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -1522,7 +1542,7 @@ describe.only("Tests for Deposit", () => {
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
+              (await positionWrapperCurrent.totalSupply()).toString()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(

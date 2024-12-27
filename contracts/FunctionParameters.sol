@@ -37,6 +37,7 @@ library FunctionParameters {
     address _baseTokenRemovalVaultImplementation;
     address _baseVelvetGnosisSafeModuleAddress;
     address _basePositionManager;
+    address _baseExternalPositionStorage;
     address _baseBorrowManager;
     address _gnosisSingleton;
     address _gnosisFallbackLibrary;
@@ -101,7 +102,7 @@ library FunctionParameters {
     bool _transferable;
     bool _transferableToPublic;
     bool _whitelistTokens;
-    bool _externalPositionManagementWhitelisted;
+    bytes32[] _witelistedProtocolIds;
     string _name;
     string _symbol;
   }
@@ -136,14 +137,13 @@ library FunctionParameters {
     address _feeModule;
     address _assetManagerTreasury;
     address _basePositionManager;
-    address _nftManager;
-    address _swapRouterV3;
+    address _baseExternalPositionStorage;
     address[] _whitelistedTokens;
     bool _publicPortfolio;
     bool _transferable;
     bool _transferableToPublic;
     bool _whitelistTokens;
-    bool _externalPositionManagementWhitelisted;
+    bytes32[] _witelistedProtocolIds;
   }
 
   /**
@@ -182,7 +182,7 @@ library FunctionParameters {
    */
   struct RepayParams {
     address _factory;
-    address _token0; //USDT
+    address _token0; //USDT   --> need to change token0 and token1 to single address
     address _token1; //USDC
     address _flashLoanToken;
     address[] _debtToken;
@@ -352,6 +352,7 @@ library FunctionParameters {
   struct ExternalPositionDepositParams {
     address[] _positionWrappers;
     address[] _swapTokens;
+    address _deployer;
     uint256[] _positionWrapperIndex;
     uint256[] _portfolioTokenIndex;
     uint256[] _index0;

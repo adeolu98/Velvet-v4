@@ -88,7 +88,25 @@ contract AmountCalculationsAlgebra {
     uint256 _partially,
     uint256 _total
   ) external pure returns (uint256 percentage) {
+    require(_total > 0, "Total amount cannot be zero");
+
+    // If partially is zero, return zero percentage
+    if (_partially == 0) {
+      return 0;
+    }
+
+    // If partially is greater than or equal to total, return 100%
+    if (_partially >= _total) {
+      return TOTAL_WEIGHT;
+    }
+
+    // Calculate percentage
     percentage = (_partially * TOTAL_WEIGHT) / _total;
+
+    // Ensure percentage doesn't exceed 100%
+    if (percentage > TOTAL_WEIGHT) {
+      percentage = TOTAL_WEIGHT;
+    }
   }
 
   function getRatio(

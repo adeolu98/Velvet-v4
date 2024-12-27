@@ -52,7 +52,7 @@ import {
   DepositBatchExternalPositions,
   DepositManagerExternalPositions,
   TokenBalanceLibrary,
-  BorrowManager,
+  BorrowManagerVenus,
   PositionManagerAlgebra,
   AssetManagementConfig,
   AmountCalculationsAlgebra,
@@ -85,7 +85,7 @@ describe.only("Tests for Deposit", () => {
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
-  let borrowManager: BorrowManager;
+  let borrowManager: BorrowManagerVenus;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let venusAssetHandler: VenusAssetHandler;
   let rebalancing: any;
@@ -133,6 +133,10 @@ describe.only("Tests for Deposit", () => {
   const provider = ethers.provider;
   const chainId: any = process.env.CHAIN_ID;
   const addresses = chainIdToAddresses[chainId];
+
+  const thenaProtocolHash = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("THENA-CONCENTRATED-LIQUIDITY")
+  );
 
   function delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -209,11 +213,7 @@ describe.only("Tests for Deposit", () => {
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
@@ -227,6 +227,13 @@ describe.only("Tests for Deposit", () => {
         iaddress.usdcAddress,
         iaddress.usdtAddress,
       ]);
+
+      await protocolConfig.enableProtocol(
+        thenaProtocolHash,
+        "0xa51adb08cbe6ae398046a23bec013979816b77ab",
+        "0x327dd3208f0bcf590a66110acb6e5e6941a4efa0",
+        positionWrapperBaseAddress.address
+      );
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
@@ -244,7 +251,7 @@ describe.only("Tests for Deposit", () => {
       const tokenExclusionManagerDefault = await TokenExclusionManager.deploy();
       await tokenExclusionManagerDefault.deployed();
 
-      const BorrowManager = await ethers.getContractFactory("BorrowManager");
+      const BorrowManager = await ethers.getContractFactory("BorrowManagerVenus");
       borrowManager = await BorrowManager.deploy();
       await borrowManager.deployed();
 
@@ -363,6 +370,12 @@ describe.only("Tests for Deposit", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -381,6 +394,7 @@ describe.only("Tests for Deposit", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _baseBorrowManager: borrowManager.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
@@ -423,7 +437,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: true,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [thenaProtocolHash],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -443,7 +457,7 @@ describe.only("Tests for Deposit", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [thenaProtocolHash],
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);
@@ -496,7 +510,7 @@ describe.only("Tests for Deposit", () => {
 
       assetManagementConfig = AssetManagementConfig.attach(config);
 
-      await assetManagementConfig.enableUniSwapV3Manager();
+      await assetManagementConfig.enableUniSwapV3Manager(thenaProtocolHash);
 
       let positionManagerAddress =
         await assetManagementConfig.positionManager();
@@ -626,6 +640,7 @@ describe.only("Tests for Deposit", () => {
                 _amount1Desired: swapResult1,
                 _amount0Min: "0",
                 _amount1Min: "0",
+                _deployer: zeroAddress,
               }
             );
 
@@ -1056,6 +1071,7 @@ describe.only("Tests for Deposit", () => {
           position1,
           updateRangeData.tokenIn,
           updateRangeData.tokenOut,
+          zeroAddress,
           updateRangeData.swapAmount.toString(),
           0,
           0,
@@ -1084,6 +1100,7 @@ describe.only("Tests for Deposit", () => {
           position1,
           updateRangeData.tokenIn,
           updateRangeData.tokenOut,
+          zeroAddress,
           updateRangeData.swapAmount.toString(),
           0,
           0,
@@ -1112,6 +1129,7 @@ describe.only("Tests for Deposit", () => {
           position1,
           updateRangeData.tokenIn,
           updateRangeData.tokenOut,
+          zeroAddress,
           updateRangeData.swapAmount.toString(),
           0,
           0,
