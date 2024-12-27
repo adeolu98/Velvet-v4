@@ -495,7 +495,7 @@ contract AaveAssetHandler is IAssetHandler {
     uint256 fee,
     FunctionParameters.FlashLoanData memory flashData
   ) internal view returns (MultiTransaction[] memory transactions) {
-    transactions = new MultiTransaction[](lendingTokens.length); // Initialize the transactions array
+    transactions = new MultiTransaction[](2 * lendingTokens.length); // Initialize the transactions array
     uint256 count; // Count for the transactions
     uint256 swapDataCount; // Count for the swap data
     // Get the amounts to sell based on the collateral
