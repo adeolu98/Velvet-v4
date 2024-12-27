@@ -72,7 +72,7 @@ export async function createMetaAggregatorCalldata(
   _amountIn: any
 ): Promise<any> {
   const priceParams = {
-    slippage: 30,
+    slippage: 10,
     amount: _amountIn,
     tokenIn: _tokenIn,
     tokenOut: _tokenOut,
