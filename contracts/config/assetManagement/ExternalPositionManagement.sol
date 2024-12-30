@@ -69,7 +69,8 @@ abstract contract ExternalPositionManagement is AccessRoles {
   }
 
   function whitelistProtocols(bytes32[] calldata protocolIds) internal {
-    for (uint256 i; i < protocolIds.length; i++) {
+    uint256 protocolIdsLength = protocolIds.length;
+    for (uint256 i; i < protocolIdsLength; i++) {
       whitelistedProtocols[protocolIds[i]] = true;
     }
   }

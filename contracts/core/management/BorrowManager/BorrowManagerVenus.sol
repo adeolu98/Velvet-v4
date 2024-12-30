@@ -71,7 +71,8 @@ contract BorrowManagerVenus is AbstractBorrowManager, IAlgebraFlashCallback {
       );
 
     // Execute each transaction in the sequence
-    for (uint i; i < transactions.length; i++) {
+    uint256 transactionsLength = transactions.length;
+    for (uint256 i; i < transactionsLength; i++) {
       (bool success, ) = transactions[i].to.call(transactions[i].txData); // Execute the transaction
       if (!success) revert ErrorLibrary.CallFailed(); // Revert if the call fails
     }

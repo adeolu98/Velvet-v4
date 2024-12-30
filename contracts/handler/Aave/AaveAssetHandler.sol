@@ -148,7 +148,8 @@ contract AaveAssetHandler is IAssetHandler {
     uint256 lendCount; // Counter for lent assets
     uint256 borrowCount; // Counter for borrowed assets
 
-    for (uint i = 0; i < portfolioTokens.length; i++) {
+    uint256 portfolioTokensLength = portfolioTokens.length;
+    for (uint i = 0; i < portfolioTokensLength; i++) {
       try IAaveToken(portfolioTokens[i]).UNDERLYING_ASSET_ADDRESS() {
         lendTokens[lendCount++] = portfolioTokens[i];
       } catch {}
@@ -334,7 +335,8 @@ contract AaveAssetHandler is IAssetHandler {
     uint256 count;
 
     // Add swap transactions to the final array
-    for (uint i = 0; i < swapTransactions.length; ) {
+    uint256 swapTransactionsLength = swapTransactions.length;
+    for (uint i = 0; i < swapTransactionsLength; ) {
       transactions[count].to = swapTransactions[i].to;
       transactions[count].txData = swapTransactions[i].txData;
       count++;
@@ -344,7 +346,8 @@ contract AaveAssetHandler is IAssetHandler {
     }
 
     // Add repay transactions to the final array
-    for (uint i = 0; i < repayLoanTransaction.length; ) {
+    uint256 repayLoanTransactionLength = repayLoanTransaction.length;
+    for (uint i = 0; i < repayLoanTransactionLength; ) {
       transactions[count].to = repayLoanTransaction[i].to;
       transactions[count].txData = repayLoanTransaction[i].txData;
       count++;
@@ -354,7 +357,8 @@ contract AaveAssetHandler is IAssetHandler {
     }
 
     // Add withdrawal transactions to the final array
-    for (uint i = 0; i < withdrawTransaction.length; ) {
+    uint256 withdrawTransactionLength = withdrawTransaction.length;
+    for (uint i = 0; i < withdrawTransactionLength; ) {
       transactions[count].to = withdrawTransaction[i].to;
       transactions[count].txData = withdrawTransaction[i].txData;
       count++;
@@ -511,7 +515,8 @@ contract AaveAssetHandler is IAssetHandler {
     );
 
     // Loop through the lending tokens to process each one
-    for (uint j = 0; j < lendingTokens.length; ) {
+    uint256 lendingTokensLength = lendingTokens.length;
+    for (uint j = 0; j < lendingTokensLength; ) {
       // Pull the token from the vault
       transactions[count].to = executor;
       transactions[count].txData = abi.encodeWithSelector(
@@ -638,7 +643,8 @@ contract AaveAssetHandler is IAssetHandler {
     uint256[] memory amounts
   ) internal view returns (uint256[] memory) {
     // Loop through the lent tokens to calculate the amount to sell
-    for (uint256 i; i < lendTokens.length; ) {
+    uint256 lendTokensLength = lendTokens.length;
+    for (uint256 i; i < lendTokensLength; ) {
       uint256 balance = IERC20Upgradeable(lendTokens[i]).balanceOf(_user); // Get the balance of the token
       uint256 amountToSell = (balance * percentageToRemove);
       amountToSell = amountToSell + ((amountToSell * bufferUnit) / 100000); // Buffer of 0.001%

@@ -38,7 +38,8 @@ library TokenBalanceLibrary {
     address[] memory controllers = _protocolConfig.getSupportedControllers();
     controllersData = new ControllerData[](controllers.length);
 
-    for (uint256 i; i < controllers.length; ) {
+    uint256 controllersLength = controllers.length;
+    for (uint256 i; i < controllersLength; ) {
       address controller = controllers[i];
       IAssetHandler assetHandler = IAssetHandler(
         _protocolConfig.assetHandlers(controller)
@@ -76,7 +77,8 @@ library TokenBalanceLibrary {
     ControllerData[] memory controllersData,
     address controller
   ) internal pure returns (ControllerData memory) {
-    for (uint256 i; i < controllersData.length; ) {
+    uint256 controllersDataLength = controllersData.length;
+    for (uint256 i; i < controllersDataLength; ) {
       if (controllersData[i].controller == controller) {
         return controllersData[i];
       }

@@ -80,7 +80,8 @@ abstract contract AbstractBorrowManager is
     _isFlashLoanActive = true;
 
     // Iterate through all controllers to repay borrows for each
-    for (uint j; j < controllers.length; j++) {
+    uint256 controllersLength = controllers.length;
+    for (uint256 j; j < controllersLength; j++) {
       address _controller = controllers[j];
 
       // Get the asset handler for the current controller

@@ -74,7 +74,8 @@ contract RebalancingConfig is AccessRoles, Initializable {
 
     unchecked {
       // Mark each token in _newTokens in the bitmap and ensure non-zero balance
-      for (uint256 i; i < _newTokens.length; i++) {
+      uint256 _newTokensLength = _newTokens.length;
+      for (uint256 i; i < _newTokensLength; i++) {
         address token = _newTokens[i];
 
         // Verify that the token balance is non-zero
@@ -91,7 +92,8 @@ contract RebalancingConfig is AccessRoles, Initializable {
       }
 
       // Verify that each token in _ensoBuyTokens is marked in the bitmap
-      for (uint256 i; i < _ensoBuyTokens.length; i++) {
+      uint256 _ensoBuyTokensLength = _ensoBuyTokens.length;
+      for (uint256 i; i < _ensoBuyTokensLength; i++) {
         uint256 bitPos = uint256(
           keccak256(abi.encodePacked(_ensoBuyTokens[i]))
         ) % 65536;
