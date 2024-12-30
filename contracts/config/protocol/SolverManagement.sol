@@ -13,8 +13,12 @@ import {OwnableCheck} from "./OwnableCheck.sol";
 abstract contract SolverManagement is OwnableCheck {
   mapping(address => bool) public solverHandler;
 
+  mapping(address => bool) public swapHandler;
+
   event SolverHandlerEnabled(address indexed handler);
   event SolverHandlerDisabled(address indexed handler);
+  event SwapHandlerEnabled(address indexed handler);
+  event SwapHandlerDisabled(address indexed handler);
 
   /**
    * @notice This function returns a bool according to given input is an solverpHandler or not
@@ -23,6 +27,15 @@ abstract contract SolverManagement is OwnableCheck {
    */
   function isSolver(address _handler) external view virtual returns (bool) {
     return solverHandler[_handler];
+  }
+
+  /**
+   * @notice This function returns a bool according to given input is an swap Handler or not
+   * @param _handler Address of the swap handler to be checked
+   * @return Boolean parameter for is the swap handler enabled or not
+   */
+  function isSwapHandler(address _handler) external view virtual returns(bool) {
+    return swapHandler[_handler];
   }
 
   /**
@@ -49,4 +62,30 @@ abstract contract SolverManagement is OwnableCheck {
     solverHandler[_handler] = false;
     emit SolverHandlerDisabled(_handler);
   }
+
+  /**
+   * @notice Enables a swap handler by setting its address to true in the mapping.
+   * @dev This function can only be called by the protocol owner.
+   * @param _handler The address of the solver handler to enable.
+   * @dev Reverts if the provided handler address is invalid (address(0)).
+   */
+  function enableSwapHandler(address _handler) external onlyProtocolOwner {
+    if (_handler == address(0)) revert ErrorLibrary.InvalidAddress();
+    swapHandler[_handler] = true;
+    emit SwapHandlerEnabled(_handler);
+  }
+
+  /**
+   * @notice This function disables the swap handler input
+   * @param _handler Address of the external swap handler to be disabled in the registry
+   */
+  function disableSwapHandler(
+    address _handler
+  ) external virtual onlyProtocolOwner {
+    if (_handler == address(0)) revert ErrorLibrary.InvalidAddress();
+
+    swapHandler[_handler] = false;
+    emit SwapHandlerDisabled(_handler);
+  }
+
 }

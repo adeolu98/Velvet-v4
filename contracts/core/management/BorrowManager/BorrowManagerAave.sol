@@ -81,13 +81,6 @@ contract BorrowManagerAave is AbstractBorrowManager, IFlashLoanReceiver {
       amountOwed
     );
 
-    // Transfer any remaining dust balance back to the vault
-    TransferHelper.safeTransfer(
-      flashData.flashLoanToken,
-      _vault,
-      IERC20Upgradeable(flashData.flashLoanToken).balanceOf(address(this))
-    );
-
     //Reset the flash loan state to prevent subsequent unauthorized callbacks
     _isFlashLoanActive = false;
     return true;

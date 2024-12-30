@@ -219,4 +219,6 @@ library ErrorLibrary {
   error FlashLoanIsInactive();
   // @notice Thrown when flash laon is not initiater by borrow manager contract
   error InvalidLoanInitiator();
+  // @notice Thrown when swapHandler is not correct
+  error InvalidSwapHandler();
 }

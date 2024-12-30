@@ -175,13 +175,17 @@ describe.only("Tests for Deposit", () => {
       iaddress = await tokenAddresses();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
-      ensoHandler = await EnsoHandler.deploy();
+      ensoHandler = await EnsoHandler.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory(
         "DepositBatchExternalPositions"
       );
-      depositBatch = await DepositBatch.deploy();
+      depositBatch = await DepositBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory(
@@ -191,7 +195,9 @@ describe.only("Tests for Deposit", () => {
       await depositManager.deployed();
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
-      withdrawBatch = await WithdrawBatch.deploy();
+      withdrawBatch = await WithdrawBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
@@ -697,6 +703,7 @@ describe.only("Tests for Deposit", () => {
           _amount1Min: 0,
           _tickLower: MIN_TICK,
           _tickUpper: MAX_TICK,
+          _deployer: zeroAddress,
         };
 
         await expect(
@@ -725,6 +732,7 @@ describe.only("Tests for Deposit", () => {
               _amount1Desired: 1000,
               _amount0Min: 0,
               _amount1Min: 0,
+              _deployer: zeroAddress,
             }
           )
         ).to.be.revertedWithCustomError(positionManager, "ProtocolIsPaused");
@@ -784,6 +792,7 @@ describe.only("Tests for Deposit", () => {
             position1,
             token0,
             token1,
+            zeroAddress,
             1000,
             0,
             0,
@@ -856,6 +865,7 @@ describe.only("Tests for Deposit", () => {
                 _amount1Desired: swapResult1,
                 _amount0Min: "0",
                 _amount1Min: "0",
+                _deployer: zeroAddress,
               }
             );
 
@@ -1276,7 +1286,17 @@ describe.only("Tests for Deposit", () => {
         await expect(
           positionManager
             .connect(nonOwner)
-            .updateRange(position1, token0, token1, 0, 0, 0, MIN_TICK, MAX_TICK)
+            .updateRange(
+              position1,
+              token0,
+              token1,
+              zeroAddress,
+              0,
+              0,
+              0,
+              MIN_TICK,
+              MAX_TICK
+            )
         ).to.be.revertedWithCustomError(
           positionManager,
           "CallerNotAssetManager"
@@ -1297,6 +1317,7 @@ describe.only("Tests for Deposit", () => {
             position1,
             token0,
             token1,
+            zeroAddress,
             0,
             0,
             0,
@@ -1326,6 +1347,7 @@ describe.only("Tests for Deposit", () => {
             position1,
             token0,
             token1,
+            zeroAddress,
             1000,
             0,
             0,
@@ -1358,6 +1380,7 @@ describe.only("Tests for Deposit", () => {
           position1,
           updateRangeData.tokenIn,
           updateRangeData.tokenOut,
+          zeroAddress,
           updateRangeData.swapAmount.toString(),
           0,
           0,

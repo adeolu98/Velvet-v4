@@ -173,12 +173,15 @@ library FunctionParameters {
    * @param _debtToken The addresses of the tokens representing the debt to be repaid.
    * @param _protocolToken The addresses of the protocol-specific tokens, such as lending tokens (e.g., vTokens for Venus protocol).
    * @param _solverHandler The address of the contract handling the execution of swaps and other logic.
+   * @param _swapHandler The address of the contract handling encoded data 
    * @param _bufferUnit Buffer unit for collateral amount
    * @param _flashLoanAmount The amounts of the flash loan to be taken for each corresponding `_flashLoanToken`.
    * @param _debtRepayAmount The amounts of debt to be repaid for each corresponding `_debtToken`.
+   * @param _poolFees The fees for v3 pools of dexes.
    * @param firstSwapData The encoded data for the first swap operation, used for repaying the debt.
    * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after repaying the debt.
    * @param isMaxRepayment Boolean flag to determine if the maximum borrowed amount should be repaid.
+   * @param isDexRepayment Boolean flag to deteremine whether to repay using solver or dex.
    */
   struct RepayParams {
     address _factory;
@@ -188,12 +191,15 @@ library FunctionParameters {
     address[] _debtToken;
     address[] _protocolToken; // lending token in case of venus
     address _solverHandler;
+    address _swapHandler;
     uint256 _bufferUnit;
     uint256[] _flashLoanAmount;
     uint256[] _debtRepayAmount;
+    uint256[] _poolFees;
     bytes[] firstSwapData;
     bytes[] secondSwapData;
     bool isMaxRepayment;
+    bool isDexRepayment;
   }
 
   /**
@@ -204,10 +210,13 @@ library FunctionParameters {
    * @param _token1 The address of the second token in the swap pair.
    * @param _flashLoanToken The address of the token to be borrowed in the flash loan.
    * @param _solverHandler The address of the contract handling the execution of swaps and other logic.
-   * @param _bufferUnit Buffer unit for collateral amount
+   * @param _swapHandler The address of the contract handling the execution of swaps and other logic.
+   * @param _bufferUnit Buffer unit for collateral amount.
    * @param _flashLoanAmount The amounts of the flash loan to be taken for each corresponding `_flashLoanToken`.
+   * @param _poolFees The fees for v3 pools of dexes.
    * @param firstSwapData The encoded data for the first swap operation, used in the process of repaying or withdrawing.
    * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after the first swap.
+   * @param isDexRepayment Boolean flag to deteremine whether to repay using solver or dex.
    */
   struct withdrawRepayParams {
     address _factory;
@@ -215,10 +224,13 @@ library FunctionParameters {
     address _token1;
     address _flashLoanToken;
     address _solverHandler;
+    address _swapHandler;
     uint256 _bufferUnit;
     uint256[] _flashLoanAmount;
+    uint256[] _poolFees;
     bytes[] firstSwapData;
     bytes[] secondSwapData;
+    bool isDexRepayment;
   }
 
   /**
@@ -231,22 +243,27 @@ library FunctionParameters {
    * @param bufferUnit Buffer unit for collateral amount
    * @param flashLoanAmount The amounts of the flash loan to be taken for each corresponding `flashLoanToken`.
    * @param debtRepayAmount The amounts of debt to be repaid for each corresponding `debtToken`.
+   * @param poolFees The fees for v3 pools of dexes.
    * @param firstSwapData The encoded data for the first swap operation, used for repaying the debt.
    * @param secondSwapData The encoded data for the second swap operation, used for further adjustments after repaying the debt.
    * @param isMaxRepayment Boolean flag to determine if the maximum borrowed amount should be repaid.
+   * @param isDexRepayment Boolean flag to deteremine whether to repay using solver or dex.
    */
   struct FlashLoanData {
     address flashLoanToken;
     address[] debtToken;
     address[] protocolTokens;
     address solverHandler;
+    address swapHandler;
     address poolAddress;
     uint256 bufferUnit;
     uint256[] flashLoanAmount;
     uint256[] debtRepayAmount;
+    uint256[] poolFees;
     bytes[] firstSwapData;
     bytes[] secondSwapData;
     bool isMaxRepayment;
+    bool isDexRepayment;
   }
 
   /**
@@ -352,6 +369,7 @@ library FunctionParameters {
   struct ExternalPositionDepositParams {
     address[] _positionWrappers;
     address[] _swapTokens;
+    address _deployer;
     uint256[] _positionWrapperIndex;
     uint256[] _portfolioTokenIndex;
     uint256[] _index0;

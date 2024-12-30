@@ -31,6 +31,7 @@ import {
   EnsoHandler,
   VelvetSafeModule,
   FeeModule,
+  UniswapHandler,
   UniswapV2Handler,
   DepositBatch,
   DepositManager,
@@ -71,6 +72,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
+  let uniswapHandler: UniswapHandler;
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
@@ -120,11 +122,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await tokenBalanceLibrary.deployed();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
-      ensoHandler = await EnsoHandler.deploy();
+      ensoHandler = await EnsoHandler.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
-      depositBatch = await DepositBatch.deploy();
+      depositBatch = await DepositBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory("DepositManager");
@@ -132,7 +138,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await depositManager.deployed();
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
-      withdrawBatch = await WithdrawBatch.deploy();
+      withdrawBatch = await WithdrawBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
@@ -153,6 +161,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
+
+      const UniSwapHandler = await ethers.getContractFactory(
+        "UniswapHandler"
+      );
+      uniswapHandler = await UniSwapHandler.deploy();
+      await uniswapHandler.deployed();
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("60");
@@ -193,6 +207,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await swapHandler.deployed();
 
       swapHandler.init(addresses.SushiSwapRouterAddress);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
+
 
       let whitelistedTokens = [
         addresses.ARB,
@@ -639,6 +655,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _poolFees: [0],
+              _swapHandler: swapHandler.address,
+              isDexRepayment: false,
             },
 
             responses
@@ -706,6 +725,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _swapHandler: swapHandler.address,
+              _poolFees: [0],
+              isDexRepayment: false,
             },
             responses
           )
@@ -735,6 +757,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _swapHandler: swapHandler.address,
+              _poolFees: [0],
+              isDexRepayment: false,
             },
             ["0x"]
           )
@@ -809,6 +834,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           responses
         );
@@ -881,6 +909,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           responses
         );

@@ -3,17 +3,6 @@ import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
 import { ethers, upgrades } from "hardhat";
 import { BigNumber, Contract } from "ethers";
-import {
-  PERMIT2_ADDRESS,
-  AllowanceTransfer,
-  MaxAllowanceTransferAmount,
-  PermitBatch,
-} from "@uniswap/permit2-sdk";
-
-import {
-  calcuateExpectedMintAmount,
-  createEnsoDataElement,
-} from "../calculations/DepositCalculations.test";
 
 import {
   createEnsoCallData,
@@ -31,7 +20,7 @@ import {
   EnsoHandler,
   VelvetSafeModule,
   FeeModule,
-  UniswapV2Handler,
+  UniswapHandler,
   DepositBatch,
   DepositManager,
   TokenBalanceLibrary,
@@ -73,7 +62,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
-  let swapHandler: UniswapV2Handler;
+  let swapHandler: UniswapHandler;
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
@@ -124,11 +113,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await tokenBalanceLibrary.deployed();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
-      ensoHandler = await EnsoHandler.deploy();
+      ensoHandler = await EnsoHandler.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
-      depositBatch = await DepositBatch.deploy();
+      depositBatch = await DepositBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory("DepositManager");
@@ -136,7 +129,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await depositManager.deployed();
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
-      withdrawBatch = await WithdrawBatch.deploy();
+      withdrawBatch = await WithdrawBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
@@ -160,9 +155,17 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         { kind: "uups" }
       );
 
+      const UniSwapHandler = await ethers.getContractFactory(
+        "UniswapHandler"
+      );
+      swapHandler = await UniSwapHandler.deploy();
+      await swapHandler.deployed();
+
+
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("60");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
       await protocolConfig.setSupportedFactory(addresses.aavePool);
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing");
@@ -248,13 +251,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       });
       portfolioContract = await Portfolio.deploy();
       await portfolioContract.deployed();
-      const PancakeSwapHandler = await ethers.getContractFactory(
-        "UniswapV2Handler"
-      );
-      swapHandler = await PancakeSwapHandler.deploy();
-      await swapHandler.deployed();
-
-      swapHandler.init(addresses.SushiSwapRouterAddress);
 
       let whitelistedTokens = [
         addresses.ARB,
@@ -826,7 +822,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let tokens = await portfolio.getTokens();
 
         let flashloanBufferUnit = 30; //Flashloan buffer unit in 1/10000
-        let bufferUnit = 320; //Buffer unit for collateral amount in 1/100000
+        let bufferUnit = 310; //Buffer unit for collateral amount in 1/100000
 
         const pool: IPoolDataProvider = await ethers.getContractAt(
           "IPoolDataProvider",
@@ -837,6 +833,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           await pool.getUserReserveData(addresses.ARB, vault)
         )[2];
 
+        console.log("before getUserAccountData");
         const userData = await aaveAssetHandler.getUserAccountData(
           vault,
           addresses.aavePool,
@@ -872,7 +869,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
 
         let encodedParameters1 = [];
-        const flashLoanFee = Ipool.FLASHLOAN_PREMIUM_TOTAL();
+        const flashLoanFee = await Ipool.FLASHLOAN_PREMIUM_TOTAL();
+
+        console.log("flashLoanFee", flashLoanFee);
         //Because repay(rebalance) is one borrow token at a time
         const amounToSell =
           await portfolioCalculations.getAaveCollateralAmountToSell(
@@ -883,7 +882,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             tokens,
             [balanceToRepay],
             flashLoanFee, //Flash loan fee
-            "310" //Buffer unit for collateral amount
+            "308" //Buffer unit for collateral amount
           );
         console.log("amounToSell", amounToSell);
         console.log("lendTokens", lendTokens);
@@ -905,6 +904,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           );
         }
 
+        console.log("Before repay");
+
         await rebalancing.repay(addresses.aavePool, {
           _factory: addresses.aavePool,
           _token0: addresses.aavePool, //USDT - Pool token
@@ -914,11 +915,14 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _protocolToken: [addresses.aArbARB], // lending token in case of venus
           _bufferUnit: bufferUnit, //Buffer unit for collateral amount
           _solverHandler: ensoHandler.address, //Handler to swap
+          _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
+          _poolFees: [],
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
           isMaxRepayment: false,
+          isDexRepayment: false
         });
 
         console.log(
@@ -991,7 +995,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             portfolio.address,
             flashLoanProtocolToken,
             vault,
-            addresses.corePool_controller,
+            addresses.aavePool,
             aaveAssetHandler.address,
             amountPortfolioToken,
             flashloanBufferUnit
@@ -1005,7 +1009,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         const userData = await aaveAssetHandler.getUserAccountData(
           vault,
           addresses.aavePool,
-          portfolio.getTokens()
+          await portfolio.getTokens()
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1031,7 +1035,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           "IAavePool",
           addresses.aavePool
         );
-        const flashLoanFee = Ipool.FLASHLOAN_PREMIUM_TOTAL();
+        const flashLoanFee = await Ipool.FLASHLOAN_PREMIUM_TOTAL();
 
         let encodedParameters = [];
         let encodedParameters1 = [];
@@ -1102,9 +1106,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanToken: flashLoanToken, //Token to take flashlaon
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
+            _swapHandler: swapHandler.address,
             _flashLoanAmount: flashLoanAmount,
+            _poolFees :[],
             firstSwapData: encodedParameters,
             secondSwapData: encodedParameters1,
+            isDexRepayment : false
           },
           responses
         );

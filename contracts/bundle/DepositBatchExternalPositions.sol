@@ -20,7 +20,11 @@ import { IAssetManagementConfig } from "../config/assetManagement/IAssetManageme
  */
 contract DepositBatchExternalPositions is ReentrancyGuard {
   // The address of Enso's swap execution logic; swaps are delegated to this target.
-  address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52;
+  address immutable SWAP_TARGET;
+
+  constructor(address _swapTarget) {
+    SWAP_TARGET = _swapTarget;
+  }
 
   /**
    * @notice Performs a multi-token swap and deposit operation for the user.
@@ -287,7 +291,8 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
           _amount0Desired: _swapResults[_params._index0[i]],
           _amount1Desired: _swapResults[_params._index1[i]],
           _amount0Min: _params._amount0Min[i],
-          _amount1Min: _params._amount1Min[i]
+          _amount1Min: _params._amount1Min[i],
+          _deployer: _params._deployer
         })
       );
     } else {

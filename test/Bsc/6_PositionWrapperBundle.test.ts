@@ -177,13 +177,17 @@ describe.only("Tests for Deposit", () => {
       iaddress = await tokenAddresses();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
-      ensoHandler = await EnsoHandler.deploy();
+      ensoHandler = await EnsoHandler.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory(
         "DepositBatchExternalPositions"
       );
-      depositBatch = await DepositBatch.deploy();
+      depositBatch = await DepositBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory(
@@ -195,7 +199,9 @@ describe.only("Tests for Deposit", () => {
       const WithdrawBatch = await ethers.getContractFactory(
         "WithdrawBatchExternalPositions"
       );
-      withdrawBatch = await WithdrawBatch.deploy();
+      withdrawBatch = await WithdrawBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
@@ -269,6 +275,8 @@ describe.only("Tests for Deposit", () => {
       await swapHandler.deployed();
 
       swapHandler.init(addresses.PancakeSwapRouterAddress);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
+
 
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
 
@@ -590,6 +598,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           },
           {
             value: "1000000000000000000",
@@ -673,6 +682,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -754,6 +764,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -811,7 +822,7 @@ describe.only("Tests for Deposit", () => {
         // get underlying amounts of position
         let percentage = await amountCalculationsAlgebra.getPercentage(
           sellTokenBalance,
-          await removedPosition.totalSupply()
+          (await positionWrapper.totalSupply()).toString()
         );
 
         let withdrawAmounts = await calculateOutputAmounts(
@@ -1010,7 +1021,7 @@ describe.only("Tests for Deposit", () => {
 
         // Define the ABI with the correct structure of WrapperDepositParams
         let ABI = [
-          "function initializePositionAndDeposit(address _dustReceiver, address _positionWrapper, (uint256 _amount0Desired, uint256 _amount1Desired, uint256 _amount0Min, uint256 _amount1Min) params)",
+          "function initializePositionAndDeposit(address _dustReceiver, address _positionWrapper, (uint256 _amount0Desired, uint256 _amount1Desired, uint256 _amount0Min, uint256 _amount1Min, address _deployer) params)",
         ];
 
         let abiEncode = new ethers.utils.Interface(ABI);
@@ -1026,6 +1037,7 @@ describe.only("Tests for Deposit", () => {
               _amount1Desired: (depositAmounts.amount1 * 0.999).toFixed(0),
               _amount0Min: 0,
               _amount1Min: 0,
+              _deployer: zeroAddress,
             },
           ]
         );
@@ -1100,7 +1112,7 @@ describe.only("Tests for Deposit", () => {
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
+              (await positionWrapperCurrent.totalSupply()).toString()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1164,6 +1176,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,
@@ -1223,7 +1238,7 @@ describe.only("Tests for Deposit", () => {
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
+              (await positionWrapperCurrent.totalSupply()).toString()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1283,6 +1298,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,
@@ -1378,6 +1396,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -1472,6 +1491,7 @@ describe.only("Tests for Deposit", () => {
             _tokenIn: [ZERO_ADDRESS, ZERO_ADDRESS],
             _tokenOut: [ZERO_ADDRESS, ZERO_ADDRESS],
             _amountIn: ["0", "0"],
+            _deployer: ZERO_ADDRESS,
           }
         );
 
@@ -1530,7 +1550,7 @@ describe.only("Tests for Deposit", () => {
             );
             let percentage = await amountCalculationsAlgebra.getPercentage(
               withdrawalAmounts[i],
-              await positionWrapperCurrent.totalSupply()
+              (await positionWrapperCurrent.totalSupply()).toString()
             );
 
             let withdrawAmounts = await calculateOutputAmounts(
@@ -1590,6 +1610,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,

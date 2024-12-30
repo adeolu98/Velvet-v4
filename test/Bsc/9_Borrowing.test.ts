@@ -18,7 +18,7 @@ import {
   ProtocolConfig,
   Rebalancing__factory,
   PortfolioFactory,
-  UniswapV2Handler,
+  PancakeSwapHandler,
   VelvetSafeModule,
   FeeModule,
   FeeModule__factory,
@@ -65,7 +65,7 @@ describe.only("Tests for Deposit", () => {
   let portfolioContract: Portfolio;
   let comptroller: Contract;
   let portfolioFactory: PortfolioFactory;
-  let swapHandler: UniswapV2Handler;
+  let swapHandler: PancakeSwapHandler;
   let rebalancing: any;
   let rebalancing1: any;
   let tokenBalanceLibrary: TokenBalanceLibrary;
@@ -113,11 +113,15 @@ describe.only("Tests for Deposit", () => {
       iaddress = await tokenAddresses();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
-      ensoHandler = await EnsoHandler.deploy();
+      ensoHandler = await EnsoHandler.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
-      depositBatch = await DepositBatch.deploy();
+      depositBatch = await DepositBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory("DepositManager");
@@ -125,7 +129,9 @@ describe.only("Tests for Deposit", () => {
       await depositManager.deployed();
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
-      withdrawBatch = await WithdrawBatch.deploy();
+      withdrawBatch = await WithdrawBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
@@ -196,9 +202,16 @@ describe.only("Tests for Deposit", () => {
       ]);
       await tx.wait();
 
+      const PancakeSwapHandler = await ethers.getContractFactory(
+        "PancakeSwapHandler"
+      );
+      swapHandler = await PancakeSwapHandler.deploy();
+      await swapHandler.deployed();
+
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("70");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
 
       const Rebalancing = await ethers.getContractFactory("Rebalancing");
       const rebalancingDefult = await Rebalancing.deploy();
@@ -1056,11 +1069,14 @@ describe.only("Tests for Deposit", () => {
           _protocolToken: [borrowedProtocolToken], // lending token in case of venus
           _solverHandler: ensoHandler.address, //Handler to swap
           _bufferUnit: bufferUnit, //Buffer unit for collateral amount
+          _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
           isMaxRepayment: true,
+          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          isDexRepayment: false,
         });
 
         balanceBorrowed =
@@ -1317,11 +1333,14 @@ describe.only("Tests for Deposit", () => {
             _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
+            _swapHandler: swapHandler.address,
             _flashLoanAmount: [],
             _debtRepayAmount: [],
             firstSwapData: [],
             secondSwapData: [],
             isMaxRepayment: false,
+            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            isDexRepayment: false,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidFactoryAddress");
       });
@@ -1340,11 +1359,14 @@ describe.only("Tests for Deposit", () => {
             _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: addresses.USDT, //Handler to swap
+            _swapHandler: swapHandler.address,
             _flashLoanAmount: [],
             _debtRepayAmount: [],
             firstSwapData: [],
             secondSwapData: [],
             isMaxRepayment: false,
+            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            isDexRepayment: false,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidSolver");
       });
@@ -1362,11 +1384,14 @@ describe.only("Tests for Deposit", () => {
             _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: addresses.USDT, //Handler to swap
+            _swapHandler: swapHandler.address,
             _flashLoanAmount: [],
             _debtRepayAmount: [],
             firstSwapData: [],
             secondSwapData: [],
             isMaxRepayment: false,
+            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            isDexRepayment: false,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidSolver");
       });
@@ -1384,11 +1409,14 @@ describe.only("Tests for Deposit", () => {
             _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
+            _swapHandler: swapHandler.address,
             _flashLoanAmount: [],
             _debtRepayAmount: [],
             firstSwapData: [],
             secondSwapData: [],
             isMaxRepayment: false,
+            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            isDexRepayment: false,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidBufferUnit");
       });
@@ -1523,11 +1551,14 @@ describe.only("Tests for Deposit", () => {
           _protocolToken: [addresses.vDAI_Address], // lending token in case of venus
           _bufferUnit: bufferUnit, //Buffer unit for collateral amount
           _solverHandler: ensoHandler.address, //Handler to swap
+          _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
           isMaxRepayment: false,
+          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          isDexRepayment: false,
         });
 
         console.log(
@@ -1709,9 +1740,12 @@ describe.only("Tests for Deposit", () => {
             _flashLoanToken: flashLoanToken, //Token to take flashlaon
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
+            _swapHandler: swapHandler.address,
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: encodedParameters,
             secondSwapData: encodedParameters1,
+            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            isDexRepayment: false,
           },
           responses
         );
@@ -1903,9 +1937,12 @@ describe.only("Tests for Deposit", () => {
             _flashLoanToken: flashLoanToken, //Token to take flashlaon
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
+            _swapHandler: swapHandler.address,
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: encodedParameters,
             secondSwapData: encodedParameters1,
+            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            isDexRepayment: false,
           },
           responses
         );
