@@ -31,6 +31,7 @@ import {
   EnsoHandler,
   VelvetSafeModule,
   FeeModule,
+  UniswapHandler,
   UniswapV2Handler,
   DepositBatch,
   DepositManager,
@@ -71,6 +72,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   let portfolioContract: Portfolio;
   let portfolioFactory: PortfolioFactory;
   let swapHandler: UniswapV2Handler;
+  let uniswapHandler: UniswapHandler;
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
@@ -160,6 +162,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         { kind: "uups" }
       );
 
+      const UniSwapHandler = await ethers.getContractFactory(
+        "UniswapHandler"
+      );
+      uniswapHandler = await UniSwapHandler.deploy();
+      await uniswapHandler.deployed();
+
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("60");
       await protocolConfig.enableSolverHandler(ensoHandler.address);
@@ -199,6 +207,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await swapHandler.deployed();
 
       swapHandler.init(addresses.SushiSwapRouterAddress);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
+
 
       let whitelistedTokens = [
         addresses.ARB,
@@ -645,6 +655,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _poolFees: [0],
+              _swapHandler: swapHandler.address,
+              isDexRepayment: false,
             },
 
             responses
@@ -712,6 +725,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _swapHandler: swapHandler.address,
+              _poolFees: [0],
+              isDexRepayment: false,
             },
             responses
           )
@@ -741,6 +757,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _swapHandler: swapHandler.address,
+              _poolFees: [0],
+              isDexRepayment: false,
             },
             ["0x"]
           )
@@ -815,6 +834,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           responses
         );
@@ -887,6 +909,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           responses
         );

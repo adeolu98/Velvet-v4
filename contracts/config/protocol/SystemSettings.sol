@@ -220,7 +220,8 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   function removeAssetAndMarketControllers(
     address[] memory _assets
   ) external onlyProtocolOwner {
-    for (uint256 i; i < _assets.length; i++) {
+    uint256 assetsLength = _assets.length;
+    for (uint256 i; i < assetsLength; i++) {
       address token = _assets[i];
       delete marketControllers[token];
       delete isBorrowableToken[token];
@@ -238,7 +239,8 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
     address[] memory _handlers // Their respective handlers
   ) external onlyProtocolOwner {
     if (_assets.length != _handlers.length) revert ErrorLibrary.InvalidLength();
-    for (uint256 i; i < _assets.length; i++) {
+    uint256 assetsLength = _assets.length;
+    for (uint256 i; i < assetsLength; i++) {
       address token = _assets[i];
       if (token == address(0)) revert ErrorLibrary.InvalidAddress();
       assetHandlers[token] = _handlers[i];
@@ -253,7 +255,8 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   function removeAssetHandlers(
     address[] memory _assets
   ) external onlyProtocolOwner {
-    for (uint256 i; i < _assets.length; i++) {
+    uint256 assetsLength = _assets.length;
+    for (uint256 i; i < assetsLength; i++) {
       delete assetHandlers[_assets[i]];
     }
     emit AssetHandlersRemoved(_assets);
@@ -266,7 +269,8 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   function setSupportedControllers(
     address[] memory _controllers
   ) external onlyProtocolOwner {
-    for (uint256 i; i < _controllers.length; i++) {
+    uint256 controllersLength = _controllers.length;
+    for (uint256 i; i < controllersLength; i++) {
       address controller = _controllers[i];
       if (!isSupportedControllers[controller]) {
         if (controller == address(0)) revert ErrorLibrary.InvalidAddress();
@@ -310,7 +314,8 @@ abstract contract SystemSettings is OwnableCheck, Initializable {
   function findAddressIndex(
     address _addressToFind
   ) internal view returns (uint256) {
-    for (uint256 i = 0; i < supportedControllers.length; i++) {
+    uint256 supportedControllersLength = supportedControllers.length;
+    for (uint256 i = 0; i < supportedControllersLength; i++) {
       if (supportedControllers[i] == _addressToFind) {
         return i;
       }

@@ -30,6 +30,7 @@ import {
   Rebalancing__factory,
   PortfolioFactory,
   UniswapV2Handler,
+  UniswapHandler,
   VelvetSafeModule,
   FeeModule,
   FeeModule__factory,
@@ -73,6 +74,7 @@ describe.only("Tests for Deposit", () => {
   let borrowManager: BorrowManagerVenus;
   let tokenBalanceLibrary: TokenBalanceLibrary;
   let swapHandler: UniswapV2Handler;
+  let uniswapHandler: UniswapHandler;
   let rebalancing: any;
   let rebalancing1: any;
   let protocolConfig: ProtocolConfig;
@@ -203,6 +205,8 @@ describe.only("Tests for Deposit", () => {
       await swapHandler.deployed();
 
       swapHandler.init(addresses.PancakeSwapRouterAddress);
+
+      await protocolConfig.enableSwapHandler(swapHandler.address);
 
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
 
@@ -614,6 +618,9 @@ describe.only("Tests for Deposit", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _poolFees: [0],
+              _swapHandler: swapHandler.address,
+              isDexRepayment: false,
             },
             responses
           )
@@ -680,6 +687,9 @@ describe.only("Tests for Deposit", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _swapHandler: swapHandler.address,
+              _poolFees: [0],
+              isDexRepayment: false,
             },
             responses
           )
@@ -709,6 +719,9 @@ describe.only("Tests for Deposit", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              _swapHandler: swapHandler.address,
+              _poolFees: [0],
+              isDexRepayment: false,
             },
             ["0x"]
           )
@@ -779,6 +792,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           responses
         );
@@ -859,6 +875,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           responses
         );

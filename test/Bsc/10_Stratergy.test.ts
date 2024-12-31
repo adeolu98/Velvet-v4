@@ -1251,6 +1251,7 @@ describe.only("Tests for Deposit", () => {
       it("should repay borrowed dai using flashloan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let tokens = await portfolio.getTokens();
 
         let flashloanBufferUnit = 23; //Flashloan buffer unit in 1/10000
         let bufferUnit = 160; //Buffer unit for collateral amount in 1/100000
@@ -1263,7 +1264,7 @@ describe.only("Tests for Deposit", () => {
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
           addresses.corePool_controller,
-          portfolio.getTokens()
+          tokens
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1304,8 +1305,9 @@ describe.only("Tests for Deposit", () => {
             vault,
             addresses.corePool_controller,
             venusAssetHandler.address,
-            addresses.vDAI_Address,
-            balanceToRepay,
+            [addresses.vDAI_Address],
+            tokens,
+            [balanceToRepay],
             "10", //Flash loan fee
             bufferUnit //Buffer unit for collateral amount
           );

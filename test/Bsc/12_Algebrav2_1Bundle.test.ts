@@ -177,13 +177,17 @@ describe.only("Tests for Deposit", () => {
       iaddress = await tokenAddresses();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
-      ensoHandler = await EnsoHandler.deploy();
+      ensoHandler = await EnsoHandler.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory(
         "DepositBatchExternalPositions"
       );
-      depositBatch = await DepositBatch.deploy();
+      depositBatch = await DepositBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory(
@@ -195,7 +199,9 @@ describe.only("Tests for Deposit", () => {
       const WithdrawBatch = await ethers.getContractFactory(
         "WithdrawBatchExternalPositions"
       );
-      withdrawBatch = await WithdrawBatch.deploy();
+      withdrawBatch = await WithdrawBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
@@ -1021,6 +1027,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,
@@ -1140,6 +1149,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,
@@ -1445,6 +1457,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,

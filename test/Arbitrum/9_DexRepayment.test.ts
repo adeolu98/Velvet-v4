@@ -124,11 +124,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await tokenBalanceLibrary.deployed();
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
-      ensoHandler = await EnsoHandler.deploy();
+      ensoHandler = await EnsoHandler.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
-      depositBatch = await DepositBatch.deploy();
+      depositBatch = await DepositBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await depositBatch.deployed();
 
       const DepositManager = await ethers.getContractFactory("DepositManager");
@@ -136,7 +140,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       await depositManager.deployed();
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
-      withdrawBatch = await WithdrawBatch.deploy();
+      withdrawBatch = await WithdrawBatch.deploy(
+        "0x38147794ff247e5fc179edbae6c37fff88f68c52"
+      );
       await withdrawBatch.deployed();
 
       const WithdrawManager = await ethers.getContractFactory(
@@ -359,7 +365,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: true,
           _transferableToPublic: true,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
 
       const portfolioFactoryCreate2 = await portfolioFactory
@@ -379,7 +385,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _transferable: false,
           _transferableToPublic: false,
           _whitelistTokens: false,
-          _externalPositionManagementWhitelisted: true,
+          _witelistedProtocolIds: [],
         });
       const portfolioAddress = await portfolioFactory.getPortfolioList(0);
       const portfolioInfo = await portfolioFactory.PortfolioInfolList(0);

@@ -206,7 +206,8 @@ contract Rebalancing is
       }
 
       // Remove new tokens from the bitmap to avoid unnecessary balance checks
-      for (uint256 i; i < _newTokens.length; i++) {
+      uint256 _newTokensLength = _newTokens.length;
+      for (uint256 i; i < _newTokensLength; i++) {
         uint256 bitPos = uint256(keccak256(abi.encodePacked(_newTokens[i]))) %
           65536;
         uint256 index = bitPos / 256;

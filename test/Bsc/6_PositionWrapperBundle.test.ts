@@ -275,6 +275,8 @@ describe.only("Tests for Deposit", () => {
       await swapHandler.deployed();
 
       swapHandler.init(addresses.PancakeSwapRouterAddress);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
+
 
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
 
@@ -1174,6 +1176,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,
@@ -1293,6 +1298,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,
@@ -1602,6 +1610,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           {
             _positionWrappers: positionWrappers,
