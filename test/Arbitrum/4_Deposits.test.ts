@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
-import { ethers, upgrades } from "hardhat";
+import { ethers, upgrades, network } from "hardhat";
 import { BigNumber, Contract } from "ethers";
 import {
   PERMIT2_ADDRESS,
@@ -91,6 +91,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
   }
   describe.only("Tests for Deposit + Withdrawal", () => {
     before(async () => {
+      
       accounts = await ethers.getSigners();
       [
         owner,
@@ -171,6 +172,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       swapHandler.init(addresses.SushiSwapRouterAddress);
 
       await protocolConfig.setSupportedFactory(ensoHandler.address);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
 
       let whitelistedTokens = [
         addresses.ARB,
@@ -2370,6 +2372,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
 
         const supplyAfter = await portfolio.totalSupply();
