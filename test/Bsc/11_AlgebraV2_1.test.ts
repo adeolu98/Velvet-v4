@@ -258,6 +258,7 @@ describe.only("Tests for Deposit", () => {
       swapHandler.init(addresses.PancakeSwapRouterAddress);
 
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
 
       let whitelistedTokens = [
         iaddress.usdcAddress,
@@ -1430,6 +1431,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
 
         const supplyAfter = await portfolio.totalSupply();
@@ -1475,6 +1479,9 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
 
         const supplyAfter = await portfolio.totalSupply();

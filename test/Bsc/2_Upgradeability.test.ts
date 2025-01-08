@@ -187,6 +187,7 @@ describe.only("Tests for Upgradeability", () => {
 
       await protocolConfig.enableSolverHandler(ensoHandler.address);
       await protocolConfig.setSupportedFactory(addresses.thena_factory);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
 
       let whitelistedTokens = [
         iaddress.busdAddress,
@@ -566,6 +567,9 @@ describe.only("Tests for Upgradeability", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           }
         );
         let receipt = await tx.wait();
@@ -689,6 +693,9 @@ describe.only("Tests for Upgradeability", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
 
         const supplyAfter = await portfolio.totalSupply();
@@ -959,6 +966,9 @@ describe.only("Tests for Upgradeability", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           }
         );
         let receipt = await tx.wait();
@@ -1082,6 +1092,9 @@ describe.only("Tests for Upgradeability", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
 
         const supplyAfter = await portfolio.totalSupply();
@@ -1347,6 +1360,9 @@ describe.only("Tests for Upgradeability", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           }
         );
         let receipt = await tx.wait();
@@ -1470,6 +1486,9 @@ describe.only("Tests for Upgradeability", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
 
         const supplyAfter = await portfolio.totalSupply();
@@ -1723,6 +1742,9 @@ describe.only("Tests for Upgradeability", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           }
         );
 
@@ -1794,6 +1816,9 @@ describe.only("Tests for Upgradeability", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
 
         const supplyAfter = await portfolio.totalSupply();
