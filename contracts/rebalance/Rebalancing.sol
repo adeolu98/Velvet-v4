@@ -267,35 +267,33 @@ contract Rebalancing is
   /**
    * @notice Repays a debt directly by transferring the debt token and repaying the debt.
    * @param _debtToken The address of the debt token to be repaid.
-   * @param _protocolToken The address of the protocol token used to repay the debt.
+   * @param _repayAddress The address of the protocol token used to repay the debt.
    * @param _repayAmount The amount of the debt token to be repaid.
    * @dev This function is used to repay a debt directly by transferring the debt token and repaying the debt.
    * It is called by the asset manager to repay a debt directly.
    */
   function directDebtRepayment(
     address _debtToken, // Address of the debt token
-    address _protocolToken, // Address of the protocol token to which the debt token is to be transferred
+    address _repayAddress, // Address of the contract that will repay the debt
     uint256 _repayAmount // Amount of debt token to be repaid and type(uint256).max for full repayment
   ) external onlyAssetManager nonReentrant protocolNotPaused {
-    if (_debtToken == address(0) || _protocolToken == address(0))
+    if (_debtToken == address(0) || _repayAddress == address(0))
       revert ErrorLibrary.InvalidAddress();
     if (_repayAmount == 0) revert ErrorLibrary.AmountCannotBeZero();
 
     IAssetHandler assetHandler = IAssetHandler(
-      protocolConfig.assetHandlers(_protocolToken)
+      protocolConfig.assetHandlers(_repayAddress)
     );
-
-    address controller = protocolConfig.marketControllers(_protocolToken); //This will be pool address
 
     // Approve the protocol token to spend the debt token
     portfolio.vaultInteraction(
       _debtToken,
-      assetHandler.approve(controller, _repayAmount)
+      assetHandler.approve(_repayAddress, _repayAmount)
     );
 
     // Repay the debt
     portfolio.vaultInteraction(
-      controller,
+      _repayAddress,
       assetHandler.repay(_debtToken, _vault, _repayAmount)
     );
 
@@ -306,11 +304,11 @@ contract Rebalancing is
     //Remove approval
     portfolio.vaultInteraction(
       _debtToken,
-      assetHandler.approve(_protocolToken, 0)
+      assetHandler.approve(_repayAddress, 0)
     );
 
     //Events
-    emit DirectTokenRepayed(_debtToken, _protocolToken, _repayAmount);
+    emit DirectTokenRepayed(_debtToken, _repayAddress, _repayAmount);
   }
 
   /**

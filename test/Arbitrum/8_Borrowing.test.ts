@@ -800,7 +800,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         await rebalancing.directDebtRepayment(
           addresses.USDT,
-          addresses.aArbUSDT,
+          addresses.aavePool,
           balanceToRepay
         );
 

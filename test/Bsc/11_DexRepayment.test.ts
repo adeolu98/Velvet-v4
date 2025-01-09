@@ -165,8 +165,7 @@ describe.only("Tests for Deposit", () => {
         ProtocolConfig,
         [
           treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
+          priceOracle.address
         ],
         { kind: "uups" }
       );
@@ -178,6 +177,8 @@ describe.only("Tests for Deposit", () => {
         VENUS_CHAINLINK_ORACLE_ABI,
         owner.provider
       );
+
+      console.log("oracle", oracle.address);
 
       let oracleOwner = await oracle.owner();
 
