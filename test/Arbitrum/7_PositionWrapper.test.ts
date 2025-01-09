@@ -222,6 +222,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       swapHandler.init(addresses.SushiSwapRouterAddress);
 
+      await protocolConfig.enableSwapHandler(swapHandler.address);
+
       let whitelistedTokens = [
         addresses.ARB,
         addresses.WBTC,
