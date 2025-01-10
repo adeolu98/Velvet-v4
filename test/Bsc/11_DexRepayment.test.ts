@@ -165,8 +165,7 @@ describe.only("Tests for Deposit", () => {
         ProtocolConfig,
         [
           treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
+          priceOracle.address
         ],
         { kind: "uups" }
       );
@@ -178,6 +177,8 @@ describe.only("Tests for Deposit", () => {
         VENUS_CHAINLINK_ORACLE_ABI,
         owner.provider
       );
+
+      console.log("oracle", oracle.address);
 
       let oracleOwner = await oracle.owner();
 
@@ -344,6 +345,12 @@ describe.only("Tests for Deposit", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -361,6 +368,7 @@ describe.only("Tests for Deposit", () => {
             _baseTokenRemovalVaultImplementation: tokenRemovalVault.address,
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _baseBorrowManager: borrowManager.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,

@@ -155,6 +155,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       await protocolConfig.enableSolverHandler(ensoHandler.address);
       await protocolConfig.setSupportedFactory(ensoHandler.address);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
 
       let whitelistedTokens = [
         addresses.ARB,
@@ -770,6 +771,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           })
         ).to.be.revertedWithCustomError(
           portfolio,
@@ -850,6 +854,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           })
         ).to.be.revertedWithCustomError(
           portfolio,
@@ -889,6 +896,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           })
         ).to.be.revertedWithCustomError(portfolio, "ProtocolIsPaused");
       });
@@ -932,6 +942,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
                 _flashLoanAmount: [0],
                 firstSwapData: ["0x"],
                 secondSwapData: ["0x"],
+                isDexRepayment: false,
+                _poolFees: [0, 0, 0],
+                _swapHandler: swapHandler.address,
               }
             )
         ).to.be.revertedWith("ERC20: insufficient allowance");
@@ -976,6 +989,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              isDexRepayment: false,
+              _poolFees: [0, 0, 0],
+              _swapHandler: swapHandler.address,
             }
           );
 
@@ -1056,6 +1072,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           }
         );
 
@@ -1130,6 +1149,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               _flashLoanAmount: [0],
               firstSwapData: ["0x"],
               secondSwapData: ["0x"],
+              isDexRepayment: false,
+              _poolFees: [0, 0, 0],
+              _swapHandler: swapHandler.address,
             })
         ).to.be.revertedWithCustomError(
           portfolio,
@@ -1169,6 +1191,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
         const supplyAfter = await portfolio.totalSupply();
 

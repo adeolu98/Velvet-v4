@@ -1075,7 +1075,7 @@ describe.only("Tests for Deposit", () => {
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
           isMaxRepayment: true,
-          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000],
           isDexRepayment: false,
         });
 
@@ -1557,7 +1557,7 @@ describe.only("Tests for Deposit", () => {
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
           isMaxRepayment: false,
-          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          _poolFees: [3000, 3000],
           isDexRepayment: false,
         });
 

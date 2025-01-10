@@ -11,6 +11,7 @@ import {IAlgebraPool} from "@cryptoalgebra/integral-core/contracts/interfaces/IA
 import {ISwapHandler} from "../ISwapHandler.sol";
 import {Ownable} from "@openzeppelin/contracts-4.8.2/access/Ownable.sol";
 import "./ExponentialNoError.sol";
+import "hardhat/console.sol";
 
 /**
  * @title VenusAssetHandler
@@ -1446,6 +1447,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     uint256 count; // Count for the transactions
     uint256 swapDataCount; // Count for the swap data
     // Get the amounts to sell based on the collateral
+    console.log("BEFORE SELL AMOUNTS");
     uint256[] memory sellAmounts = getCollateralAmountToSell(
       user,
       controller,
@@ -1456,7 +1458,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
       totalCollateral,
       flashData.bufferUnit
     );
-
+    console.log("AFTER SELL AMOUNTS");
     // Loop through the lending tokens to process each one
     uint256 lendingTokensLength = lendingTokens.length;
     for (uint j = 0; j < lendingTokensLength; ) {
@@ -1651,6 +1653,9 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         bufferUnit,
         amounts
       );
+      unchecked {
+        ++i;
+      }
     }
   }
 }

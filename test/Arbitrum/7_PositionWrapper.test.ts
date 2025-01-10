@@ -222,6 +222,8 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       swapHandler.init(addresses.SushiSwapRouterAddress);
 
+      await protocolConfig.enableSwapHandler(swapHandler.address);
+
       let whitelistedTokens = [
         addresses.ARB,
         addresses.WBTC,
@@ -1054,7 +1056,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
+
 
         const supplyAfter = await portfolio.totalSupply();
 
@@ -1099,6 +1105,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            isDexRepayment: false,
+            _poolFees: [0, 0, 0],
+            _swapHandler: swapHandler.address,
           });
 
         const supplyAfter = await portfolio.totalSupply();
