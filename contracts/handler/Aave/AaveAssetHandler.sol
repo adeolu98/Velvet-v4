@@ -1027,12 +1027,11 @@ contract AaveAssetHandler is IAssetHandler {
             _context.flashloanToken,
             _context.receiver,
             _sellAmount,
-            0,
+            1,
             fee
           )
         )
       });
-      count++;
       feeCount++;
 
       unchecked {
