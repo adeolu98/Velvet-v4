@@ -3,17 +3,6 @@ import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
 import { ethers, upgrades } from "hardhat";
 import { BigNumber, Contract } from "ethers";
-import {
-  PERMIT2_ADDRESS,
-  AllowanceTransfer,
-  MaxAllowanceTransferAmount,
-  PermitBatch,
-} from "@uniswap/permit2-sdk";
-
-import {
-  calcuateExpectedMintAmount,
-  createEnsoDataElement,
-} from "../calculations/DepositCalculations.test";
 
 import {
   createEnsoCallData,
@@ -162,11 +151,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         ProtocolConfig,
         [
           treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
+          priceOracle.address
         ],
         { kind: "uups" }
       );
+
+      const SwapHandler = await ethers.getContractFactory(
+        "UniswapHandler"
+      );
+      swapHandler = await SwapHandler.deploy();
+      await swapHandler.deployed();
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("60");
@@ -311,6 +305,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -329,6 +329,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
