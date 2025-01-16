@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {IAssetHandler} from "../../core/interfaces/IAssetHandler.sol";
-import {IVenusPool} from "../../core/interfaces/IVenusPool.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
-import {IVenusComptroller, IVAIController, IPriceOracle} from "./IVenusComptroller.sol";
-import {FunctionParameters} from "../../FunctionParameters.sol";
-import {IThena} from "../../core/interfaces/IThena.sol";
-import {IAlgebraPool} from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
-import {ISwapHandler} from "../ISwapHandler.sol";
-import {Ownable} from "@openzeppelin/contracts-4.8.2/access/Ownable.sol";
+import { IAssetHandler } from "../../core/interfaces/IAssetHandler.sol";
+import { IVenusPool } from "../../core/interfaces/IVenusPool.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/interfaces/IERC20Upgradeable.sol";
+import { IVenusComptroller, IVAIController, IPriceOracle } from "./IVenusComptroller.sol";
+import { FunctionParameters } from "../../FunctionParameters.sol";
+import { IThena } from "../../core/interfaces/IThena.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapHandler } from "../../core/interfaces/ISwapHandler.sol";
+import { Ownable } from "@openzeppelin/contracts-4.8.2/access/Ownable.sol";
 import "./ExponentialNoError.sol";
-import "hardhat/console.sol";
 
 /**
  * @title VenusAssetHandler
@@ -19,6 +18,11 @@ import "hardhat/console.sol";
  * @dev Provides functions to get balances, handle markets, and process loans within the Venus protocol.
  */
 contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
+  address public constant vBNB_Address =
+    0xA07c5b74C9B40447a954e1466938b865b6BBea36;
+  address public constant WBNB_Address =
+    0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+
   /**
    * @dev Struct to hold local variables for calculating account liquidity,
    *      avoiding stack-depth limits. It contains balances, collateral, and LTV information.
@@ -257,7 +261,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     uint256 amount
   ) public pure returns (bytes memory data) {
     data = abi.encodeWithSelector(
-      bytes4(keccak256("redeemTokens(uint)")),
+      bytes4(keccak256("redeem(uint256)")),
       amount
     );
   }
@@ -836,7 +840,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
         withdrawTx: txResult.withdrawTx
       })
     );
-
     // 5. Returns same values - SAME
     return (transactions, swapResult.flashAmount);
   }
@@ -871,7 +874,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
       params.vault,
       params.flashData
     );
-
     result.withdrawTx = withdrawTransactionsUsingDex(
       params.executor,
       params.vault,
@@ -1004,38 +1006,38 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
       );
       uint256 count;
 
-    // Add swap transactions to the final array
-    uint256 swapTransactionsLength = swapTransactions.length;
-    for (uint i = 0; i < swapTransactionsLength; ) {
-      transactions[count].to = swapTransactions[i].to;
-      transactions[count].txData = swapTransactions[i].txData;
-      count++;
-      unchecked {
-        ++i;
+      // Add swap transactions to the final array
+      uint256 swapTransactionsLength = swapTransactions.length;
+      for (uint i = 0; i < swapTransactionsLength; ) {
+        transactions[count].to = swapTransactions[i].to;
+        transactions[count].txData = swapTransactions[i].txData;
+        count++;
+        unchecked {
+          ++i;
+        }
       }
-    }
 
-    // Add repay transactions to the final array
-    uint256 repayLoanTransactionLength = repayLoanTransaction.length;
-    for (uint i = 0; i < repayLoanTransactionLength; ) {
-      transactions[count].to = repayLoanTransaction[i].to;
-      transactions[count].txData = repayLoanTransaction[i].txData;
-      count++;
-      unchecked {
-        ++i;
+      // Add repay transactions to the final array
+      uint256 repayLoanTransactionLength = repayLoanTransaction.length;
+      for (uint i = 0; i < repayLoanTransactionLength; ) {
+        transactions[count].to = repayLoanTransaction[i].to;
+        transactions[count].txData = repayLoanTransaction[i].txData;
+        count++;
+        unchecked {
+          ++i;
+        }
       }
-    }
 
-    // Add withdrawal transactions to the final array
-    uint256 withdrawTransactionLength = withdrawTransaction.length;
-    for (uint i = 0; i < withdrawTransactionLength; ) {
-      transactions[count].to = withdrawTransaction[i].to;
-      transactions[count].txData = withdrawTransaction[i].txData;
-      count++;
-      unchecked {
-        ++i;
+      // Add withdrawal transactions to the final array
+      uint256 withdrawTransactionLength = withdrawTransaction.length;
+      for (uint i = 0; i < withdrawTransactionLength; ) {
+        transactions[count].to = withdrawTransaction[i].to;
+        transactions[count].txData = withdrawTransaction[i].txData;
+        count++;
+        unchecked {
+          ++i;
+        }
       }
-    }
 
       return (transactions, flashLoanAmount); // Return the final array of transactions and total flash loan amount
     }
@@ -1082,9 +1084,8 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
       count,
       feeCount
     );
-
     // Resize array to remove unused entries
-    uint256 unusedLength = ((tokenLength * 2) - count);
+    uint256 unusedLength = ((tokenLength * 3) - count);
     assembly {
       mstore(transactions, sub(mload(transactions), unusedLength))
     }
@@ -1320,32 +1321,36 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     FunctionParameters.FlashLoanData memory flashData,
     uint256 feeCount
   ) internal view returns (MultiTransaction[] memory transactions) {
-    transactions = new MultiTransaction[](
-      3 * lendingTokens.length
-    );
+    uint256 tokenLength = lendingTokens.length;
+    transactions = new MultiTransaction[](4 * tokenLength);
     uint256 count;
 
     WithdrawContext memory _context = context;
-      uint256[] memory sellAmounts = getCollateralAmountToSell(
-        _context.user,
-        _context.controller,
-        flashData.protocolTokens,
-        lendingTokens,
-        flashData.debtRepayAmount,
-        _context.fee,
-        _context.totalCollateral,
-        _context.bufferUnit
-      );
+    uint256[] memory sellAmounts = getCollateralAmountToSell(
+      _context.user,
+      _context.controller,
+      flashData.protocolTokens,
+      lendingTokens,
+      flashData.debtRepayAmount,
+      _context.fee,
+      _context.totalCollateral,
+      _context.bufferUnit
+    );
 
-      (count, feeCount) = processLendingTokenBatch(
-        _context,
-        lendingTokens,
-        sellAmounts,
-        transactions,
-        count,
-        feeCount,
-        flashData.poolFees
-      );
+    (count, feeCount) = processLendingTokenBatch(
+      _context,
+      lendingTokens,
+      sellAmounts,
+      transactions,
+      count,
+      feeCount,
+      flashData.poolFees
+    );
+    // Resize the transactions array to remove unused entries
+    uint unusedLength = ((tokenLength * 4) - count);
+    assembly {
+      mstore(transactions, sub(mload(transactions), unusedLength))
+    }
 
     return transactions;
   }
@@ -1372,8 +1377,9 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
   ) internal view returns (uint256, uint256) {
     for (uint j = 0; j < lendingTokens.length; ) {
       address lendingToken = lendingTokens[j]; // Using index from original logic
-      address underlying = IVenusPool(lendingToken).underlying();
-
+      address underlying = (lendingToken == vBNB_Address)
+        ? WBNB_Address
+        : IVenusPool(lendingToken).underlying();
       WithdrawContext memory _context = context;
       uint256 _sellAmount = sellAmounts[j];
 
@@ -1386,12 +1392,29 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
       );
       count++;
 
+      if (underlying == WBNB_Address) {
+        // Withdraw transaction - exactly as original
+        transactions[count].to = _context.executor;
+        transactions[count].txData = abi.encodeWithSelector(
+          bytes4(keccak256("vaultInteraction(address,bytes)")),
+          underlying, // WBNB contract address
+          abi.encodeWithSelector(bytes4(keccak256("deposit()")))
+        );
+        count++;
+      }
+
+      uint256 underlyingAmount = getUnderlyingAmount(
+        lendingToken,
+        _context.user,
+        _sellAmount
+      );
+
       // Approve transaction - exactly as original
       transactions[count].to = _context.executor;
       transactions[count].txData = abi.encodeWithSelector(
         bytes4(keccak256("vaultInteraction(address,bytes)")),
         underlying,
-        approve(_context.router, _sellAmount)
+        approve(_context.router, underlyingAmount)
       );
       count++;
 
@@ -1406,7 +1429,7 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
           underlying,
           _context.flashloanToken,
           _context.receiver,
-          _sellAmount,
+          underlyingAmount,
           0,
           fee
         )
@@ -1419,6 +1442,31 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
       }
     }
     return (count, feeCount);
+  }
+
+  /**
+   * @notice Calculates the amount of underlying tokens for a given account and vToken.
+   * @param vToken The address of the vToken contract.
+   * @param account The address of the account.
+   * @param vTokenBalance The balance of the vToken for the account.
+   * @return underlyingAmount The amount of underlying tokens corresponding to the account's vToken balance.
+   */
+  function getUnderlyingAmount(
+    address vToken,
+    address account,
+    uint256 vTokenBalance
+  ) internal view returns (uint underlyingAmount) {
+    uint oErr;
+    uint exchangeRateMantissa;
+
+    // Get the account snapshot from the vToken contract
+    (oErr, , , exchangeRateMantissa) = IVenusPool(vToken).getAccountSnapshot(
+      account
+    );
+
+    // Calculate the underlying amount: underlyingAmount = vTokenBalance * exchangeRate
+    // The exchange rate is scaled by 1e18, so we divide by 1e18 to normalize
+    underlyingAmount = (vTokenBalance * exchangeRateMantissa) / 1e18;
   }
 
   /**
@@ -1447,7 +1495,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
     uint256 count; // Count for the transactions
     uint256 swapDataCount; // Count for the swap data
     // Get the amounts to sell based on the collateral
-    console.log("BEFORE SELL AMOUNTS");
     uint256[] memory sellAmounts = getCollateralAmountToSell(
       user,
       controller,
@@ -1458,7 +1505,6 @@ contract VenusAssetHandler is IAssetHandler, ExponentialNoError {
       totalCollateral,
       flashData.bufferUnit
     );
-    console.log("AFTER SELL AMOUNTS");
     // Loop through the lending tokens to process each one
     uint256 lendingTokensLength = lendingTokens.length;
     for (uint j = 0; j < lendingTokensLength; ) {

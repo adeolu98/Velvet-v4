@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {ErrorLibrary} from "../library/ErrorLibrary.sol";
-import {IIntentHandler} from "../handler/IIntentHandler.sol";
-import {RebalancingConfig} from "./RebalancingConfig.sol";
-import {IAssetHandler} from "../core/interfaces/IAssetHandler.sol";
-import {IBorrowManager} from "../core/interfaces/IBorrowManager.sol";
-import {IAssetManagementConfig} from "../config/assetManagement/IAssetManagementConfig.sol";
-import {FunctionParameters} from "../FunctionParameters.sol";
-import {IPositionManager} from "../wrappers/abstract/IPositionManager.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/security/ReentrancyGuardUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/access/OwnableUpgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { ErrorLibrary } from "../library/ErrorLibrary.sol";
+import { IIntentHandler } from "../core/interfaces/IIntentHandler.sol";
+import { RebalancingConfig } from "./RebalancingConfig.sol";
+import { IAssetHandler } from "../core/interfaces/IAssetHandler.sol";
+import { IBorrowManager } from "../core/interfaces/IBorrowManager.sol";
+import { IAssetManagementConfig } from "../config/assetManagement/IAssetManagementConfig.sol";
+import { FunctionParameters } from "../FunctionParameters.sol";
+import { IPositionManager } from "../wrappers/abstract/IPositionManager.sol";
 
 /**
  * @title RebalancingCore
@@ -174,15 +174,6 @@ contract Rebalancing is
     // Update the portfolio's token list with new tokens
     portfolio.updateTokenList(_newTokens);
 
-    // Perform token update and weights adjustment based on provided rebalance data
-    _updateWeights(
-      _sellTokens,
-      _newTokens,
-      rebalanceData._sellAmounts,
-      rebalanceData._handler,
-      rebalanceData._callData
-    );
-
     // Initialize a bitmap with 256 slots to handle up to 65,536 unique bit positions
     uint256[256] memory tokenBitmap;
     uint256 tokenLength = _tokens.length;
@@ -195,7 +186,7 @@ contract Rebalancing is
 
         // Store the current balance of the token for later verification
         initialBalances[i] = _getTokenBalanceOf(token, _vault);
-
+        
         // Calculate a unique bit position for this token
         uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536; // Hash to get a unique bit position in the range 0-65,535
         uint256 index = bitPos / 256; // Determine the specific uint256 slot in the array (0 to 255)
@@ -204,7 +195,18 @@ contract Rebalancing is
         // Set the bit for this token in the bitmap to mark it as present
         tokenBitmap[index] |= (1 << offset);
       }
+    }
 
+    // Perform token update and weights adjustment based on provided rebalance data
+    _updateWeights(
+      _sellTokens,
+      _newTokens,
+      rebalanceData._sellAmounts,
+      rebalanceData._handler,
+      rebalanceData._callData
+    );
+
+    unchecked {
       // Remove new tokens from the bitmap to avoid unnecessary balance checks
       uint256 _newTokensLength = _newTokens.length;
       for (uint256 i; i < _newTokensLength; i++) {
@@ -234,8 +236,9 @@ contract Rebalancing is
             TOTAL_WEIGHT;
 
           // Verify that the token's balance does not exceed the allowable dust tolerance
-          if (_getTokenBalanceOf(token, _vault) > dustValue)
+          if (_getTokenBalanceOf(token, _vault) > dustValue) {
             revert ErrorLibrary.BalanceOfVaultShouldNotExceedDust();
+          }
         }
       }
     }
@@ -465,7 +468,7 @@ contract Rebalancing is
     if (_amountToBorrow == 0) revert ErrorLibrary.AmountCannotBeZero();
 
     //Ensures the number of different borrowed token types doesn't exceed protocol limits
-    if (tokensBorrowed > protocolConfig.MAX_BORROW_TOKEN_LIMIT()) {
+    if (tokensBorrowed >= protocolConfig.MAX_BORROW_TOKEN_LIMIT()) {
       revert ErrorLibrary.BorrowTokenLimitExceeded();
     }
 
@@ -488,6 +491,7 @@ contract Rebalancing is
       _pool,
       assetHandler.borrow(_pool, _tokenToBorrow, _vault, _amountToBorrow)
     );
+
 
     // Get the number of borrowed tokens after the borrow operation
     // If this number is larger than before, it means we borrowed a new token type

@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import { SafeERC20Upgradeable, IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-4.9.6/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import { ErrorLibrary } from "../../library/ErrorLibrary.sol";
-import { IIntentHandler } from "../IIntentHandler.sol";
+import { IIntentHandler } from "../../core/interfaces/IIntentHandler.sol";
 import { IPositionManager } from "../../wrappers/abstract/IPositionManager.sol";
 import { FunctionParameters } from "../../FunctionParameters.sol";
 import { ExternalPositionManagement } from "./ExternalPositionManagement.sol";

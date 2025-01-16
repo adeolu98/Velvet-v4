@@ -12,7 +12,7 @@ import { IAavePriceOracle } from "./IAavePriceOracle.sol";
 import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { IPortfolio } from "../../core/interfaces/IPortfolio.sol";
 import { ISwapRouter } from "./ISwapRouter.sol";
-import { ISwapHandler } from "../ISwapHandler.sol";
+import { ISwapHandler } from "../../core/interfaces/ISwapHandler.sol";
 
 contract AaveAssetHandler is IAssetHandler {
   address immutable DATA_PROVIDER_ADDRESS =
@@ -699,7 +699,7 @@ contract AaveAssetHandler is IAssetHandler {
       feeCount
     );
 
-    uint unusedLength = ((tokenLength * 2) - count);
+    uint unusedLength = ((tokenLength * 3) - count);
     assembly {
       mstore(transactions, sub(mload(transactions), unusedLength))
     }
