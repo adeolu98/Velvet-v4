@@ -173,7 +173,7 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
       } else {
         uint256 balanceBefore = _getTokenBalance(_token, address(this));
         (bool success, ) = SWAP_TARGET.delegatecall(data._callData[i]);
-        if (!success) revert ErrorLibrary.CallFailed();
+        if (!success) revert ErrorLibrary.DepositBatchCallFailed();
         uint256 balanceAfter = _getTokenBalance(_token, address(this));
         balance = balanceAfter - balanceBefore;
       }

@@ -79,7 +79,7 @@ contract WithdrawBatchExternalPositions is ReentrancyGuard {
         TransferHelper.safeTransfer(_token, user, balanceOfSameToken);
       } else {
         (bool success, ) = SWAP_TARGET.delegatecall(_callData[i]);
-        if (!success) revert ErrorLibrary.CallFailed();
+        if (!success) revert ErrorLibrary.WithdrawBatchCallFailed();
       }
     }
 

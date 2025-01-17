@@ -73,6 +73,24 @@ library ErrorLibrary {
   error PublicFundToWhitelistedNotAllowed();
   /// @notice Generic call failed error
   error CallFailed();
+  /// @notice Deposit batch call failed error
+  error DepositBatchCallFailed();
+  /// @notice Withdraw batch call failed error
+  error WithdrawBatchCallFailed();
+  /// @notice Vault interaction call failed error
+  error VaultInteractionCallFailed();
+  /// @notice Repay borrow call failed error
+  error RepayBorrowCallFailed();
+  /// @notice Repay vault call failed error
+  error RepayVaultCallFailed();
+  /// @notice Thrown when flash loan operation failed
+  error FlashLoanOperationFailed();
+  /// @notice Swap execution failed error in handler
+  error SwapExecutionFailed();
+  /// @notice Rebalance swap failed error in handler
+  error RebalanceSwapFailed();
+  /// @notice Swap failed error
+  error SwapFailed();
   /// @notice Generic transfer failed error
   error TransferFailed();
   /// @notice Throws when the initToken or updateTokenList function of Portfolio is having more tokens than set by the Registry

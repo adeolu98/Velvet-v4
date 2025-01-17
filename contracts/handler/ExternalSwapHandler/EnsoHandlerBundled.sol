@@ -54,7 +54,7 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
 
     // Execute the bundled swap operation via delegatecall to the SWAP_TARGET.
     (bool success, ) = SWAP_TARGET.delegatecall(callDataEnso);
-    if (!success) revert ErrorLibrary.CallFailed();
+    if (!success) revert ErrorLibrary.SwapExecutionFailed();
 
     // Post-swap: verify output meets minimum expectations and transfer tokens to the recipient.
     for (uint256 i; i < tokensLength; i++) {
@@ -178,7 +178,7 @@ contract EnsoHandlerBundled is IIntentHandler, ExternalPositionManagement {
   function _executeSwaps(bytes memory _callDataEnso) private {
     // Execute the bundled swap operation via delegatecall to the SWAP_TARGET.
     (bool success, ) = SWAP_TARGET.delegatecall(_callDataEnso);
-    if (!success) revert ErrorLibrary.CallFailed();
+    if (!success) revert ErrorLibrary.RebalanceSwapFailed();
   }
 
   // Function to receive Ether when msg.data is empty

@@ -1608,8 +1608,6 @@ describe.only("Tests for Deposit", () => {
 
         const supplyBefore = await portfolio.totalSupply();
 
-        const tokenToSwapInto = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-
         const user = nonOwner;
 
         let flashloanBufferUnit = 11; //Flashloan buffer unit in 1/10000.This value is used slightly increase the amount of flashLoanAmount, for any priceImpact (10000 = 100%)
@@ -1639,21 +1637,8 @@ describe.only("Tests for Deposit", () => {
             withdrawManager.address,
             BigNumber.from(amountPortfolioToken)
           );
-        let responses = [];
         let userBalanceBefore = [];
         for (let i = 0; i < tokens.length; i++) {
-          if (tokens[i] == tokenToSwapInto) {
-            responses.push("0x");
-          } else {
-            let response = await createEnsoCallDataRoute(
-              withdrawBatch.address,
-              user.address,
-              tokens[i],
-              tokenToSwapInto,
-              (withdrawalAmounts[i] * 0.99).toFixed(0)
-            );
-            responses.push(response.data.tx.data);
-          }
           userBalanceBefore.push(
             await ERC20.attach(tokens[i]).balanceOf(user.address)
           );
@@ -1672,27 +1657,21 @@ describe.only("Tests for Deposit", () => {
 
         const flashLoanAmount = values[1];
 
-        await withdrawManager.connect(user).withdraw(
-          portfolio.address,
-          tokenToSwapInto,
-          amountPortfolioToken,
-          0,
-          {
-            _factory: addresses.thena_factory,
-            _token0: addresses.USDT, //USDT - Pool token
-            _token1: addresses.USDC_Address, //USDC - Pool token
-            _flashLoanToken: flashLoanToken, //Token to take flashlaon
-            _bufferUnit: bufferUnit, //Buffer unit for collateral amount
-            _solverHandler: ensoHandler.address, //Handler to swap
-            _swapHandler: swapHandler.address,
-            _flashLoanAmount: flashLoanAmount,
-            firstSwapData: [],
-            secondSwapData: [],
-            _poolFees: [500, 500, 500, 500, 500, 500, 500, 500, 500],
-            isDexRepayment: true,
-          },
-          responses
-        );
+        await portfolio.multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
+          _factory: addresses.thena_factory,
+          _token0: addresses.USDT, //USDT - Pool token
+          _token1: addresses.USDC_Address, //USDC - Pool token
+          _flashLoanToken: flashLoanToken, //Token to take flashlaon
+          _bufferUnit: bufferUnit,
+          _solverHandler: ensoHandler.address, //Handler to swap
+          _flashLoanAmount: flashLoanAmount,
+          firstSwapData: [],
+          secondSwapData: [],
+          isDexRepayment: true,
+          _poolFees: [500, 500, 500, 500, 500, 500, 500, 500, 500],
+          _swapHandler: swapHandler.address,
+        });
+
 
         const supplyAfter = await portfolio.totalSupply();
         console.log("SupplyAfter", supplyAfter);

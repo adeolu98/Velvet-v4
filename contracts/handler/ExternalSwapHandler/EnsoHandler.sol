@@ -67,7 +67,7 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
 
       // Perform delegatecall to execute swap operation on the Enso platform.
       (bool success, ) = SWAP_TARGET.delegatecall(callDataEnso[i]);
-      if (!success) revert ErrorLibrary.CallFailed();
+      if (!success) revert ErrorLibrary.SwapExecutionFailed();
       // Post-swap processing: verify output against minimum expectations and transfer to recipient.
       uint256 buyBalanceAfter = IERC20Upgradeable(token).balanceOf(
         address(this)
@@ -195,7 +195,7 @@ contract EnsoHandler is IIntentHandler, ExternalPositionManagement {
     uint256 swapCallDataLength = _swapCallData.length;
     for (uint256 j; j < swapCallDataLength; j++) {
       (bool success, ) = SWAP_TARGET.delegatecall(_swapCallData[j]);
-      if (!success) revert ErrorLibrary.CallFailed();
+      if (!success) revert ErrorLibrary.RebalanceSwapFailed();
     }
   }
 
