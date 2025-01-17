@@ -268,7 +268,7 @@ abstract contract VaultManager is
       _claimCalldata
     );
 
-    if (!success) revert ErrorLibrary.CallFailed();
+    if (!success) revert ErrorLibrary.VaultInteractionCallFailed();
   }
 
   /**

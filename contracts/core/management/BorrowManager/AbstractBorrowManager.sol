@@ -117,7 +117,7 @@ abstract contract AbstractBorrowManager is
 
       // Check if the delegatecall was successful
       // If not, revert the transaction with a custom error
-      if (!success) revert ErrorLibrary.CallFailed();
+      if (!success) revert ErrorLibrary.RepayBorrowCallFailed();
     }
   }
 
@@ -162,7 +162,7 @@ abstract contract AbstractBorrowManager is
     (bool success, ) = address(assetHandler).delegatecall(data);
 
     // Check if the delegatecall was successful
-    if (!success) revert ErrorLibrary.CallFailed();
+    if (!success) revert ErrorLibrary.RepayVaultCallFailed();
 
     // Get the number of borrowed tokens after the flash loan repayment
     uint256 borrowedLengthAfter = (

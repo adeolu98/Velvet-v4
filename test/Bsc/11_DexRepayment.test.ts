@@ -807,7 +807,7 @@ describe.only("Tests for Deposit", () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let vault = await portfolio.vault();
         console.log(
-          "DAI Balance before",
+          "USDT Balance before",
           await ERC20.attach(addresses.USDT).balanceOf(vault)
         );
 
@@ -819,7 +819,7 @@ describe.only("Tests for Deposit", () => {
           "10000000000000000000"
         );
         console.log(
-          "DAI Balance after",
+          "USDT Balance after",
           await ERC20.attach(addresses.USDT).balanceOf(vault)
         );
 
@@ -849,24 +849,24 @@ describe.only("Tests for Deposit", () => {
         console.log("newtokens", await portfolio.getTokens());
       });
 
-      it("should borrow LINK using vBNB as collateral", async () => {
+      it("should borrow BTC using vBNB as collateral", async () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let vault = await portfolio.vault();
         console.log(
-          "LINK Balance before",
-          await ERC20.attach(addresses.LINK_Address).balanceOf(vault)
+          "BTC Balance before",
+          await ERC20.attach(addresses.BTC_Address).balanceOf(vault)
         );
 
         await rebalancing.borrow(
-          addresses.vLINK_Address,
+          addresses.vBTC_Address,
           [addresses.vBNB_Address],
-          addresses.LINK_Address,
+          addresses.BTC_Address,
           addresses.corePool_controller,
-          "2000000000000000000"
+          "200000000000000"
         );
         console.log(
-          "LINK Balance after",
-          await ERC20.attach(addresses.LINK_Address).balanceOf(vault)
+          "BTC Balance after",
+          await ERC20.attach(addresses.BTC_Address).balanceOf(vault)
         );
 
         console.log("newtokens", await portfolio.getTokens());
@@ -889,8 +889,8 @@ describe.only("Tests for Deposit", () => {
       });
 
       it("should fail if assetmanager tries to borrow token, more then max limit", async () => {
-        expect(
-          await rebalancing.borrow(
+        await expect(
+          rebalancing.borrow(
             addresses.vLINK_Address,
             [addresses.vBNB_Address],
             addresses.LINK_Address,
@@ -903,7 +903,7 @@ describe.only("Tests for Deposit", () => {
         );
       });
 
-      it("should swap borrowed LINK to vBNB", async () => {
+      it("should swap borrowed BTC to vBNB", async () => {
         let tokens = await portfolio.getTokens();
         let sellToken = tokens[8];
         let buyToken = addresses.vBNB_Address;
@@ -979,24 +979,26 @@ describe.only("Tests for Deposit", () => {
         );
       });
 
-      it("repay complete borrowed LINK using flashloan", async () => {
+      it("repay complete borrowed BTC using flashloan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        let tokens = await portfolio.getTokens();
 
         let flashloanBufferUnit = 31; //Flashloan buffer unit in 1/10000
         let bufferUnit = 350; //Buffer unit for collateral amount in 1/100000
-        let borrowedToken = addresses.LINK_Address;
-        let borrowedProtocolToken = addresses.vLINK_Address;
+        let borrowedToken = addresses.BTC_Address;
+        let borrowedProtocolToken = addresses.vBTC_Address;
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
             [borrowedProtocolToken],
             vault
           );
+        console.log("balanceBorrowed before repay", balanceBorrowed);
         const userData = await venusAssetHandler.getUserAccountData(
           vault,
           addresses.corePool_controller,
-          portfolio.getTokens()
+          tokens
         );
         const lendTokens = userData[1].lendTokens;
 
@@ -1017,50 +1019,20 @@ describe.only("Tests for Deposit", () => {
         console.log("balanceToRepay", balanceToRepay);
         console.log("balanceToSwap", balanceToSwap);
 
-        const postResponse = await createEnsoCallDataRoute(
-          ensoHandler.address,
-          ensoHandler.address,
-          addresses.USDT, //FlashLoan Token
-          borrowedToken,
-          balanceToSwap
-        );
-
-        const encodedParameters = ethers.utils.defaultAbiCoder.encode(
-          ["bytes[]", "address[]", "uint256[]"],
-          [[postResponse.data.tx.data], [borrowedToken], [0]]
-        );
-
-        let encodedParameters1 = [];
         //Because repay(rebalance) is one borrow token at a time
         const amounToSell =
           await portfolioCalculations.getCollateralAmountToSell(
             vault,
             addresses.corePool_controller,
             venusAssetHandler.address,
-            borrowedProtocolToken,
-            balanceToRepay,
+            [borrowedProtocolToken],
+            tokens,
+            [balanceToRepay],
             "10", //Flash loan fee
             bufferUnit //Buffer unit for collateral amount
           );
         console.log("amounToSell", amounToSell);
         console.log("lendTokens", lendTokens);
-
-        for (let j = 0; j < lendTokens.length; j++) {
-          const postResponse1 = await createEnsoCallDataRoute(
-            ensoHandler.address,
-            ensoHandler.address,
-            lendTokens[j],
-            addresses.USDT, //FlashLoanToken
-            amounToSell[j].toString() //Need calculation here
-          );
-
-          encodedParameters1.push(
-            ethers.utils.defaultAbiCoder.encode(
-              ["bytes[]", "address[]", "uint256[]"],
-              [[postResponse1.data.tx.data], [addresses.USDT], [0]]
-            )
-          );
-        }
 
         await rebalancing.repay(addresses.corePool_controller, {
           _factory: addresses.thena_factory,
@@ -1074,10 +1046,10 @@ describe.only("Tests for Deposit", () => {
           _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
-          firstSwapData: [encodedParameters],
-          secondSwapData: encodedParameters1,
+          firstSwapData: [],
+          secondSwapData: [],
           isMaxRepayment: true,
-          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          _poolFees: [500, 500, 500],
           isDexRepayment: true,
         });
 
@@ -1506,7 +1478,7 @@ describe.only("Tests for Deposit", () => {
           firstSwapData: [],
           secondSwapData: [],
           isMaxRepayment: false,
-          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          _poolFees: [500, 500, 500, 500, 500, 500, 500, 500, 500],
           isDexRepayment: true,
         });
 
@@ -1606,7 +1578,7 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: [],
             secondSwapData: [],
-            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            _poolFees: [500, 500, 500, 500, 500, 500, 500, 500, 500],
             isDexRepayment: true,
           },
           responses
@@ -1635,8 +1607,6 @@ describe.only("Tests for Deposit", () => {
         await ethers.provider.send("evm_increaseTime", [70]);
 
         const supplyBefore = await portfolio.totalSupply();
-
-        const tokenToSwapInto = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
         const user = nonOwner;
 
@@ -1667,21 +1637,8 @@ describe.only("Tests for Deposit", () => {
             withdrawManager.address,
             BigNumber.from(amountPortfolioToken)
           );
-        let responses = [];
         let userBalanceBefore = [];
         for (let i = 0; i < tokens.length; i++) {
-          if (tokens[i] == tokenToSwapInto) {
-            responses.push("0x");
-          } else {
-            let response = await createEnsoCallDataRoute(
-              withdrawBatch.address,
-              user.address,
-              tokens[i],
-              tokenToSwapInto,
-              (withdrawalAmounts[i] * 0.99).toFixed(0)
-            );
-            responses.push(response.data.tx.data);
-          }
           userBalanceBefore.push(
             await ERC20.attach(tokens[i]).balanceOf(user.address)
           );
@@ -1700,27 +1657,21 @@ describe.only("Tests for Deposit", () => {
 
         const flashLoanAmount = values[1];
 
-        await withdrawManager.connect(user).withdraw(
-          portfolio.address,
-          tokenToSwapInto,
-          amountPortfolioToken,
-          0,
-          {
-            _factory: addresses.thena_factory,
-            _token0: addresses.USDT, //USDT - Pool token
-            _token1: addresses.USDC_Address, //USDC - Pool token
-            _flashLoanToken: flashLoanToken, //Token to take flashlaon
-            _bufferUnit: bufferUnit, //Buffer unit for collateral amount
-            _solverHandler: ensoHandler.address, //Handler to swap
-            _swapHandler: swapHandler.address,
-            _flashLoanAmount: flashLoanAmount,
-            firstSwapData: [],
-            secondSwapData: [],
-            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-            isDexRepayment: true,
-          },
-          responses
-        );
+        await portfolio.multiTokenWithdrawal(BigNumber.from(amountPortfolioToken), {
+          _factory: addresses.thena_factory,
+          _token0: addresses.USDT, //USDT - Pool token
+          _token1: addresses.USDC_Address, //USDC - Pool token
+          _flashLoanToken: flashLoanToken, //Token to take flashlaon
+          _bufferUnit: bufferUnit,
+          _solverHandler: ensoHandler.address, //Handler to swap
+          _flashLoanAmount: flashLoanAmount,
+          firstSwapData: [],
+          secondSwapData: [],
+          isDexRepayment: true,
+          _poolFees: [500, 500, 500, 500, 500, 500, 500, 500, 500],
+          _swapHandler: swapHandler.address,
+        });
+
 
         const supplyAfter = await portfolio.totalSupply();
         console.log("SupplyAfter", supplyAfter);

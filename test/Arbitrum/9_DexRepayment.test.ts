@@ -3,17 +3,6 @@ import { expect } from "chai";
 import "@nomicfoundation/hardhat-chai-matchers";
 import { ethers, upgrades } from "hardhat";
 import { BigNumber, Contract } from "ethers";
-import {
-  PERMIT2_ADDRESS,
-  AllowanceTransfer,
-  MaxAllowanceTransferAmount,
-  PermitBatch,
-} from "@uniswap/permit2-sdk";
-
-import {
-  calcuateExpectedMintAmount,
-  createEnsoDataElement,
-} from "../calculations/DepositCalculations.test";
 
 import {
   createEnsoCallData,
@@ -162,11 +151,16 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         ProtocolConfig,
         [
           treasury.address,
-          priceOracle.address,
-          positionWrapperBaseAddress.address,
+          priceOracle.address
         ],
         { kind: "uups" }
       );
+
+      const SwapHandler = await ethers.getContractFactory(
+        "UniswapHandler"
+      );
+      swapHandler = await SwapHandler.deploy();
+      await swapHandler.deployed();
 
       protocolConfig = ProtocolConfig.attach(_protocolConfig.address);
       await protocolConfig.setCoolDownPeriod("60");
@@ -311,6 +305,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       velvetSafeModule = await VelvetSafeModule.deploy();
       await velvetSafeModule.deployed();
 
+      const ExternalPositionStorage = await ethers.getContractFactory(
+        "ExternalPositionStorage"
+      );
+      const externalPositionStorage = await ExternalPositionStorage.deploy();
+      await externalPositionStorage.deployed();
+
       const PortfolioFactory = await ethers.getContractFactory(
         "PortfolioFactory"
       );
@@ -329,6 +329,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _baseVelvetGnosisSafeModuleAddress: velvetSafeModule.address,
             _baseBorrowManager: borrowManager.address,
             _basePositionManager: positionManagerBaseAddress.address,
+            _baseExternalPositionStorage: externalPositionStorage.address,
             _gnosisSingleton: addresses.gnosisSingleton,
             _gnosisFallbackLibrary: addresses.gnosisFallbackLibrary,
             _gnosisMultisendLibrary: addresses.gnosisMultisendLibrary,
@@ -733,7 +734,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let vault = await portfolio.vault();
         console.log(
-          "ARB Balance before",
+          "USDT Balance before",
           await ERC20.attach(addresses.ARB).balanceOf(vault)
         );
 
@@ -745,7 +746,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           "10000000000000000000"
         );
         console.log(
-          "ARB Balance after",
+          "USDT Balance after",
           await ERC20.attach(addresses.ARB).balanceOf(vault)
         );
 
@@ -775,7 +776,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         console.log("newtokens", await portfolio.getTokens());
       });
 
-      it("should repay half of ARB using flashloan", async () => {
+      it("should repay half of USDT using flashloan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
 
@@ -788,7 +789,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
 
         let balanceBorrowed: any = (
-          await pool.getUserReserveData(addresses.ARB, vault)
+          await pool.getUserReserveData(addresses.USDT, vault)
         )[2];
 
         console.log("before getUserAccountData");
@@ -799,9 +800,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
         const lendTokens = userData[1].lendTokens;
 
+        console.log("lendTokens", lendTokens);
+
         console.log("balanceBorrowed before repay", balanceBorrowed);
 
-        const balanceToRepay = (balanceBorrowed / 2).toString();
+        const balanceToRepay = ((balanceBorrowed / 2).toFixed()).toString();
 
         const balanceToSwap = balanceToRepay;
 
@@ -813,7 +816,6 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           addresses.aavePool
         );
 
-        let encodedParameters1 = [];
         const flashLoanFee = await Ipool.FLASHLOAN_PREMIUM_TOTAL();
 
         console.log("flashLoanFee", flashLoanFee);
@@ -825,15 +827,15 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _factory: addresses.aavePool,
           _token0: addresses.aavePool, //USDT - Pool token
           _token1: addresses.aavePool, //USDC - Pool token
-          _flashLoanToken: addresses.ARB, //Token to take flashlaon
-          _debtToken: [addresses.ARB], //Token to pay debt of
-          _protocolToken: [addresses.aArbARB], // lending token in case of venus
+          _flashLoanToken: addresses.USDT, //Token to take flashlaon
+          _debtToken: [addresses.USDT], //Token to pay debt of
+          _protocolToken: [addresses.aArbUSDT], // lending token in case of venus
           _bufferUnit: bufferUnit, //Buffer unit for collateral amount
           _solverHandler: ensoHandler.address, //Handler to swap
           _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
-          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          _poolFees: [100, 100, 100, 100, 100],
           firstSwapData: [],
           secondSwapData: [],
           isMaxRepayment: false,
@@ -842,11 +844,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         console.log(
           "Balance of vToken After",
-          await ERC20.attach(addresses.aArbLINK).balanceOf(vault)
+          await ERC20.attach(addresses.aARBDAI).balanceOf(vault)
         );
 
         balanceBorrowed = (
-          await pool.getUserReserveData(addresses.ARB, vault)
+          await pool.getUserReserveData(addresses.USDT, vault)
         )[2];
 
         console.log("balanceBorrowed after repay", balanceBorrowed);
@@ -933,7 +935,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
             _swapHandler: swapHandler.address,
-            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            _poolFees: [500, 500, 500, 500,500],
             isDexRepayment: true,
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: [],

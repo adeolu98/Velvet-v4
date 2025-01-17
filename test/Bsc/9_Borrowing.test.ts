@@ -844,24 +844,24 @@ describe.only("Tests for Deposit", () => {
         console.log("newtokens", await portfolio.getTokens());
       });
 
-      it("should borrow LINK using vBNB as collateral", async () => {
+      it("should borrow BTC using vBNB as collateral", async () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let vault = await portfolio.vault();
         console.log(
           "LINK Balance before",
-          await ERC20.attach(addresses.LINK_Address).balanceOf(vault)
+          await ERC20.attach(addresses.BTC_Address).balanceOf(vault)
         );
 
         await rebalancing.borrow(
-          addresses.vLINK_Address,
+          addresses.vBTC_Address,
           [addresses.vBNB_Address],
-          addresses.LINK_Address,
+          addresses.BTC_Address,
           addresses.corePool_controller,
-          "2000000000000000000"
+          "200000000000000"
         );
         console.log(
           "LINK Balance after",
-          await ERC20.attach(addresses.LINK_Address).balanceOf(vault)
+          await ERC20.attach(addresses.BTC_Address).balanceOf(vault)
         );
 
         console.log("newtokens", await portfolio.getTokens());
@@ -884,8 +884,8 @@ describe.only("Tests for Deposit", () => {
       });
 
       it("should fail if assetmanager tries to borrow token, more then max limit", async () => {
-        expect(
-          await rebalancing.borrow(
+        await expect(
+          rebalancing.borrow(
             addresses.vLINK_Address,
             [addresses.vBNB_Address],
             addresses.LINK_Address,
@@ -898,7 +898,7 @@ describe.only("Tests for Deposit", () => {
         );
       });
 
-      it("should swap borrowed LINK to vBNB", async () => {
+      it("should swap borrowed BTC to vBNB", async () => {
         let tokens = await portfolio.getTokens();
         let sellToken = tokens[8];
         let buyToken = addresses.vBNB_Address;
@@ -974,15 +974,15 @@ describe.only("Tests for Deposit", () => {
         );
       });
 
-      it("repay complete borrowed LINK using flashloan", async () => {
+      it("repay complete borrowed BTC using flashloan", async () => {
         let vault = await portfolio.vault();
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let tokens = await portfolio.getTokens();
 
-        let flashloanBufferUnit = 31; //Flashloan buffer unit in 1/10000
-        let bufferUnit = 350; //Buffer unit for collateral amount in 1/100000
-        let borrowedToken = addresses.LINK_Address;
-        let borrowedProtocolToken = addresses.vLINK_Address;
+        let flashloanBufferUnit = 32; //Flashloan buffer unit in 1/10000
+        let bufferUnit = 353; //Buffer unit for collateral amount in 1/100000
+        let borrowedToken = addresses.BTC_Address;
+        let borrowedProtocolToken = addresses.vBTC_Address;
 
         let balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
@@ -1075,13 +1075,13 @@ describe.only("Tests for Deposit", () => {
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
           isMaxRepayment: true,
-          _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000],
+          _poolFees: [500, 500, 500],
           isDexRepayment: false,
         });
 
         balanceBorrowed =
           await portfolioCalculations.getVenusTokenBorrowedBalance(
-            [addresses.vLINK_Address],
+            [addresses.vBTC_Address],
             vault
           );
 
@@ -1390,7 +1390,7 @@ describe.only("Tests for Deposit", () => {
             firstSwapData: [],
             secondSwapData: [],
             isMaxRepayment: false,
-            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            _poolFees: [],
             isDexRepayment: false,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidSolver");
@@ -1415,7 +1415,7 @@ describe.only("Tests for Deposit", () => {
             firstSwapData: [],
             secondSwapData: [],
             isMaxRepayment: false,
-            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            _poolFees: [],
             isDexRepayment: false,
           })
         ).to.be.revertedWithCustomError(borrowManager, "InvalidBufferUnit");
@@ -1557,7 +1557,7 @@ describe.only("Tests for Deposit", () => {
           firstSwapData: [encodedParameters],
           secondSwapData: encodedParameters1,
           isMaxRepayment: false,
-          _poolFees: [3000, 3000],
+          _poolFees:  [],
           isDexRepayment: false,
         });
 
@@ -1744,7 +1744,7 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: encodedParameters,
             secondSwapData: encodedParameters1,
-            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            _poolFees: [],
             isDexRepayment: false,
           },
           responses
@@ -1941,7 +1941,7 @@ describe.only("Tests for Deposit", () => {
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: encodedParameters,
             secondSwapData: encodedParameters1,
-            _poolFees: [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+            _poolFees: [],
             isDexRepayment: false,
           },
           responses

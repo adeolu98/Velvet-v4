@@ -74,7 +74,7 @@ contract BorrowManagerVenus is AbstractBorrowManager, IAlgebraFlashCallback {
     uint256 transactionsLength = transactions.length;
     for (uint256 i; i < transactionsLength; i++) {
       (bool success, ) = transactions[i].to.call(transactions[i].txData); // Execute the transaction
-      if (!success) revert ErrorLibrary.CallFailed(); // Revert if the call fails
+      if (!success) revert ErrorLibrary.FlashLoanOperationFailed(); // Revert if the call fails
     }
 
     // Calculate the fee based on the token0 and fee0/fee1,using the Algebra Pool

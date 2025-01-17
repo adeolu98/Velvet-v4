@@ -69,7 +69,7 @@ contract WithdrawBatch is ReentrancyGuard {
         TransferHelper.safeTransfer(_token, user, balanceOfSameToken);
       } else {
         (bool success, ) = SWAP_TARGET.delegatecall(_callData[i]);
-        if (!success) revert ErrorLibrary.CallFailed();
+        if (!success) revert ErrorLibrary.WithdrawBatchCallFailed();
 
         // Return any leftover dust to the user
         uint256 portfoliodustReturn = _getTokenBalance(_token, address(this));

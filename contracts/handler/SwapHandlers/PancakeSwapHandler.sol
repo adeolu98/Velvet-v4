@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.17;
 
-import {ISwapHandler} from "../ISwapHandler.sol";
+import { ISwapHandler } from "../../core/interfaces/ISwapHandler.sol";
+import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract PancakeSwapHandler is ISwapHandler {
   address immutable ROUTER_ADDRESS = 0x1b81D678ffb9C0263b24A97847620C99d213eB14;
@@ -16,21 +17,21 @@ contract PancakeSwapHandler is ISwapHandler {
   ) public view returns (bytes memory data) {
     bytes memory path = abi.encodePacked(
       tokenIn, // Address of the input token
-      fee, // Pool fee (0.3%)
+      uint24(fee), // Pool fee (0.3%)
       tokenOut // Address of the output token
     );
 
-    bytes memory encodedParams = abi.encode(
-      path,
-      to,
-      block.timestamp + 15,
-      amountIn,
-      amountOut
-    );
+    ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
+        path: path,
+        recipient: to,
+        deadline: block.timestamp + 15,
+        amountIn: amountIn,
+        amountOutMinimum: amountOut
+    });
 
-    data = abi.encodeWithSelector(
-      bytes4(keccak256("exactInput((bytes,address,uint256,uint256,uint256))")),
-      encodedParams
+    data = abi.encodeCall(
+      ISwapRouter.exactInput,
+      params
     );
   }
 
@@ -48,17 +49,17 @@ contract PancakeSwapHandler is ISwapHandler {
       tokenOut // Address of the output token
     );
 
-    bytes memory encodedParams = abi.encode(
-      path,
-      to,
-      block.timestamp + 15,
-      amountIn,
-      amountOut
-    );
+    ISwapRouter.ExactOutputParams memory params = ISwapRouter.ExactOutputParams({
+        path: path,
+        recipient: to,
+        deadline: block.timestamp + 15,
+        amountOut: amountOut,
+        amountInMaximum: amountIn
+    });
 
-    data = abi.encodeWithSelector(
-      bytes4(keccak256("exactOutput((bytes,address,uint256,uint256,uint256))")),
-      encodedParams
+    data = abi.encodeCall(
+      ISwapRouter.exactOutput,
+      params
     );
   }
 
