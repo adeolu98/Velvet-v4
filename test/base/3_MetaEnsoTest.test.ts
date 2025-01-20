@@ -203,6 +203,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       swapHandler.init(addresses.SushiSwapRouterAddress);
 
       await protocolConfig.setSupportedFactory(ensoHandler.address);
+      await protocolConfig.enableSwapHandler(swapHandler.address);
 
       let whitelist = [owner.address];
       zeroAddress = "0x0000000000000000000000000000000000000000";
@@ -760,6 +761,9 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _flashLoanAmount: [0],
             firstSwapData: ["0x"],
             secondSwapData: ["0x"],
+            _swapHandler: swapHandler.address,
+            _poolFees: [0],
+            isDexRepayment: false,
           },
           responses
         );
