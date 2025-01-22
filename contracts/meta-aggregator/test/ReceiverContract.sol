@@ -21,35 +21,12 @@ contract ReceiverContract {
         IERC20(token).approve(spender, amount);
     }
 
-    /**
-     * @dev Calls the swap function in the TestManagerContract.
-     * @param testManager The address of the TestManagerContract.
-     * @param tokenIn The address of the input token.
-     * @param tokenOut The address of the output token.
-     * @param amountIn The amount of input tokens to swap.
-     * @param minAmountOut The minimum amount of output tokens expected.
-     */
+
     function swap(
         address testManager,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
+        IMetaAggregatorManager.SwapERC20Params calldata params
     ) external {
-        IMetaAggregatorManager(testManager).swap(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
-        );
+        IMetaAggregatorManager(testManager).swap(params);
     }
 
     /**

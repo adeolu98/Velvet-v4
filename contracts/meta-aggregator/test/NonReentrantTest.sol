@@ -6,70 +6,22 @@ import "../interfaces/IMetaAggregatorSwapContract.sol";
 contract NonReentrantTest {
     function receiveCall(
         address callerAddress,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
+        IMetaAggregatorManager.SwapERC20Params calldata params
     ) external payable {
-        IMetaAggregatorManager(callerAddress).swap(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
-        );
+        IMetaAggregatorManager(callerAddress).swap(params);
     }
 
     function receiverCallETH(
         address callerAddress,
-        address tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
+        IMetaAggregatorSwapContract.SwapETHParams calldata params
     ) external payable {
-        IMetaAggregatorSwapContract(callerAddress).swapETH(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
-        );
+        IMetaAggregatorSwapContract(callerAddress).swapETH(params);
     }
 
     function receiverCallToken(
         address callerAddress,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
+        IMetaAggregatorSwapContract.SwapERC20Params calldata params
     ) external payable {
-        IMetaAggregatorSwapContract(callerAddress).swapERC20(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
-        );
+        IMetaAggregatorSwapContract(callerAddress).swapERC20(params);
     }
 }
