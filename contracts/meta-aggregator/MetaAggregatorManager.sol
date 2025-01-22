@@ -18,56 +18,47 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
     error CannotSwapETH();
     error InvalidMetaAggregatorAddress();
 
-
     /**
      * @dev Sets the address of the MetaAggregatorSwap contract.
      * @param _metaAggregatorSwap The address of the MetaAggregatorSwap contract.
      */
     constructor(address _metaAggregatorSwap) {
-         if(_metaAggregatorSwap == address(0)) {
+        if (_metaAggregatorSwap == address(0)) {
             revert InvalidMetaAggregatorAddress();
         }
         MetaAggregatorSwap = IMetaAggregatorSwapContract(_metaAggregatorSwap);
     }
 
-    /**
-     * @dev Swaps tokens using the MetaAggregatorSwap contract.
-     * @param tokenIn The input token (ERC20).
-     * @param tokenOut The output token (ERC20).
-     * @param aggregator The address of the aggregator to perform the swap.
-     * @param swapData The data required for the swap.
-     * @param amountIn The amount of tokenIn to swap.
-     * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param receiver The address to receive the output tokens.
-     * @param isDelegate Whether to use delegatecall for the swap.
-     * @notice This function is non-reentrant to prevent reentrancy attacks.
-     */
-    function swap(
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
-    ) external nonReentrant {
+    /// @notice Executes a token swap using the MetaAggregatorSwap contract
+    /// @param params The parameters required for the swap, encapsulated in the SwapERC20Params struct
+    /// @dev This function checks if the input token is the native token (ETH) and reverts if so.
+    function swap(SwapERC20Params calldata params) external nonReentrant {
         // Check if the input token is the native token (ETH)
-        if (address(tokenIn) == nativeToken) {
+        if (address(params.tokenIn) == nativeToken) {
             revert CannotSwapETH();
         }
 
-        TransferHelper.safeTransferFrom(address(tokenIn), msg.sender, address(MetaAggregatorSwap), amountIn);
-
-        MetaAggregatorSwap.swapERC20(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
+        TransferHelper.safeTransferFrom(
+            address(params.tokenIn),
+            msg.sender,
+            address(MetaAggregatorSwap),
+            params.amountIn
         );
+
+        IMetaAggregatorSwapContract.SwapERC20Params
+            memory swapParams = IMetaAggregatorSwapContract.SwapERC20Params({
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                aggregator: params.aggregator,
+                swapData: params.swapData,
+                amountIn: params.amountIn,
+                minAmountOut: params.minAmountOut,
+                receiver: params.receiver,
+                isDelegate: params.isDelegate,
+                targets: params.targets,
+                calldataArray: params.calldataArray
+            });
+
+        MetaAggregatorSwap.swapERC20(swapParams);
     }
 }
