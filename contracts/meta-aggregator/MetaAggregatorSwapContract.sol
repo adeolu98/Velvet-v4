@@ -136,42 +136,57 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
     function _swapETH(
         SwapETHParams calldata params
     ) internal returns (uint256) {
-        _validateInputs(
-            params.tokenIn,
-            address(params.tokenOut),
-            params.amountIn,
-            params.minAmountOut,
-            params.receiver
-        );
+        address tokenIn = params.tokenIn;
+        IERC20 tokenOut = params.tokenOut;
+        address aggregator = params.aggregator;
+        bytes memory swapData = params.swapData;
+        uint256 amountIn = params.amountIn;
+        uint256 minAmountOut = params.minAmountOut;
+        address receiver = params.receiver;
+        bool isDelegate = params.isDelegate;
+        address[] memory targets = params.targets;
+        uint256[] memory values = params.values;
+        uint256 targetsLength = targets.length;
 
-        if(params.targets.length != params.values.length) revert InvalidTargetsValuesLength();
+        _validateInputs(
+            tokenIn,
+            address(tokenOut),
+            amountIn,
+            minAmountOut,
+            receiver
+        );
+        if (msg.value < amountIn) revert IncorrectEtherAmountSent();
+
+        if(targetsLength != values.length) revert InvalidTargetsValuesLength();
+
+
 
         {
-            for (uint256 i = 0; i < params.targets.length; i++) {
-                (bool success, ) = params.targets[i].call{
-                    value: params.values[i]
+            for (uint256 i = 0; i < targetsLength; i++) {
+                (bool success, ) = targets[i].call{
+                    value: values[i]
                 }("");
                 if (!success) revert SwapFailed();
+                amountIn -= values[i];
             }
         }
 
-        if (msg.value < params.amountIn) revert IncorrectEtherAmountSent();
 
-        uint256 balanceBefore = params.tokenOut.balanceOf(address(this));
+        uint256 balanceBefore = tokenOut.balanceOf(address(this));
         _executeAggregatorCall(
-            params.swapData,
-            params.isDelegate,
-            params.aggregator,
-            params.amountIn
+            swapData,
+            isDelegate,
+            aggregator,
+            amountIn
         );
-        uint256 amountOut = params.tokenOut.balanceOf(address(this)) -
+        uint256 amountOut = tokenOut.balanceOf(address(this)) -
             balanceBefore;
 
-        if (amountOut < params.minAmountOut) revert InsufficientOutputBalance();
-        if (params.receiver != address(this)) {
+        if (amountOut < minAmountOut) revert InsufficientOutputBalance();
+        if (receiver != address(this)) {
             TransferHelper.safeTransfer(
-                address(params.tokenOut),
-                params.receiver,
+                address(tokenOut),
+                receiver,
                 amountOut
             );
         }
@@ -181,72 +196,84 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
     function _swapERC20(
         SwapERC20Params calldata params
     ) internal returns (uint256) {
+        IERC20 tokenIn = params.tokenIn;
+        IERC20 tokenOut = params.tokenOut;
+        address aggregator = params.aggregator;
+        bytes memory swapData = params.swapData;
+        uint256 amountIn = params.amountIn;
+        uint256 minAmountOut = params.minAmountOut;
+        address receiver = params.receiver;
+        bool isDelegate = params.isDelegate;
+        address[] memory targets = params.targets;
+        bytes[] memory calldataArray = params.calldataArray;
+        uint256 targetsLength = targets.length;
+
         _validateInputs(
-            address(params.tokenIn),
-            address(params.tokenOut),
-            params.amountIn,
-            params.minAmountOut,
-            params.receiver
+            address(tokenIn),
+            address(tokenOut),
+            amountIn,
+            minAmountOut,
+            receiver
         );
 
-        if(params.targets.length != params.calldataArray.length) revert InvalidTargetsCalldataLength();
+        if(targetsLength != calldataArray.length) revert InvalidTargetsCalldataLength();
         {
-            for (uint256 i = 0; i < params.targets.length; i++) {
-                (bool success, ) = params.targets[i].call(
-                    params.calldataArray[i]
+            for (uint256 i = 0; i < targets.length; i++) {
+                (bool success, ) = targets[i].call(
+                    calldataArray[i]
                 );
                 if (!success) revert SwapFailed();
             }
         }
 
-        if (!params.isDelegate) {
-            if (address(params.tokenIn) == usdt)
+        if (!isDelegate) {
+            if (address(tokenIn) == usdt)
                 TransferHelper.safeApprove(
-                    address(params.tokenIn),
-                    params.aggregator,
+                    address(tokenIn),
+                    aggregator,
                     0
                 );
             TransferHelper.safeApprove(
-                address(params.tokenIn),
-                params.aggregator,
-                params.amountIn
+                address(tokenIn),
+                aggregator,
+                amountIn
             );
         }
 
         uint256 amountOut;
-        if (address(params.tokenOut) == nativeToken) {
+        if (address(tokenOut) == nativeToken) {
             uint256 balanceBefore = address(this).balance;
             _executeAggregatorCall(
-                params.swapData,
-                params.isDelegate,
-                params.aggregator,
+                swapData,
+                isDelegate,
+                aggregator,
                 0
             );
             amountOut = address(this).balance - balanceBefore;
-            if (amountOut < params.minAmountOut)
+            if (amountOut < minAmountOut)
                 revert InsufficientETHOutAmount();
-            if (params.receiver != address(this)) {
-                (bool success, ) = params.receiver.call{value: amountOut}("");
+            if (receiver != address(this)) {
+                (bool success, ) = receiver.call{value: amountOut}("");
                 if (!success) revert SwapFailed();
             }
         } else {
-            uint256 balanceBefore = params.tokenOut.balanceOf(address(this));
+            uint256 balanceBefore = tokenOut.balanceOf(address(this));
             _executeAggregatorCall(
-                params.swapData,
-                params.isDelegate,
-                params.aggregator,
+                swapData,
+                isDelegate,
+                aggregator,
                 0
             );
             amountOut =
-                params.tokenOut.balanceOf(address(this)) -
+                tokenOut.balanceOf(address(this)) -
                 balanceBefore;
-            if (amountOut < params.minAmountOut)
+            if (amountOut < minAmountOut)
                 revert InsufficientTokenOutAmount();
 
-            if (params.receiver != address(this)) {
+            if (receiver != address(this)) {
                 TransferHelper.safeTransfer(
-                    address(params.tokenOut),
-                    params.receiver,
+                    address(tokenOut),
+                    receiver,
                     amountOut
                 );
             }
