@@ -3,8 +3,7 @@ import { ethers } from "hardhat";
 
 // test setup
 export const setupTest = async () => {
-    const [deployer, executor, user, receiver] = await ethers.getSigners(); // Get signers
-
+    const [deployer, executor, user, receiver, feeReceiver1, feeReceiver2] = await ethers.getSigners(); // Get signers
 
     // Deploy Token1
     const Token1 = await ethers.getContractFactory("TESTERC20");
@@ -82,6 +81,8 @@ export const setupTest = async () => {
         receiverContract,
         receiverRevert,
         zeroAddress,
-        usdt
+        usdt,
+        feeReceiver1,
+        feeReceiver2
     };
 };
