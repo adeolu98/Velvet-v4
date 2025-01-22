@@ -436,16 +436,16 @@ contract AaveAssetHandler is IAssetHandler {
     view
     returns (MultiTransaction[] memory transactions, uint256 totalFlashAmount)
   {
-    // 1. Gets swap transactions and flash amount - SAME
+    // 1. Gets swap transactions and flash amount
     ProcessedSwaps memory swapResult = processSwaps(params);
 
-    // 2 & 3. Gets repay and withdraw transactions - SAME
+    // 2 & 3. Gets repay and withdraw transactions
     ProcessedTransactions memory txResult = processRepayAndWithdraw(
       params,
       swapResult.feeCount
     );
 
-    // 4. Combines transactions in same order - SAME
+    // 4. Combines transactions in same order
     transactions = combineTransactions(
       TransactionArrays({
         swapTx: swapResult.transactions,
@@ -937,9 +937,7 @@ contract AaveAssetHandler is IAssetHandler {
     uint256 feeCount
   ) internal view returns (MultiTransaction[] memory transactions) {
     // Same array size as original
-    transactions = new MultiTransaction[](
-      3 * lendingTokens.length
-    );
+    transactions = new MultiTransaction[](3 * lendingTokens.length);
     uint256 count;
 
     WithdrawContext memory _context = context;
@@ -994,7 +992,7 @@ contract AaveAssetHandler is IAssetHandler {
       WithdrawContext memory _context = context;
       uint256 _sellAmount = sellAmounts[j];
 
-      // 1. Withdraw transaction - same as original
+      // 1. Withdraw transaction
       transactions[count++] = MultiTransaction({
         to: _context.executor,
         txData: abi.encodeWithSelector(
@@ -1004,7 +1002,7 @@ contract AaveAssetHandler is IAssetHandler {
         )
       });
 
-      // 2. Approve transaction - same as original
+      // 2. Approve transaction
       transactions[count++] = MultiTransaction({
         to: _context.executor,
         txData: abi.encodeWithSelector(
@@ -1016,7 +1014,7 @@ contract AaveAssetHandler is IAssetHandler {
 
       uint fee = poolFees[feeCount];
 
-      // 3. Swap transaction - same as original
+      // 3. Swap transaction
       transactions[count++] = MultiTransaction({
         to: _context.executor,
         txData: abi.encodeWithSelector(
@@ -1139,22 +1137,25 @@ contract AaveAssetHandler is IAssetHandler {
       uint borrowBalance = currentVariableDebt *
         10 ** (18 - IERC20MetadataUpgradeable(_underlyingToken).decimals());
 
-      //Get price for _protocolToken token
+      //Get price for _protocolToken token and convert to 18 decimal
       uint _oraclePrice = IAavePriceOracle(PRICE_ORACLE_ADDRESS).getAssetPrice(
         _underlyingToken
-      );
+      ) * 10 ** 10;
+
 
       address user = _user;
       //Get price for borrow Balance (amount * price)
-      uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18;
-      //calculateDebtAndPercentage
+      uint _tokenPrice = (borrowBalance * _oraclePrice) / 10 ** 18; // Converting to 18 decimal
+
+      // Calculate the percentage to remove based on the debt repayment amount
       (, uint256 percentageToRemove) = calculateDebtAndPercentage(
         _debtRepayAmount[i],
         feeUnit,
-        _tokenPrice,
-        borrowBalance,
+        _tokenPrice / 10 ** 10, //Convert to 8 decimal
+        currentVariableDebt,
         totalCollateral
       );
+
       // Calculate the amounts to sell for each lending token
       amounts = calculateAmountsToSell(
         user,
