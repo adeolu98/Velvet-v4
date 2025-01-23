@@ -33,6 +33,7 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
     error InsufficientTokenOutAmount();
     error SwapFailed();
     error CannotSwapETH();
+    error FeeTransferFailed();
 
     //   Event emitted when ETH is swapped for an ERC20 token
     event ETHSwappedForToken(
@@ -110,6 +111,8 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
      * @param minAmountOut The minimum amount of tokenOut expected.
      * @param receiver The address to receive the tokenOut.
      * @param isDelegate Indicates if the swap is in a delegatecall context.
+     * @param feeRecipient The address to receive the fee.
+     * @param feeBps The fee basis points sent from amountIn
      */
     function swapETH(
         address tokenIn,
@@ -119,7 +122,9 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate
+        bool isDelegate,
+        address feeRecipient,
+        uint256 feeBps
     ) external payable nonReentrant {
         if (address(tokenIn) != nativeToken) {
             revert CannotSwapTokens();
@@ -132,14 +137,11 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
             amountIn,
             minAmountOut,
             receiver,
-            isDelegate
+            isDelegate,
+            feeRecipient,
+            feeBps
         );
-        emit ERC20Swapped(
-            amountOut,
-            address(tokenIn),
-            address(tokenOut),
-            receiver
-        );
+        emit ETHSwappedForToken(amountOut, address(tokenOut), receiver);
     }
 
     /**
@@ -152,6 +154,8 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
      * @param minAmountOut The minimum amount of tokenOut expected.
      * @param receiver The address to receive the tokenOut.
      * @param isDelegate Indicates if the swap is in a delegatecall context.
+     * @param feeRecipient The address to receive the fee.
+     * @param feeBps The fee basis points sent from amountIn
      */
     function swapERC20(
         IERC20 tokenIn,
@@ -161,7 +165,9 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate
+        bool isDelegate,
+        address feeRecipient,
+        uint256 feeBps
     ) external nonReentrant {
         uint256 amountOut = _swapERC20(
             tokenIn,
@@ -171,9 +177,11 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
             amountIn,
             minAmountOut,
             receiver,
-            isDelegate
+            isDelegate,
+            feeRecipient,
+            feeBps
         );
-        emit ETHSwappedForToken(amountOut, address(tokenOut), receiver);
+        emit ERC20Swapped(amountOut, address(tokenIn), address(tokenOut), receiver);
     }
 
     /**
@@ -186,6 +194,8 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
      * @param minAmountOut The minimum amount of tokenOut expected.
      * @param receiver The address to receive the tokenOut.
      * @param isDelegate Indicates if the swap is in a delegatecall context.
+     * @param feeRecipient The address to receive the fee.
+     * @param feeBps The fee basis points sent from amountIn
      * @return The amount of tokenOut received.
      */
     function _swapETH(
@@ -196,7 +206,9 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate
+        bool isDelegate,
+        address feeRecipient,
+        uint256 feeBps
     ) internal returns (uint256) {
         _validateInputs(
             tokenIn,
@@ -207,6 +219,13 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         );
 
         if (msg.value < amountIn) revert IncorrectEtherAmountSent();
+
+        if(feeRecipient != address(0) && feeBps != 0) {
+            uint256 fee = (amountIn * feeBps) / 10000;
+            amountIn -= fee;
+            (bool success, ) = payable(feeRecipient).call{value: fee}("");
+            if (!success) revert FeeTransferFailed();
+        }
 
         uint256 balanceBefore = tokenOut.balanceOf(address(this));
         _executeAggregatorCall(swapData, isDelegate, aggregator, amountIn);
@@ -229,6 +248,8 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
      * @param minAmountOut The minimum amount of tokenOut expected.
      * @param receiver The address to receive the tokenOut.
      * @param isDelegate Indicates if the swap is in a delegatecall context.
+     * @param feeRecipient The address to receive the fee.
+     * @param feeBps The fee basis points sent from amountIn
      * @return The amount of tokenOut received.
      */
     function _swapERC20(
@@ -239,7 +260,9 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate
+        bool isDelegate,
+        address feeRecipient,
+        uint256 feeBps
     ) internal returns (uint256) {
         _validateInputs(
             address(tokenIn),
@@ -253,6 +276,12 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
             if (address(tokenIn) == usdt)
                 TransferHelper.safeApprove(address(tokenIn), aggregator, 0);
             TransferHelper.safeApprove(address(tokenIn), aggregator, amountIn);
+        }
+
+        if(feeRecipient != address(0) && feeBps != 0) {
+            uint256 fee = (amountIn * feeBps) / 10000;
+            amountIn -= fee;
+            TransferHelper.safeTransfer(address(tokenIn), feeRecipient, fee);
         }
 
         uint256 amountOut;

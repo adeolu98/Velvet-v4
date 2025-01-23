@@ -18,13 +18,12 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
     error CannotSwapETH();
     error InvalidMetaAggregatorAddress();
 
-
     /**
      * @dev Sets the address of the MetaAggregatorSwap contract.
      * @param _metaAggregatorSwap The address of the MetaAggregatorSwap contract.
      */
     constructor(address _metaAggregatorSwap) {
-         if(_metaAggregatorSwap == address(0)) {
+        if (_metaAggregatorSwap == address(0)) {
             revert InvalidMetaAggregatorAddress();
         }
         MetaAggregatorSwap = IMetaAggregatorSwapContract(_metaAggregatorSwap);
@@ -40,6 +39,8 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
      * @param minAmountOut The minimum amount of tokenOut expected.
      * @param receiver The address to receive the output tokens.
      * @param isDelegate Whether to use delegatecall for the swap.
+     * @param feeRecipient The address to receive the fee.
+     * @param feeBps The fee basis points sent from amountIn
      * @notice This function is non-reentrant to prevent reentrancy attacks.
      */
     function swap(
@@ -50,14 +51,21 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate
+        bool isDelegate,
+        address feeRecipient,
+        uint256 feeBps
     ) external nonReentrant {
         // Check if the input token is the native token (ETH)
         if (address(tokenIn) == nativeToken) {
             revert CannotSwapETH();
         }
 
-        TransferHelper.safeTransferFrom(address(tokenIn), msg.sender, address(MetaAggregatorSwap), amountIn);
+        TransferHelper.safeTransferFrom(
+            address(tokenIn),
+            msg.sender,
+            address(MetaAggregatorSwap),
+            amountIn
+        );
 
         MetaAggregatorSwap.swapERC20(
             tokenIn,
@@ -67,7 +75,9 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
             amountIn,
             minAmountOut,
             receiver,
-            isDelegate
+            isDelegate,
+            feeRecipient,
+            feeBps
         );
     }
 }
