@@ -79,10 +79,10 @@ export async function createMetaAggregatorCalldata(
     sender: handler,
     receiver: receiver,
     chainId: 8453,
-    skipSimulation: true,
+    isDelegate: true,
   };
 
-  const postUrl = "http://arbitrumcentral.velvetdao.xyz:3000/best-quotes";
+  const postUrl = "https://metaaggregator.velvetdao.xyz/best-quotes";
 
   //console.log("price params", priceParams);
 
