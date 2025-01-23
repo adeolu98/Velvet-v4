@@ -149,16 +149,11 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       const ProtocolConfig = await ethers.getContractFactory("ProtocolConfig");
       const _protocolConfig = await upgrades.deployProxy(
         ProtocolConfig,
-        [
-          treasury.address,
-          priceOracle.address
-        ],
+        [treasury.address, priceOracle.address],
         { kind: "uups" }
       );
 
-      const SwapHandler = await ethers.getContractFactory(
-        "UniswapHandler"
-      );
+      const SwapHandler = await ethers.getContractFactory("UniswapHandler");
       swapHandler = await SwapHandler.deploy();
       await swapHandler.deployed();
 
@@ -522,10 +517,10 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         console.log("SupplyAfter", await portfolio.totalSupply());
       });
 
-      it("should rebalance to lending token aArbDAI", async () => {
+      it("should rebalance to lending token aArbWBTC", async () => {
         let tokens = await portfolio.getTokens();
         let sellToken = tokens[2];
-        let buyToken = addresses.aArbDAI;
+        let buyToken = addresses.aArbWBTC;
 
         let newTokens = [
           tokens[0],
@@ -703,7 +698,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       });
 
       it("should remove tokens as collateral", async () => {
-        let tokens = [addresses.DAI];
+        let tokens = [addresses.WBTC];
         let vault = await portfolio.vault();
         await rebalancing.disableCollateralTokens(tokens, addresses.aavePool);
         const pool: IPoolDataProvider = await ethers.getContractAt(
@@ -712,12 +707,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
 
         expect(
-          (await pool.getUserReserveData(addresses.DAI, vault))[8]
+          (await pool.getUserReserveData(addresses.WBTC, vault))[8]
         ).to.be.equals(false);
       });
 
       it("should enable collateral", async () => {
-        let tokens = [addresses.DAI];
+        let tokens = [addresses.WBTC];
         await rebalancing.enableCollateralTokens(tokens, addresses.aavePool);
         let vault = await portfolio.vault();
         const pool: IPoolDataProvider = await ethers.getContractAt(
@@ -726,7 +721,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
 
         expect(
-          (await pool.getUserReserveData(addresses.DAI, vault))[8]
+          (await pool.getUserReserveData(addresses.WBTC, vault))[8]
         ).to.be.equals(true);
       });
 
@@ -753,7 +748,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         console.log("newtokens", await portfolio.getTokens());
       });
 
-      it("should borrow USDT using aARBDAI as collateral", async () => {
+      it("should borrow USDT using aArbWBTC as collateral", async () => {
         let ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
         let vault = await portfolio.vault();
         console.log(
@@ -763,7 +758,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         await rebalancing.borrow(
           addresses.aavePool,
-          [addresses.DAI],
+          [addresses.WBTC],
           addresses.USDT,
           addresses.aavePool,
           "100000000"
@@ -804,7 +799,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         console.log("balanceBorrowed before repay", balanceBorrowed);
 
-        const balanceToRepay = ((balanceBorrowed / 2).toFixed()).toString();
+        const balanceToRepay = (balanceBorrowed / 2).toFixed().toString();
 
         const balanceToSwap = balanceToRepay;
 
@@ -835,7 +830,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
-          _poolFees: [100, 100, 100, 100, 100],
+          _poolFees: [500, 3000],
           firstSwapData: [],
           secondSwapData: [],
           isMaxRepayment: false,
@@ -844,7 +839,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
         console.log(
           "Balance of vToken After",
-          await ERC20.attach(addresses.aARBDAI).balanceOf(vault)
+          await ERC20.attach(addresses.aArbWBTC).balanceOf(vault)
         );
 
         balanceBorrowed = (
@@ -935,7 +930,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
             _swapHandler: swapHandler.address,
-            _poolFees: [500, 500, 500, 500,500],
+            _poolFees: [3000, 500, 300],
             isDexRepayment: true,
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: [],
