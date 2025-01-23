@@ -5,10 +5,11 @@ import { setupTest } from "./fixture";
 import {
     loadFixture,
 } from "@nomicfoundation/hardhat-network-helpers";
+import { calculateFee } from "./utils";
 
 describe("Swap test", function () {
     it("Swap tokens to tokens", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -31,7 +32,7 @@ describe("Swap test", function () {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false)
+        await metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false, zeroAddress, 0)
 
 
         const userToken2Balance = await token2.balanceOf(user.address)
@@ -43,8 +44,50 @@ describe("Swap test", function () {
         const aggregatorToken2Balance = await token2.balanceOf(aggregator.address);
         expect(aggregatorToken2Balance).to.be.equal(0);
     })
+    it("Swap tokens to tokens with fee", async () => {
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, zeroAddress, feeReceiver } = await loadFixture(setupTest);
+        const feeBps = 759;
+        const token1Amount = "594675716556465465156456456";
+        const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(token1Amount, feeBps);
+
+
+
+        await token1.mint(user.address, token1Amount);
+        await token2.mint(aggregator.address, token2Amount);
+
+
+        const balanceUserToken1 = await token1.balanceOf(user.address);
+        expect(balanceUserToken1).to.be.equal(token1Amount);
+        const balanceAggregatorToken2 = await token2.balanceOf(aggregator.address);
+        expect(balanceAggregatorToken2).to.be.equal(token2Amount);
+        const balanceUserToken2 = await token2.balanceOf(user.address);
+        expect(balanceUserToken2).to.be.equal(0);
+        const balanceAggregatorToken1 = await token1.balanceOf(aggregator.address);
+        expect(balanceAggregatorToken1).to.be.equal(0)
+
+        const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, amountAfterFee, token2Amount);
+
+        const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
+        await tnx.wait();
+
+        await metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false, feeReceiver.address, feeBps)
+
+
+        const userToken2Balance = await token2.balanceOf(user.address)
+        expect(userToken2Balance).to.be.equal(token2Amount);
+        const userToken1Balance = await token1.balanceOf(user.address);
+        expect(userToken1Balance).to.be.equal(0);
+        const aggregatorToken1Balance = await token1.balanceOf(aggregator.address);
+        expect(aggregatorToken1Balance).to.be.equal(amountAfterFee);
+        const feeReceiverToken1Balance = await token1.balanceOf(feeReceiver.address);
+        expect(feeReceiverToken1Balance).to.be.equal(fee);
+        const aggregatorToken2Balance = await token2.balanceOf(aggregator.address);
+        expect(aggregatorToken2Balance).to.be.equal(0);
+    })
     it("Swap usdt to tokens", async () => {
-        const { usdt, token2, aggregator, metaAggregatorTestManager, user } = await loadFixture(setupTest);
+        const { usdt, token2, aggregator, metaAggregatorTestManager, user, zeroAddress } = await loadFixture(setupTest);
 
         const usdtAmount = 100000000;
         const token2Amount = 100000000;
@@ -67,7 +110,7 @@ describe("Swap test", function () {
         const tnx = await usdt.connect(user).approve(metaAggregatorTestManager.address, usdtAmount)
         await tnx.wait();
 
-        await metaAggregatorTestManager.connect(user).swap(usdt.address, token2.address, aggregator.address, swapData.data || "", usdtAmount, token2Amount, user.address, false)
+        await metaAggregatorTestManager.connect(user).swap(usdt.address, token2.address, aggregator.address, swapData.data || "", usdtAmount, token2Amount, user.address, false, zeroAddress, 0)
 
 
         const userToken2Balance = await token2.balanceOf(user.address)
@@ -80,7 +123,7 @@ describe("Swap test", function () {
         expect(aggregatorToken2Balance).to.be.equal(0);
     })
     it("Swap tokens to tokens through delegate call", async () => {
-        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -101,7 +144,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false, zeroAddress, 0)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -115,8 +158,49 @@ describe("Swap test", function () {
         const aggregatorToken2Balance = await token2.balanceOf(aggregator.address);
         expect(aggregatorToken2Balance).to.be.equal(0);
     })
+    it("Swap tokens to tokens through delegate call with fee", async () => {
+        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, zeroAddress, feeReceiver } = await loadFixture(setupTest);
+        const feeBps = 759;
+        const token1Amount = "594675716556465465156456456";
+        const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(token1Amount, feeBps);
+
+
+        await token1.mint(receiverContract.address, token1Amount);
+        await token2.mint(aggregator.address, token2Amount);
+
+
+        const balanceOfReceiverContractToken1 = await token1.balanceOf(receiverContract.address);
+        expect(balanceOfReceiverContractToken1).to.be.equal(token1Amount);
+        const balanceAggregatorToken2 = await token2.balanceOf(aggregator.address);
+        expect(balanceAggregatorToken2).to.be.equal(token2Amount);
+        const balanceOfReceiverContractToken2 = await token2.balanceOf(receiverContract.address);
+        expect(balanceOfReceiverContractToken2).to.be.equal(0);
+        const balanceAggregatorToken1 = await token1.balanceOf(aggregator.address);
+        expect(balanceAggregatorToken1).to.be.equal(0)
+
+        const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, amountAfterFee, token2Amount);
+
+
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false, feeReceiver.address, feeBps)
+
+        await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
+
+
+        const receiverContractToken2Balance = await token2.balanceOf(receiverContract.address)
+        expect(receiverContractToken2Balance).to.be.equal(token2Amount);
+        const receiverContractToken1Balance = await token1.balanceOf(receiverContract.address);
+        expect(receiverContractToken1Balance).to.be.equal(0);
+        const aggregatorToken1Balance = await token1.balanceOf(aggregator.address);
+        expect(aggregatorToken1Balance).to.be.equal(amountAfterFee);
+        const feeReceiverToken1Balance = await token1.balanceOf(feeReceiver.address);
+        expect(feeReceiverToken1Balance).to.be.equal(fee);
+        const aggregatorToken2Balance = await token2.balanceOf(aggregator.address);
+        expect(aggregatorToken2Balance).to.be.equal(0);
+    })
     it("Swap usdt to tokens through delegate call", async () => {
-        const { usdt, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { usdt, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
         const usdtAmount = 100000000;
         const token2Amount = 100000000;
@@ -137,7 +221,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(usdt.address, token2.address, usdtAmount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(usdt.address, token2.address, aggregator.address, swapData.data || "", usdtAmount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(usdt.address, token2.address, aggregator.address, swapData.data || "", usdtAmount, token2Amount, receiverContract.address, false, zeroAddress, 0)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -152,7 +236,7 @@ describe("Swap test", function () {
         expect(aggregatorToken2Balance).to.be.equal(0);
     })
     it("Swap tokens to tokens through delegate call different receiver", async () => {
-        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, receiver } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, receiver, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -175,7 +259,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiver.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiver.address, false, zeroAddress, 0)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -192,7 +276,7 @@ describe("Swap test", function () {
         expect(aggregatorToken2Balance).to.be.equal(0);
     })
     it("Swap ETH to token", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -209,7 +293,7 @@ describe("Swap test", function () {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, { value: nativeTokenAmount })
+        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, zeroAddress, 0, { value: nativeTokenAmount })
 
         await tnx.wait();
 
@@ -228,8 +312,51 @@ describe("Swap test", function () {
         const ethBalanceOfAggregatorAfterSwap = await ethers.provider.getBalance(aggregator.address);
         expect(Number(ethBalanceOfAggregatorAfterSwap.sub(ethBalanceOfAggregator))).to.be.equal(nativeTokenAmount);
     })
+    it("Swap ETH to token with fee", async () => {
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress, feeReceiver } = await loadFixture(setupTest);
+
+        const feeBps = 759;
+        const nativeTokenAmount = "59467571655646";
+        const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(nativeTokenAmount, feeBps);
+
+
+        await token2.mint(aggregator.address, token2Amount);
+
+        const ethBalanceUser = await ethers.provider.getBalance(user.address);
+        const feeReceiverBalance = await ethers.provider.getBalance(feeReceiver.address);
+        const balanceAggregatorToken2 = await token2.balanceOf(aggregator.address);
+        expect(balanceAggregatorToken2).to.be.equal(token2Amount);
+        const ethBalanceOfAggregator = await ethers.provider.getBalance(aggregator.address);
+        expect(ethBalanceOfAggregator).to.be.equal(0);
+
+
+        const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, amountAfterFee, token2Amount);
+
+        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, feeReceiver.address, feeBps, { value: nativeTokenAmount })
+
+        await tnx.wait();
+
+        const tnxReceipt = await ethers.provider.getTransactionReceipt(tnx.hash);
+
+
+        if (tnxReceipt?.cumulativeGasUsed && tnxReceipt?.effectiveGasPrice) {
+            const tnxGasCost = BigNumber(tnxReceipt?.cumulativeGasUsed.toString()).multipliedBy(tnxReceipt?.effectiveGasPrice.toString()).toFixed(0)
+            const ethBalanceUserAfterSwap = await ethers.provider.getBalance(user.address);
+            expect(BigNumber(ethBalanceUser.toString()).minus(BigNumber(ethBalanceUserAfterSwap.toString())).minus(tnxGasCost).toFixed(0)).to.be.equal(nativeTokenAmount)
+        }
+
+
+        const userToken2Balance = await token2.balanceOf(user.address)
+        expect(userToken2Balance).to.be.equal(token2Amount);
+        const ethBalanceOfAggregatorAfterSwap = await ethers.provider.getBalance(aggregator.address);
+        expect(ethBalanceOfAggregatorAfterSwap.sub(ethBalanceOfAggregator)).to.be.equal(amountAfterFee);
+        const feeReceiverBalanceAfterSwap = await ethers.provider.getBalance(feeReceiver.address);
+        expect(feeReceiverBalanceAfterSwap.sub(feeReceiverBalance)).to.be.equal(fee);
+    })
     it("Swap ETH to token through delegate call", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -246,7 +373,7 @@ describe("Swap test", function () {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false, zeroAddress, 0)
 
 
 
@@ -267,8 +394,52 @@ describe("Swap test", function () {
         const ethBalanceOfAggregatorAfterSwap = await ethers.provider.getBalance(aggregator.address);
         expect(Number(ethBalanceOfAggregatorAfterSwap.sub(ethBalanceOfAggregator))).to.be.equal(nativeTokenAmount);
     })
+    it("Swap ETH to token through delegate call with fee", async () => {
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract, zeroAddress, feeReceiver } = await loadFixture(setupTest);
+        const feeBps = 759;
+        const nativeTokenAmount = "59467571655646";
+        const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(nativeTokenAmount, feeBps);
+
+
+        await token2.mint(aggregator.address, token2Amount);
+
+        const ethBalanceUser = await ethers.provider.getBalance(user.address);
+        const feeReceiverBalance = await ethers.provider.getBalance(feeReceiver.address);
+        const balanceAggregatorToken2 = await token2.balanceOf(aggregator.address);
+        expect(balanceAggregatorToken2).to.be.equal(token2Amount);
+        const ethBalanceOfAggregator = await ethers.provider.getBalance(aggregator.address);
+        expect(ethBalanceOfAggregator).to.be.equal(0);
+
+
+        const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, amountAfterFee, token2Amount);
+
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false, feeReceiver.address, feeBps)
+
+
+
+        const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })
+        await tnx.wait();
+
+        const tnxReceipt = await ethers.provider.getTransactionReceipt(tnx.hash);
+
+
+        if (tnxReceipt?.cumulativeGasUsed && tnxReceipt?.effectiveGasPrice) {
+            const tnxGasCost = BigNumber(tnxReceipt?.cumulativeGasUsed.toString()).multipliedBy(tnxReceipt?.effectiveGasPrice.toString()).toFixed(0)
+            const ethBalanceUserAfterSwap = await ethers.provider.getBalance(user.address);
+            expect(BigNumber(ethBalanceUser.toString()).minus(BigNumber(ethBalanceUserAfterSwap.toString())).minus(tnxGasCost).toFixed(0)).to.be.equal(nativeTokenAmount)
+        }
+
+        const receiverContractToken2Balance = await token2.balanceOf(receiverContract.address)
+        expect(receiverContractToken2Balance).to.be.equal(token2Amount);
+        const ethBalanceOfAggregatorAfterSwap = await ethers.provider.getBalance(aggregator.address);
+        expect(ethBalanceOfAggregatorAfterSwap.sub(ethBalanceOfAggregator)).to.be.equal(amountAfterFee);
+        const feeReceiverBalanceAfterSwap = await ethers.provider.getBalance(feeReceiver.address);
+        expect(feeReceiverBalanceAfterSwap.sub(feeReceiverBalance)).to.be.equal(fee);
+    })
     it("Swap ETH to token through delegate call different receiver", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract, receiver } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract, receiver, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -290,7 +461,7 @@ describe("Swap test", function () {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiver.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiver.address, false, zeroAddress, 0)
 
 
 
@@ -314,7 +485,7 @@ describe("Swap test", function () {
         expect(Number(ethBalanceOfAggregatorAfterSwap.sub(ethBalanceOfAggregator))).to.be.equal(nativeTokenAmount);
     })
     it("Swap token to ETH", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -353,7 +524,7 @@ describe("Swap test", function () {
         }
 
 
-        tnx = await metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, user.address, false)
+        tnx = await metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, user.address, false, zeroAddress, 0)
         await tnx.wait();
 
         tnxReceipt = await ethers.provider.getTransactionReceipt(tnx.hash);
@@ -369,7 +540,7 @@ describe("Swap test", function () {
         expect(aggregatorToken1Balance).to.be.equal(token1Amount);
     })
     it("Swap token to ETH through delegate call", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -398,7 +569,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, false, zeroAddress, 0)
 
         const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
         await tnx.wait();
@@ -409,7 +580,7 @@ describe("Swap test", function () {
         expect(aggregatorToken1Balance).to.be.equal(token1Amount);
     })
     it("Swap token to ETH through delegate call different receiver", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, receiver } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, receiver, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -439,7 +610,7 @@ describe("Swap test", function () {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiver.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiver.address, false, zeroAddress, 0)
 
         const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
         await tnx.wait();
@@ -454,7 +625,7 @@ describe("Swap test", function () {
         expect(aggregatorToken1Balance).to.be.equal(token1Amount);
     })
     it("Swap token to ETH receiver is contract", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -486,7 +657,7 @@ describe("Swap test", function () {
 
 
 
-        await receiverContract.connect(user).swap(metaAggregatorTestManager.address, token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, false)
+        await receiverContract.connect(user).swap(metaAggregatorTestManager.address, token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, false, zeroAddress, 0)
 
 
 
@@ -496,7 +667,7 @@ describe("Swap test", function () {
         expect(aggregatorToken1Balance).to.be.equal(token1Amount);
     })
     it("Swap token to token Enso Aggregator", async () => {
-        const { token1, token2, ensoAggregator, metaAggregatorTestManager, user, receiver, ensoHelper } = await loadFixture(setupTest);
+        const { token1, token2, ensoAggregator, metaAggregatorTestManager, user, receiver, ensoHelper, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -520,7 +691,7 @@ describe("Swap test", function () {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
 
 
-        await metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, true)
+        await metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, true, zeroAddress, 0)
 
         const userToken2Balance = await token2.balanceOf(user.address)
         expect(userToken2Balance).to.be.equal(token2Amount);
@@ -532,7 +703,7 @@ describe("Swap test", function () {
         expect(ensoHelperToken2Balance).to.be.equal(0);
     })
     it("Swap token to token Enso Aggregator through delegate call", async () => {
-        const { token1, token2, ensoAggregator, metaAggregatorTestManager, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper } = await loadFixture(setupTest);
+        const { token1, token2, ensoAggregator, metaAggregatorTestManager, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -554,7 +725,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount, ensoHelper.address);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, true, zeroAddress, 0)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -569,7 +740,7 @@ describe("Swap test", function () {
         expect(ensoHelperToken2Balance).to.be.equal(0);
     })
     it("Swap token to token Enso Aggregator through delegate call different receiver", async () => {
-        const { token1, token2, ensoAggregator, metaAggregatorTestManager, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, receiver } = await loadFixture(setupTest);
+        const { token1, token2, ensoAggregator, metaAggregatorTestManager, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, receiver, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -593,7 +764,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount, ensoHelper.address);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, receiver.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, ensoAggregator.address, swapData.data || "", token1Amount, token2Amount, receiver.address, true, zeroAddress, 0)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -610,7 +781,7 @@ describe("Swap test", function () {
         expect(ensoHelperToken2Balance).to.be.equal(0);
     })
     it("Swap ETh to token Enso Aggregator", async () => {
-        const { token2, ensoAggregator, metaAggregatorTestSwapContract, nativeToken, user, receiver, ensoHelper } = await loadFixture(setupTest);
+        const { token2, ensoAggregator, metaAggregatorTestSwapContract, nativeToken, user, receiver, ensoHelper, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -626,7 +797,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount, receiver.address);
 
 
-        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, true, { value: nativeTokenAmount })
+        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, true, zeroAddress, 0, { value: nativeTokenAmount })
 
 
         await tnx.wait();
@@ -647,7 +818,7 @@ describe("Swap test", function () {
         expect(ethBalanceOfReceiverAfterSwap.sub(ethBalanceOfReceiver)).to.be.equal(nativeTokenAmount);
     })
     it("Swap ETh to token Enso Aggregator through delegate call", async () => {
-        const { token2, ensoAggregator, nativeToken, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper } = await loadFixture(setupTest);
+        const { token2, ensoAggregator, nativeToken, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -667,7 +838,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount, ensoHelper.address);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, true, zeroAddress, 0)
 
         const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })
         await tnx.wait();
@@ -688,7 +859,7 @@ describe("Swap test", function () {
         expect(ethBalanceOfEnsoHelperAfterSwap.sub(ethBalanceOfEnsoHelper)).to.be.equal(nativeTokenAmount);
     })
     it("Swap ETh to token Enso Aggregator through delegate call different receiver", async () => {
-        const { token2, ensoAggregator, nativeToken, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, receiver } = await loadFixture(setupTest);
+        const { token2, ensoAggregator, nativeToken, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, receiver, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -710,7 +881,7 @@ describe("Swap test", function () {
         const swapData = await ensoAggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount, ensoHelper.address);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiver.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiver.address, true, zeroAddress, 0)
 
         const tnx = await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })
         await tnx.wait();
@@ -732,7 +903,7 @@ describe("Swap test", function () {
         expect(ethBalanceOfEnsoHelperAfterSwap.sub(ethBalanceOfEnsoHelper)).to.be.equal(nativeTokenAmount);
     })
     it("Swap token to ETH Enso Aggregator", async () => {
-        const { token1, ensoAggregator, metaAggregatorTestManager, nativeToken, executor, user, receiver, ensoHelper } = await loadFixture(setupTest);
+        const { token1, ensoAggregator, metaAggregatorTestManager, nativeToken, executor, user, receiver, ensoHelper, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -765,7 +936,7 @@ describe("Swap test", function () {
             approveTnxGasCost = BigNumber(tnxReceipt?.cumulativeGasUsed.toString()).multipliedBy(tnxReceipt?.effectiveGasPrice.toString()).toFixed(0);
         }
 
-        tnx = await metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, user.address, true)
+        tnx = await metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, user.address, true, zeroAddress, 0)
 
 
         tnxReceipt = await ethers.provider.getTransactionReceipt(tnx.hash);
@@ -781,7 +952,7 @@ describe("Swap test", function () {
         expect(receiverToken1Balance).to.be.equal(token1Amount);
     })
     it("Swap token to ETH Enso Aggregator through delegate call", async () => {
-        const { token1, ensoAggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper } = await loadFixture(setupTest);
+        const { token1, ensoAggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -809,7 +980,7 @@ describe("Swap test", function () {
 
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverContract.address, true, zeroAddress, 0)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -821,7 +992,7 @@ describe("Swap test", function () {
         expect(ethBalanceReceiverContractAfterSwap).to.be.equal(nativeTokenAmount)
     })
     it("Swap token to ETH Enso Aggregator through delegate call different receiver", async () => {
-        const { token1, ensoAggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, receiver } = await loadFixture(setupTest);
+        const { token1, ensoAggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, ensoHelper, receiver, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -850,7 +1021,7 @@ describe("Swap test", function () {
 
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiver.address, true)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, ensoAggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiver.address, true, zeroAddress, 0)
 
         await receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")
 
@@ -869,7 +1040,7 @@ describe("Swap test", function () {
 
 describe("Coverage test", async () => {
     it("should revert if the user has not approved the manager to swap their tokens", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -880,10 +1051,10 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "" || "", token1Amount, token2Amount, user.address, false)).to.be.revertedWithCustomError(metaAggregatorTestManager, "TransferFromFailed")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false, zeroAddress, 0)).to.be.revertedWithCustomError(metaAggregatorTestManager, "TransferFromFailed")
     })
     it("should revert if the user doesn't have token to swap", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -894,10 +1065,10 @@ describe("Coverage test", async () => {
 
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "" || "", token1Amount, token2Amount, user.address, false)).to.revertedWithCustomError(metaAggregatorTestManager, "TransferFromFailed")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false, zeroAddress, 0)).to.revertedWithCustomError(metaAggregatorTestManager, "TransferFromFailed")
     })
     it("should revert if for re-entrancy call to swap manager contract", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user, nonReentrantTest, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, nonReentrantTest, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -908,15 +1079,15 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const reEntrantData = await nonReentrantTest.populateTransaction.receiveCall(metaAggregatorTestManager.address, token1.address, token2.address, aggregator.address, swapData.data || "" || "", token1Amount, token2Amount, user.address, false);
+        const reEntrantData = await nonReentrantTest.populateTransaction.receiveCall(metaAggregatorTestManager.address, token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false);
 
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, nonReentrantTest.address, reEntrantData.data || " ", token1Amount, token2Amount, user.address, false)).to.revertedWith("ReentrancyGuard: reentrant call")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, nonReentrantTest.address, reEntrantData.data || " ", token1Amount, token2Amount, user.address, false, zeroAddress, 0)).to.revertedWith("ReentrancyGuard: reentrant call")
     })
     it("should revert if ETH to token was tried to swap on manager contract", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user, nativeToken } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, nativeToken, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -929,10 +1100,10 @@ describe("Coverage test", async () => {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await expect(metaAggregatorTestManager.connect(user).swap(nativeToken, token2.address, aggregator.address, swapData.data || "" || "", token1Amount, token2Amount, user.address, false)).to.be.revertedWithCustomError(metaAggregatorTestManager, "CannotSwapETH")
+        await expect(metaAggregatorTestManager.connect(user).swap(nativeToken, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false, zeroAddress, 0)).to.be.revertedWithCustomError(metaAggregatorTestManager, "CannotSwapETH")
     })
     it("should revert when swapping tokens using swapETH method", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, token1 } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, token1, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -943,10 +1114,10 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(token1.address, token2.address, aggregator.address, swapData.data || "" || "", nativeTokenAmount, token2Amount, user.address, false, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "CannotSwapTokens")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(token1.address, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, zeroAddress, 0, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "CannotSwapTokens")
     })
     it("should revert when the minAmountOut is zero", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -957,10 +1128,10 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "" || "", nativeTokenAmount, 0, user.address, false, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "MinAmountOutMustBeGreaterThanZero")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, 0, user.address, false, zeroAddress, 0, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "MinAmountOutMustBeGreaterThanZero")
     })
     it("should revert when amount in is zero", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -971,10 +1142,10 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "" || "", 0, token2Amount, user.address, false, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "AmountInMustBeGreaterThanZero")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", 0, token2Amount, user.address, false, zeroAddress, 0, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "AmountInMustBeGreaterThanZero")
     })
     it("should revert when same token are tried to swap", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -985,10 +1156,10 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, nativeToken, aggregator.address, swapData.data || "" || "", nativeTokenAmount, token2Amount, user.address, false, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "TokenInAndTokenOutCannotBeSame")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, nativeToken, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, zeroAddress, 0, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "TokenInAndTokenOutCannotBeSame")
     })
     it("should revert when tokens swapped are same swapERC20", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -1002,10 +1173,10 @@ describe("Coverage test", async () => {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token1.address, aggregator.address, swapData.data || "" || "", token1Amount, token2Amount, user.address, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "TokenInAndTokenOutCannotBeSame")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token1.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false, zeroAddress, 0)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "TokenInAndTokenOutCannotBeSame")
     })
     it("should revert when amount out is zero for swapERC20", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -1018,10 +1189,10 @@ describe("Coverage test", async () => {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "" || "", token1Amount, 0, user.address, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "MinAmountOutMustBeGreaterThanZero")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, 0, user.address, false, zeroAddress, 0)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "MinAmountOutMustBeGreaterThanZero")
     })
     it("should revert when amount in is zero for swapERC20", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -1034,10 +1205,10 @@ describe("Coverage test", async () => {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "" || "", 0, token2Amount, user.address, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "AmountInMustBeGreaterThanZero")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", 0, token2Amount, user.address, false, zeroAddress, 0)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "AmountInMustBeGreaterThanZero")
     })
     it("should revert when incorrect ETH amount is sent in swapETh", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -1048,10 +1219,10 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, { value: 0 })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "IncorrectEtherAmountSent")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, zeroAddress, 0, { value: 0 })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "IncorrectEtherAmountSent")
     })
     it("should revert when token amount swapped is not sufficient through swapETh method", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -1062,10 +1233,10 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, 20);
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InsufficientOutputBalance")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, zeroAddress, 0, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InsufficientOutputBalance")
     })
     it("should revert when tokens swapped out amount is not enough through swapERC20", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -1079,10 +1250,10 @@ describe("Coverage test", async () => {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InsufficientTokenOutAmount")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, user.address, false, zeroAddress, 0)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InsufficientTokenOutAmount")
     })
     it("should revert when ETH swapped out amount is not enough through swapERC20", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -1104,10 +1275,10 @@ describe("Coverage test", async () => {
 
         await ethers.provider.getTransactionReceipt(tnx.hash);
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, user.address, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InsufficientETHOutAmount")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, user.address, false, zeroAddress, 0)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InsufficientETHOutAmount")
     })
     it("should revert when re-entrancy attack if performed on swapERC20 method", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, metaAggregatorTestSwapContract, nonReentrantTest } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, metaAggregatorTestSwapContract, nonReentrantTest, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -1123,14 +1294,14 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, 30);
 
-        const reEntrantData = await nonReentrantTest.populateTransaction.receiverCallToken(metaAggregatorTestSwapContract.address, token1.address, nativeToken, aggregator.address, swapData.data || "" || "", token1Amount, nativeTokenAmount, user.address, false);
+        const reEntrantData = await nonReentrantTest.populateTransaction.receiverCallToken(metaAggregatorTestSwapContract.address, token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, user.address, false);
 
         await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, nonReentrantTest.address, reEntrantData.data || "", token1Amount, nativeTokenAmount, user.address, false)).to.be.revertedWith("ReentrancyGuard: reentrant call")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, nativeToken, nonReentrantTest.address, reEntrantData.data || "", token1Amount, nativeTokenAmount, user.address, false, zeroAddress, 0)).to.be.revertedWith("ReentrancyGuard: reentrant call")
     })
     it("should revert when re-entrancy attack is made on swapETH method", async () => {
-        const { token2, ensoAggregator, metaAggregatorTestSwapContract, nativeToken, user, receiver, ensoHelper, nonReentrantTest } = await loadFixture(setupTest);
+        const { token2, ensoAggregator, metaAggregatorTestSwapContract, nativeToken, user, receiver, ensoHelper, nonReentrantTest, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -1142,14 +1313,14 @@ describe("Coverage test", async () => {
         const swapData = await ensoAggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount, receiver.address);
 
 
-        const reEntrantData = await nonReentrantTest.populateTransaction.receiverCallETH(metaAggregatorTestSwapContract.address, token2.address, nativeToken, metaAggregatorTestSwapContract.address, swapData.data || "" || "", nativeTokenAmount, token2Amount, user.address, false);
+        const reEntrantData = await nonReentrantTest.populateTransaction.receiverCallETH(metaAggregatorTestSwapContract.address, token2.address, nativeToken, metaAggregatorTestSwapContract.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false);
 
 
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, nonReentrantTest.address, reEntrantData.data || "", nativeTokenAmount, token2Amount, user.address, false, { value: nativeTokenAmount })).to.be.revertedWith("ReentrancyGuard: reentrant call")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, nonReentrantTest.address, reEntrantData.data || "", nativeTokenAmount, token2Amount, user.address, false, zeroAddress, 0, { value: nativeTokenAmount })).to.be.revertedWith("ReentrancyGuard: reentrant call")
     })
     it("should revert when call to enso fails", async () => {
-        const { token2, ensoAggregator, metaAggregatorTestSwapContract, nativeToken, user, ensoHelper } = await loadFixture(setupTest);
+        const { token2, ensoAggregator, metaAggregatorTestSwapContract, nativeToken, user, ensoHelper, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -1160,10 +1331,10 @@ describe("Coverage test", async () => {
         const swapData = await ensoAggregator.populateTransaction.swapFail();
 
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "" || "", nativeTokenAmount, token2Amount, user.address, true, { value: nativeTokenAmount })).to.be.reverted
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, ensoAggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, true, zeroAddress, 0, { value: nativeTokenAmount })).to.be.reverted
     })
     it("should revert if the receiver contract reverts on receive Eth", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, receiverRevert } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, receiverRevert, zeroAddress } = await loadFixture(setupTest);
 
 
         const token1Amount = 100000000;
@@ -1185,7 +1356,7 @@ describe("Coverage test", async () => {
 
         await receiverContract.connect(user).approveTokens(token1.address, metaAggregatorTestManager.address, token1Amount)
 
-        await expect(receiverContract.connect(user).swap(metaAggregatorTestManager.address, token1.address, nativeToken, aggregator.address, swapData.data || "" || "", token1Amount, nativeTokenAmount, receiverRevert.address, false)).to.be.reverted
+        await expect(receiverContract.connect(user).swap(metaAggregatorTestManager.address, token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverRevert.address, false, zeroAddress, 0)).to.be.reverted
     })
     it("should revert when receiver is zero address token to token swap", async () => {
         const { token1, token2, aggregator, metaAggregatorTestManager, user, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
@@ -1201,7 +1372,7 @@ describe("Coverage test", async () => {
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
 
-        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "" || "", token1Amount, token2Amount, zeroAddress, false)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InvalidReceiver")
+        await expect(metaAggregatorTestManager.connect(user).swap(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, zeroAddress, false, zeroAddress, 0)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InvalidReceiver")
     })
     it("should revert when receiver address is zero ETH to token swap", async () => {
         const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress } = await loadFixture(setupTest);
@@ -1215,7 +1386,7 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "" || "", nativeTokenAmount, token2Amount, zeroAddress, false, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InvalidReceiver")
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, zeroAddress, false, zeroAddress, 0, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InvalidReceiver")
     })
     it("should revert when deploying manager with invalid swap contract address", async () => {
         const { zeroAddress } = await loadFixture(setupTest);
@@ -1239,7 +1410,7 @@ describe("Coverage test", async () => {
     })
 
     it("should revert when native token is swapped through swap erc20 delegate function", async () => {
-        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, nativeToken } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, nativeToken, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -1251,12 +1422,12 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(nativeToken, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(nativeToken, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false, zeroAddress, 0)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
     it("should revert when tokens are swapped through swap eth delegate function", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -1266,11 +1437,11 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(token2.address, nativeToken, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(token2.address, nativeToken, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, receiverContract.address, false, zeroAddress, 0)
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })).to.be.reverted
     })
     it("should revert when eth value sent is smaller to amount in swap eth delegate call", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -1280,14 +1451,14 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount * 2, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount * 2, token2Amount, receiverContract.address, false, zeroAddress, 0)
 
 
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })).to.be.reverted
     })
     it("should revert when amount out is not equal to min amount out in swap eth delegate call", async () => {
-        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract } = await loadFixture(setupTest);
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, receiverContract, zeroAddress } = await loadFixture(setupTest);
 
 
         const nativeTokenAmount = 100000000;
@@ -1297,14 +1468,14 @@ describe("Coverage test", async () => {
 
         const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, nativeTokenAmount, token2Amount);
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount * 2, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount * 2, receiverContract.address, false, zeroAddress, 0)
 
 
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ", { value: nativeTokenAmount })).to.be.reverted
     })
     it("should revert when token balance is not equal to amountIn for swap erc20 delegate function", async () => {
-        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, nativeToken } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, nativeToken, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -1316,12 +1487,12 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, 2 * token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount, receiverContract.address, false, zeroAddress, 0)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
     it("should revert when token swapped out are not equal to min amount out for swap erc20 delegate function", async () => {
-        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, nativeToken } = await loadFixture(setupTest);
+        const { token1, token2, aggregator, user, receiverContract, metaAggregatorTestSwapContract, nativeToken, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const token2Amount = 100000000;
@@ -1333,12 +1504,12 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount * 2, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, token2.address, aggregator.address, swapData.data || "", token1Amount, token2Amount * 2, receiverContract.address, false, zeroAddress, 0)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
     it("should revert when ETH swapped out are not equal to min amount out for swap erc20 delegate function", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const nativeTokenAmount = 100000000;
@@ -1354,12 +1525,12 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, 2 * nativeTokenAmount, receiverContract.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, 2 * nativeTokenAmount, receiverContract.address, false, zeroAddress, 0)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
     it("should revert when ETH swapped out fails for swap erc20 delegate function", async () => {
-        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, receiverRevert } = await loadFixture(setupTest);
+        const { token1, aggregator, metaAggregatorTestManager, nativeToken, executor, user, receiverContract, metaAggregatorTestSwapContract, receiverRevert, zeroAddress } = await loadFixture(setupTest);
 
         const token1Amount = 100000000;
         const nativeTokenAmount = 100000000;
@@ -1375,8 +1546,26 @@ describe("Coverage test", async () => {
         const swapData = await aggregator.populateTransaction.swap(token1.address, nativeToken, token1Amount, nativeTokenAmount);
 
 
-        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverRevert.address, false)
+        const delegateSwapData = await metaAggregatorTestSwapContract.populateTransaction.swapERC20(token1.address, nativeToken, aggregator.address, swapData.data || "", token1Amount, nativeTokenAmount, receiverRevert.address, false, zeroAddress, 0)
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
+    })
+    it("should fail when fee is not sent in native token", async () => {
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, zeroAddress, receiverRevert } = await loadFixture(setupTest);
+
+        const feeBps = 759;
+        const nativeTokenAmount = "59467571655646";
+        const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(nativeTokenAmount, feeBps);
+
+
+        await token2.mint(aggregator.address, token2Amount);
+
+
+
+        const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, amountAfterFee, token2Amount);
+
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(nativeToken, token2.address, aggregator.address, swapData.data || "", nativeTokenAmount, token2Amount, user.address, false, receiverRevert.address, feeBps, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "FeeTransferFailed")
     })
 })
