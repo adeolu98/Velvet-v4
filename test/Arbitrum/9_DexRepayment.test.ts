@@ -698,7 +698,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
       });
 
       it("should remove tokens as collateral", async () => {
-        let tokens = [addresses.DAI];
+        let tokens = [addresses.WBTC];
         let vault = await portfolio.vault();
         await rebalancing.disableCollateralTokens(tokens, addresses.aavePool);
         const pool: IPoolDataProvider = await ethers.getContractAt(
@@ -707,12 +707,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
 
         expect(
-          (await pool.getUserReserveData(addresses.DAI, vault))[8]
+          (await pool.getUserReserveData(addresses.WBTC, vault))[8]
         ).to.be.equals(false);
       });
 
       it("should enable collateral", async () => {
-        let tokens = [addresses.DAI];
+        let tokens = [addresses.WBTC];
         await rebalancing.enableCollateralTokens(tokens, addresses.aavePool);
         let vault = await portfolio.vault();
         const pool: IPoolDataProvider = await ethers.getContractAt(
@@ -721,7 +721,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
 
         expect(
-          (await pool.getUserReserveData(addresses.DAI, vault))[8]
+          (await pool.getUserReserveData(addresses.WBTC, vault))[8]
         ).to.be.equals(true);
       });
 
@@ -830,7 +830,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           _swapHandler: swapHandler.address,
           _flashLoanAmount: [balanceToSwap],
           _debtRepayAmount: [balanceToRepay],
-          _poolFees: [500, 500, 500, 500, 500],
+          _poolFees: [500, 300],
           firstSwapData: [],
           secondSwapData: [],
           isMaxRepayment: false,
@@ -930,7 +930,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             _bufferUnit: bufferUnit, //Buffer unit for collateral amount
             _solverHandler: ensoHandler.address, //Handler to swap
             _swapHandler: swapHandler.address,
-            _poolFees: [100, 100, 100, 100, 100],
+            _poolFees: [300, 300, 500, 300],
             isDexRepayment: true,
             _flashLoanAmount: flashLoanAmount,
             firstSwapData: [],
