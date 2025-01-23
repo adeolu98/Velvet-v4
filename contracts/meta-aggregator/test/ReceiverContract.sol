@@ -38,7 +38,9 @@ contract ReceiverContract {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate
+        bool isDelegate,
+        address feeRecipient,
+        uint256 feeBps
     ) external {
         IMetaAggregatorManager(testManager).swap(
             tokenIn,
@@ -48,7 +50,9 @@ contract ReceiverContract {
             amountIn,
             minAmountOut,
             receiver,
-            isDelegate
+            isDelegate,
+            address(0),
+            0
         );
     }
 

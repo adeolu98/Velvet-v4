@@ -23,7 +23,9 @@ contract NonReentrantTest {
             amountIn,
             minAmountOut,
             receiver,
-            isDelegate
+            isDelegate,
+            address(0),
+            0
         );
     }
 
@@ -46,7 +48,9 @@ contract NonReentrantTest {
             amountIn,
             minAmountOut,
             receiver,
-            isDelegate
+            isDelegate,
+            address(0),
+            0
         );
     }
 
@@ -69,7 +73,9 @@ contract NonReentrantTest {
             amountIn,
             minAmountOut,
             receiver,
-            isDelegate
+            isDelegate,
+            address(0),
+            0
         );
     }
 }
