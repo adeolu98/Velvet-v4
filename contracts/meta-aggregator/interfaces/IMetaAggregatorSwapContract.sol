@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 interface IMetaAggregatorSwapContract {
     function swapERC20(
         IERC20 tokenIn,
@@ -12,7 +11,9 @@ interface IMetaAggregatorSwapContract {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate
+        bool isDelegate,
+        address feeRecipient,
+        uint256 feeBps
     ) external;
 
     function swapETH(
@@ -23,6 +24,8 @@ interface IMetaAggregatorSwapContract {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate
+        bool isDelegate,
+        address feeRecipient,
+        uint256 feeBps
     ) external payable;
 }
