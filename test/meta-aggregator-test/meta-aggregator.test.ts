@@ -64,8 +64,8 @@ describe("Swap test", function () {
         const token1Amount = "594675716556465465156456456";
         const token2Amount = 100000000;
 
-        const {amountAfterFee, fee} = calculateFee(token1Amount, feePercentage)
-        const {feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount} = divideFee(fee, feeReceiver1Percentage)
+        const { amountAfterFee, fee } = calculateFee(token1Amount, feePercentage)
+        const { feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount } = divideFee(fee, feeReceiver1Percentage)
 
 
 
@@ -226,8 +226,8 @@ describe("Swap test", function () {
         const token1Amount = "594675716556465465156456456";
         const token2Amount = 100000000;
 
-        const {amountAfterFee, fee} = calculateFee(token1Amount, feePercentage)
-        const {feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount} = divideFee(fee, feeReceiver1Percentage)
+        const { amountAfterFee, fee } = calculateFee(token1Amount, feePercentage)
+        const { feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount } = divideFee(fee, feeReceiver1Percentage)
 
         await token1.mint(receiverContract.address, token1Amount);
         await token2.mint(aggregator.address, token2Amount);
@@ -421,7 +421,7 @@ describe("Swap test", function () {
             values: []
         };
 
-        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(swapETHParams, {value: nativeTokenAmount})
+        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(swapETHParams, { value: nativeTokenAmount })
 
         await tnx.wait();
 
@@ -448,8 +448,8 @@ describe("Swap test", function () {
         const nativeTokenAmount = "59467571655646";
         const token2Amount = 100000000;
 
-        const {amountAfterFee, fee} = calculateFee(nativeTokenAmount, feePercentage)
-        const {feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount} = divideFee(fee, feeReceiver1Percentage)
+        const { amountAfterFee, fee } = calculateFee(nativeTokenAmount, feePercentage)
+        const { feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount } = divideFee(fee, feeReceiver1Percentage)
 
         await token2.mint(aggregator.address, token2Amount);
 
@@ -478,7 +478,7 @@ describe("Swap test", function () {
             values: [feeReceiver1Amount, feeReceiver2Amount]
         };
 
-        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(swapETHParams, {value: nativeTokenAmount})
+        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(swapETHParams, { value: nativeTokenAmount })
 
         await tnx.wait();
 
@@ -562,8 +562,8 @@ describe("Swap test", function () {
         const nativeTokenAmount = "59467571655646";
         const token2Amount = 100000000;
 
-        const {amountAfterFee, fee} = calculateFee(nativeTokenAmount, feePercentage)
-        const {feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount} = divideFee(fee, feeReceiver1Percentage)
+        const { amountAfterFee, fee } = calculateFee(nativeTokenAmount, feePercentage)
+        const { feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount } = divideFee(fee, feeReceiver1Percentage)
         await token2.mint(aggregator.address, token2Amount);
 
         const ethBalanceUser = await ethers.provider.getBalance(user.address);
@@ -1089,7 +1089,7 @@ describe("Swap test", function () {
             values: []
         }
 
-        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(swapNativeParams, {value: nativeTokenAmount})
+        const tnx = await metaAggregatorTestSwapContract.connect(user).swapETH(swapNativeParams, { value: nativeTokenAmount })
 
 
         await tnx.wait();
@@ -1905,7 +1905,7 @@ describe("Coverage test", async () => {
         }
 
 
-        const reEntrantData = await nonReentrantTest.populateTransaction.receiverCallETH(metaAggregatorTestSwapContract.address,swapParams);
+        const reEntrantData = await nonReentrantTest.populateTransaction.receiverCallETH(metaAggregatorTestSwapContract.address, swapParams);
 
         const swapParamsReEntrant = {
             tokenIn: nativeToken,
@@ -1981,7 +1981,7 @@ describe("Coverage test", async () => {
             isDelegate: false,
             targets: [],
             calldataArray: []
-        }           
+        }
         await expect(metaAggregatorTestManager.connect(user).swap(swapParams)).to.be.reverted
     })
     it("should revert when receiver is zero address token to token swap", async () => {
@@ -2102,9 +2102,9 @@ describe("Coverage test", async () => {
             tokenOut: nativeToken,
             aggregator: aggregator.address,
             swapData: swapData.data || "",
-            amountIn:nativeTokenAmount,
+            amountIn: nativeTokenAmount,
             minAmountOut: token2Amount,
-            receiver:receiverContract.address,
+            receiver: receiverContract.address,
             isDelegate: false,
             targets: [],
             values: []
@@ -2128,7 +2128,7 @@ describe("Coverage test", async () => {
             tokenOut: token2.address,
             aggregator: aggregator.address,
             swapData: swapData.data || "",
-            amountIn: nativeTokenAmount*2,
+            amountIn: nativeTokenAmount * 2,
             minAmountOut: token2Amount,
             receiver: receiverContract.address,
             isDelegate: false,
@@ -2158,7 +2158,7 @@ describe("Coverage test", async () => {
             aggregator: aggregator.address,
             swapData: swapData.data || "",
             amountIn: nativeTokenAmount,
-            minAmountOut: token2Amount*2,
+            minAmountOut: token2Amount * 2,
             receiver: receiverContract.address,
             isDelegate: false,
             targets: [],
@@ -2217,7 +2217,7 @@ describe("Coverage test", async () => {
             aggregator: aggregator.address,
             swapData: swapData.data || "",
             amountIn: token1Amount,
-            minAmountOut: token2Amount*2,
+            minAmountOut: token2Amount * 2,
             receiver: receiverContract.address,
             isDelegate: false,
             targets: [],
@@ -2292,27 +2292,26 @@ describe("Coverage test", async () => {
 
         await expect(receiverContract.connect(user).executeDelegate(metaAggregatorTestSwapContract.address, delegateSwapData.data || " ")).to.be.reverted
     })
-
-    it("Swap tokens to tokens", async () => {
-        const { token1, token2, aggregator, metaAggregatorTestManager, user } = await loadFixture(setupTest);
-
-        const token1Amount = 100000000;
+    it("should fail when fee is not equal to the sum of fee receiver amount", async () => {
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, feeReceiver1, feeReceiver2, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const feePercentage = 7.5
+        const feeReceiver1Percentage = 33.55;
+        const token1Amount = "594675716556465465156456456";
         const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(token1Amount, feePercentage)
+        const { feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount } = divideFee(fee, feeReceiver1Percentage)
+
+
 
         await token1.mint(user.address, token1Amount);
         await token2.mint(aggregator.address, token2Amount);
 
 
-        const balanceUserToken1 = await token1.balanceOf(user.address);
-        expect(balanceUserToken1).to.be.equal(token1Amount);
-        const balanceAggregatorToken2 = await token2.balanceOf(aggregator.address);
-        expect(balanceAggregatorToken2).to.be.equal(token2Amount);
-        const balanceUserToken2 = await token2.balanceOf(user.address);
-        expect(balanceUserToken2).to.be.equal(0);
-        const balanceAggregatorToken1 = await token1.balanceOf(aggregator.address);
-        expect(balanceAggregatorToken1).to.be.equal(0)
+        const feeTransferData1 = await token1.populateTransaction.transfer(feeReceiver1.address, feeReceiver1Amount)
+        const feeTransferData2 = await token1.populateTransaction.transfer(feeReceiver2.address, feeReceiver2Amount)
 
-        const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, token1Amount, token2Amount);
+        const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, amountAfterFee, token2Amount);
 
         const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
         await tnx.wait();
@@ -2326,20 +2325,117 @@ describe("Coverage test", async () => {
             minAmountOut: token2Amount,
             receiver: user.address,
             isDelegate: false,
-            targets: [],
-            calldataArray: []
+            targets: [token1.address],
+            calldataArray: [feeTransferData1.data || "", feeTransferData2.data || ""]
         };
 
-        await metaAggregatorTestManager.connect(user).swap(swapETHParams)
+        await expect(metaAggregatorTestManager.connect(user).swap(swapETHParams)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InvalidTargetsCalldataLength")
+    })
+
+    it("should fail when fee values are not equal to fee receivers", async () => {
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, feeReceiver1, feeReceiver2 } = await loadFixture(setupTest);
+
+        const feePercentage = 7.5
+        const feeReceiver1Percentage = 33.55;
+        const nativeTokenAmount = "59467571655646";
+        const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(nativeTokenAmount, feePercentage)
+        const { feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount } = divideFee(fee, feeReceiver1Percentage)
+
+        await token2.mint(aggregator.address, token2Amount);
 
 
-        const userToken2Balance = await token2.balanceOf(user.address)
-        expect(userToken2Balance).to.be.equal(token2Amount);
-        const userToken1Balance = await token1.balanceOf(user.address);
-        expect(userToken1Balance).to.be.equal(0);
-        const aggregatorToken1Balance = await token1.balanceOf(aggregator.address);
-        expect(aggregatorToken1Balance).to.be.equal(token1Amount);
-        const aggregatorToken2Balance = await token2.balanceOf(aggregator.address);
-        expect(aggregatorToken2Balance).to.be.equal(0);
+        expect(fee).to.be.equal(new BigNumber(feeReceiver1Amount).plus(new BigNumber(feeReceiver2Amount)).toFixed(0))
+
+        const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, amountAfterFee, token2Amount);
+
+        const swapETHParams = {
+            tokenIn: nativeToken,
+            tokenOut: token2.address,
+            aggregator: aggregator.address,
+            swapData: swapData.data || "",
+            amountIn: nativeTokenAmount,
+            minAmountOut: token2Amount,
+            receiver: user.address,
+            isDelegate: false,
+            targets: [feeReceiver1.address],
+            values: [feeReceiver1Amount, feeReceiver2Amount]
+        };
+
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(swapETHParams, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "InvalidTargetsValuesLength")
+    })
+
+    it("should fail when fee in ERC20 transfer fails", async () => {
+        const { token1, token2, aggregator, metaAggregatorTestManager, user, feeReceiver1, feeReceiver2, metaAggregatorTestSwapContract } = await loadFixture(setupTest);
+        const feePercentage = 7.5
+        const feeReceiver1Percentage = 33.55;
+        const token1Amount = "594675716556465465156456456";
+        const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(token1Amount, feePercentage)
+        const { feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount } = divideFee(fee, feeReceiver1Percentage)
+
+
+
+        await token1.mint(user.address, token1Amount);
+        await token2.mint(aggregator.address, token2Amount);
+
+
+        const feeTransferData1 = await token1.populateTransaction.transfer(feeReceiver1.address, BigInt(2 * Number(token1Amount)))
+        const feeTransferData2 = await token1.populateTransaction.transfer(feeReceiver2.address, feeReceiver2Amount)
+
+        const swapData = await aggregator.populateTransaction.swap(token1.address, token2.address, amountAfterFee, token2Amount);
+
+        const tnx = await token1.connect(user).approve(metaAggregatorTestManager.address, token1Amount)
+        await tnx.wait();
+
+        const swapETHParams = {
+            tokenIn: token1.address,
+            tokenOut: token2.address,
+            aggregator: aggregator.address,
+            swapData: swapData.data || "",
+            amountIn: token1Amount,
+            minAmountOut: token2Amount,
+            receiver: user.address,
+            isDelegate: false,
+            targets: [token1.address, token1.address],
+            calldataArray: [feeTransferData1.data || "", feeTransferData2.data || ""]
+        };
+
+        await expect(metaAggregatorTestManager.connect(user).swap(swapETHParams)).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "FeeTransferFailed")
+    })
+    it("should fail when fee transfer fails for native token", async () => {
+        const { token2, aggregator, metaAggregatorTestSwapContract, nativeToken, user, feeReceiver1, feeReceiver2 } = await loadFixture(setupTest);
+
+        const feePercentage = 7.5
+        const feeReceiver1Percentage = 33.55;
+        const nativeTokenAmount = "59467571655646";
+        const token2Amount = 100000000;
+
+        const { amountAfterFee, fee } = calculateFee(nativeTokenAmount, feePercentage)
+        const { feeReceiver1: feeReceiver1Amount, feeReceiver2: feeReceiver2Amount } = divideFee(fee, feeReceiver1Percentage)
+
+        await token2.mint(aggregator.address, token2Amount);
+
+
+        expect(fee).to.be.equal(new BigNumber(feeReceiver1Amount).plus(new BigNumber(feeReceiver2Amount)).toFixed(0))
+
+        const swapData = await aggregator.populateTransaction.swap(nativeToken, token2.address, amountAfterFee, token2Amount);
+
+        const swapETHParams = {
+            tokenIn: nativeToken,
+            tokenOut: token2.address,
+            aggregator: aggregator.address,
+            swapData: swapData.data || "",
+            amountIn: nativeTokenAmount,
+            minAmountOut: token2Amount,
+            receiver: user.address,
+            isDelegate: false,
+            targets: [feeReceiver1.address, feeReceiver2.address],
+            values: [2 * Number(nativeTokenAmount), feeReceiver2Amount]
+        };
+
+        await expect(metaAggregatorTestSwapContract.connect(user).swapETH(swapETHParams, { value: nativeTokenAmount })).to.be.revertedWithCustomError(metaAggregatorTestSwapContract, "FeeTransferFailed")
     })
 })
