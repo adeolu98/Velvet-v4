@@ -24,10 +24,14 @@ contract ReceiverContract {
     /**
      * @dev Calls the swap function in the TestManagerContract.
      * @param testManager The address of the TestManagerContract.
-     * @param tokenIn The address of the input token.
-     * @param tokenOut The address of the output token.
-     * @param amountIn The amount of input tokens to swap.
-     * @param minAmountOut The minimum amount of output tokens expected.
+     * @param tokenIn tokenIn
+     * @param tokenOut tokenOut
+     * @param aggregator aggregator
+     * @param swapData swapData
+     * @param amountIn amountIn
+     * @param minAmountOut minAmountOut
+     * @param receiver receiver
+     * @param isDelegate isDelegate
      */
     function swap(
         address testManager,
@@ -38,21 +42,19 @@ contract ReceiverContract {
         uint256 amountIn,
         uint256 minAmountOut,
         address receiver,
-        bool isDelegate,
-        address feeRecipient,
-        uint256 feeBps
+        bool isDelegate
     ) external {
         IMetaAggregatorManager(testManager).swap(
             tokenIn,
             tokenOut,
             aggregator,
-            swapData,
+            receiver,
+            address(0),
             amountIn,
             minAmountOut,
-            receiver,
-            isDelegate,
-            address(0),
-            0
+            0,
+            swapData,
+            isDelegate
         );
     }
 
