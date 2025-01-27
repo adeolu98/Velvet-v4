@@ -34,26 +34,26 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
      * @param tokenIn The input token (ERC20).
      * @param tokenOut The output token (ERC20).
      * @param aggregator The address of the aggregator to perform the swap.
-     * @param swapData The data required for the swap.
+     * @param receiver The address to receive the tokenOut.
+     * @param feeRecipient The address to receive the fee.
      * @param amountIn The amount of tokenIn to swap.
      * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param receiver The address to receive the output tokens.
+     * @param feeBps The fee basis points sent from amountIn.
+     * @param swapData The data required for the swap.
      * @param isDelegate Whether to use delegatecall for the swap.
-     * @param feeRecipient The address to receive the fee.
-     * @param feeBps The fee basis points sent from amountIn
      * @notice This function is non-reentrant to prevent reentrancy attacks.
      */
     function swap(
         IERC20 tokenIn,
         IERC20 tokenOut,
         address aggregator,
-        bytes calldata swapData,
+        address receiver,
+        address feeRecipient,
         uint256 amountIn,
         uint256 minAmountOut,
-        address receiver,
-        bool isDelegate,
-        address feeRecipient,
-        uint256 feeBps
+        uint256 feeBps,
+        bytes calldata swapData,
+        bool isDelegate
     ) external nonReentrant {
         // Check if the input token is the native token (ETH)
         if (address(tokenIn) == nativeToken) {
@@ -68,16 +68,19 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
         );
 
         MetaAggregatorSwap.swapERC20(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate,
-            feeRecipient,
-            feeBps
+            IMetaAggregatorSwapContract.SwapERC20Params(
+                tokenIn,
+                tokenOut,
+                aggregator,
+                msg.sender,
+                receiver,
+                feeRecipient,
+                amountIn,
+                minAmountOut,
+                feeBps,
+                swapData,
+                isDelegate
+            )
         );
     }
 }
