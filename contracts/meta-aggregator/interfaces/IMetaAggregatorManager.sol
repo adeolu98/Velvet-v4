@@ -7,12 +7,12 @@ interface IMetaAggregatorManager {
         IERC20 tokenIn,
         IERC20 tokenOut,
         address aggregator,
-        bytes calldata swapData,
+        address receiver,
+        address feeRecipient,
         uint256 amountIn,
         uint256 minAmountOut,
-        address receiver,
-        bool isDelegate,
-        address feeRecipient,
-        uint256 feeBps
+        uint256 feeBps,
+        bytes calldata swapData,
+        bool isDelegate
     ) external;
 }
