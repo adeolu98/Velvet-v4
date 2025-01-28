@@ -33,20 +33,16 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
     error InsufficientTokenOutAmount();
     error SwapFailed();
     error CannotSwapETH();
+    error FeeTransferFailed();
 
-    //   Event emitted when ETH is swapped for an ERC20 token
-    event ETHSwappedForToken(
-        uint256 indexed amountOut,
-        address indexed tokenOut,
-        address indexed receiver
-    );
-
-    // Event emitted when an ERC20 token is swapped for another ERC20 token
-    event ERC20Swapped(
-        uint256 indexed amountOut,
+    //   Event emitted when Tokens are swapped
+    event TokenSwapped(
+        address indexed sender,
         address indexed tokenIn,
-        address indexed tokenOut,
-        address receiver
+        uint256 indexed amountIn,
+        address tokenOut,
+        uint256 amountOut,
+        uint256 fee
     );
 
     /**
@@ -102,104 +98,44 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
 
     /**
      * @dev Swaps ETH for an ERC20 token.
-     * @param tokenIn must be the native token.
-     * @param tokenOut The ERC20 token to swap to.
-     * @param aggregator The address of the aggregator to use for the swap.
-     * @param swapData The data required for the swap.
-     * @param amountIn The amount of ETH to swap.
-     * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param receiver The address to receive the tokenOut.
-     * @param isDelegate Indicates if the swap is in a delegatecall context.
+     * @param params SwapETHParams
      */
     function swapETH(
-        address tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
+        SwapETHParams calldata params
     ) external payable nonReentrant {
-        if (address(tokenIn) != nativeToken) {
+        if (address(params.tokenIn) != nativeToken) {
             revert CannotSwapTokens();
         }
-        uint256 amountOut = _swapETH(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
-        );
-        emit ERC20Swapped(
-            amountOut,
-            address(tokenIn),
-            address(tokenOut),
-            receiver
-        );
+        (uint256 amountOut, uint256 fee) = _swapETH(params);
+        emit TokenSwapped(address(params.tokenIn), address(params.tokenOut), params.amountIn, address(params.tokenOut), amountOut, fee);
     }
 
     /**
      * @dev Swaps one ERC20 token for another ERC20 token or native ETH.
-     * @param tokenIn The ERC20 token to swap from.
-     * @param tokenOut The ERC20 token to swap to or native ETH.
-     * @param aggregator The address of the aggregator to use for the swap.
-     * @param swapData The data required for the swap.
-     * @param amountIn The amount of tokenIn to swap.
-     * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param receiver The address to receive the tokenOut.
-     * @param isDelegate Indicates if the swap is in a delegatecall context.
+     * @param params SwapERC20Params
      */
-    function swapERC20(
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
-    ) external nonReentrant {
-        uint256 amountOut = _swapERC20(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
+    function swapERC20(SwapERC20Params calldata params) external nonReentrant {
+        (uint256 amountOut, uint256 fee) = _swapERC20(
+           params
         );
-        emit ETHSwappedForToken(amountOut, address(tokenOut), receiver);
+        emit TokenSwapped(address(params.tokenIn), address(params.tokenOut), params.amountIn, address(params.tokenOut), amountOut, fee);
     }
 
     /**
      * @dev Internal function to perform the swap from ETH to ERC20.
-     * @param tokenIn must be the native token.
-     * @param tokenOut The ERC20 token to swap to.
-     * @param aggregator The address of the aggregator to use for the swap.
-     * @param swapData The data required for the swap.
-     * @param amountIn The amount of ETH to swap.
-     * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param receiver The address to receive the tokenOut.
-     * @param isDelegate Indicates if the swap is in a delegatecall context.
-     * @return The amount of tokenOut received.
+     * @param params SwapETHParams
      */
     function _swapETH(
-        address tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
-    ) internal returns (uint256) {
+        SwapETHParams memory params
+    ) internal returns (uint256, uint256) {
+        IERC20 tokenOut = params.tokenOut;
+        uint256 amountIn = params.amountIn;
+        uint256 minAmountOut = params.minAmountOut;
+        address receiver = params.receiver;
+        address feeRecipient = params.feeRecipient;
+        uint256 feeBps = params.feeBps;
         _validateInputs(
-            tokenIn,
+            params.tokenIn,
             address(tokenOut),
             amountIn,
             minAmountOut,
@@ -207,40 +143,42 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         );
 
         if (msg.value < amountIn) revert IncorrectEtherAmountSent();
+        uint256 fee;
+        if (feeRecipient != address(0) || feeBps != 0) {
+            fee = (amountIn * feeBps) / 10000;
+            amountIn -= fee;
+            (bool success, ) = payable(feeRecipient).call{value: fee}("");
+            if (!success) revert FeeTransferFailed();
+        }
 
         uint256 balanceBefore = tokenOut.balanceOf(address(this));
-        _executeAggregatorCall(swapData, isDelegate, aggregator, amountIn);
+        _executeAggregatorCall(params.swapData, params.isDelegate, params.aggregator, amountIn);
         uint256 amountOut = tokenOut.balanceOf(address(this)) - balanceBefore;
 
         if (amountOut < minAmountOut) revert InsufficientOutputBalance();
         if (receiver != address(this)) {
             TransferHelper.safeTransfer(address(tokenOut), receiver, amountOut);
         }
-        return amountOut;
+        return (amountOut, fee);
     }
 
     /**
      * @dev Internal function to swap ERC20 tokens or ERC20 to native ETH.
-     * @param tokenIn The ERC20 token to swap from.
-     * @param tokenOut The ERC20 token to swap to or native ETH.
-     * @param aggregator The address of the aggregator to use for the swap.
-     * @param swapData The data required for the swap.
-     * @param amountIn The amount of tokenIn to swap.
-     * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param receiver The address to receive the tokenOut.
-     * @param isDelegate Indicates if the swap is in a delegatecall context.
-     * @return The amount of tokenOut received.
+     * @param params SwapERC20Params
      */
     function _swapERC20(
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        address aggregator,
-        bytes calldata swapData,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address receiver,
-        bool isDelegate
-    ) internal returns (uint256) {
+        SwapERC20Params memory params
+    ) internal returns (uint256, uint256) {
+        IERC20 tokenIn = params.tokenIn;
+        IERC20 tokenOut = params.tokenOut;
+        address aggregator = params.aggregator;
+        address receiver = params.receiver;
+        address feeRecipient = params.feeRecipient;
+        uint256 amountIn = params.amountIn;
+        uint256 minAmountOut = params.minAmountOut;
+        uint256 feeBps = params.feeBps;
+        bytes memory swapData = params.swapData;
+        bool isDelegate = params.isDelegate;
         _validateInputs(
             address(tokenIn),
             address(tokenOut),
@@ -253,6 +191,12 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
             if (address(tokenIn) == usdt)
                 TransferHelper.safeApprove(address(tokenIn), aggregator, 0);
             TransferHelper.safeApprove(address(tokenIn), aggregator, amountIn);
+        }
+        uint256 fee;
+        if (feeRecipient != address(0) || feeBps != 0) {
+            fee = (amountIn * feeBps) / 10000;
+            amountIn -= fee;
+            TransferHelper.safeTransfer(address(tokenIn), feeRecipient, fee);
         }
 
         uint256 amountOut;
@@ -280,7 +224,7 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
             }
         }
 
-        return amountOut;
+        return (amountOut, fee);
     }
 
     /**

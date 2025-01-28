@@ -19,10 +19,12 @@ contract NonReentrantTest {
             tokenIn,
             tokenOut,
             aggregator,
-            swapData,
+            receiver,
+            address(0),
             amountIn,
             minAmountOut,
-            receiver,
+            0,
+            swapData,
             isDelegate
         );
     }
@@ -39,14 +41,19 @@ contract NonReentrantTest {
         bool isDelegate
     ) external payable {
         IMetaAggregatorSwapContract(callerAddress).swapETH(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
+            IMetaAggregatorSwapContract.SwapETHParams(
+                tokenIn,
+                tokenOut,
+                aggregator,
+                address(this),
+                receiver,
+                address(0),
+                amountIn,
+                minAmountOut,
+                0,
+                swapData,
+                isDelegate
+            )
         );
     }
 
@@ -62,14 +69,19 @@ contract NonReentrantTest {
         bool isDelegate
     ) external payable {
         IMetaAggregatorSwapContract(callerAddress).swapERC20(
-            tokenIn,
-            tokenOut,
-            aggregator,
-            swapData,
-            amountIn,
-            minAmountOut,
-            receiver,
-            isDelegate
+            IMetaAggregatorSwapContract.SwapERC20Params(
+                tokenIn,
+                tokenOut,
+                aggregator,
+                address(this),
+                receiver,
+                address(0),
+                amountIn,
+                minAmountOut,
+                0,
+                swapData,
+                isDelegate
+            )
         );
     }
 }
