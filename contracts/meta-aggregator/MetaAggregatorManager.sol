@@ -18,12 +18,13 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
     error CannotSwapETH();
     error InvalidMetaAggregatorAddress();
 
+
     /**
      * @dev Sets the address of the MetaAggregatorSwap contract.
      * @param _metaAggregatorSwap The address of the MetaAggregatorSwap contract.
      */
     constructor(address _metaAggregatorSwap) {
-        if (_metaAggregatorSwap == address(0)) {
+         if(_metaAggregatorSwap == address(0)) {
             revert InvalidMetaAggregatorAddress();
         }
         MetaAggregatorSwap = IMetaAggregatorSwapContract(_metaAggregatorSwap);
@@ -34,12 +35,10 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
      * @param tokenIn The input token (ERC20).
      * @param tokenOut The output token (ERC20).
      * @param aggregator The address of the aggregator to perform the swap.
-     * @param receiver The address to receive the tokenOut.
-     * @param feeRecipient The address to receive the fee.
+     * @param swapData The data required for the swap.
      * @param amountIn The amount of tokenIn to swap.
      * @param minAmountOut The minimum amount of tokenOut expected.
-     * @param feeBps The fee basis points sent from amountIn.
-     * @param swapData The data required for the swap.
+     * @param receiver The address to receive the output tokens.
      * @param isDelegate Whether to use delegatecall for the swap.
      * @notice This function is non-reentrant to prevent reentrancy attacks.
      */
@@ -47,12 +46,10 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
         IERC20 tokenIn,
         IERC20 tokenOut,
         address aggregator,
-        address receiver,
-        address feeRecipient,
+        bytes calldata swapData,
         uint256 amountIn,
         uint256 minAmountOut,
-        uint256 feeBps,
-        bytes calldata swapData,
+        address receiver,
         bool isDelegate
     ) external nonReentrant {
         // Check if the input token is the native token (ETH)
@@ -60,27 +57,17 @@ contract MetaAggregatorManager is ReentrancyGuard, IMetaAggregatorManager {
             revert CannotSwapETH();
         }
 
-        TransferHelper.safeTransferFrom(
-            address(tokenIn),
-            msg.sender,
-            address(MetaAggregatorSwap),
-            amountIn
-        );
+        TransferHelper.safeTransferFrom(address(tokenIn), msg.sender, address(MetaAggregatorSwap), amountIn);
 
         MetaAggregatorSwap.swapERC20(
-            IMetaAggregatorSwapContract.SwapERC20Params(
-                tokenIn,
-                tokenOut,
-                aggregator,
-                msg.sender,
-                receiver,
-                feeRecipient,
-                amountIn,
-                minAmountOut,
-                feeBps,
-                swapData,
-                isDelegate
-            )
+            tokenIn,
+            tokenOut,
+            aggregator,
+            swapData,
+            amountIn,
+            minAmountOut,
+            receiver,
+            isDelegate
         );
     }
 }
