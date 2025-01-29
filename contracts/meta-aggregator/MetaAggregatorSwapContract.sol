@@ -40,9 +40,14 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         address indexed sender,
         address indexed tokenIn,
         uint256 indexed amountIn,
+        address  receiver,
         address tokenOut,
         uint256 amountOut,
-        uint256 fee
+        uint256 minAmountOut,
+        uint256 fee,
+        address feeReceiver,
+        address aggregator,
+        bool isDelegate
     );
 
     /**
@@ -107,7 +112,19 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
             revert CannotSwapTokens();
         }
         (uint256 amountOut, uint256 fee) = _swapETH(params);
-        emit TokenSwapped(address(params.tokenIn), address(params.tokenOut), params.amountIn, address(params.tokenOut), amountOut, fee);
+        emit TokenSwapped(
+            address(params.sender),
+            address(params.tokenIn),
+            params.amountIn,
+            address(params.receiver),
+            address(params.tokenOut), 
+            amountOut,
+            params.minAmountOut,
+            fee,
+            params.feeRecipient,
+            params.aggregator,
+            params.isDelegate
+        );
     }
 
     /**
@@ -115,10 +132,20 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
      * @param params SwapERC20Params
      */
     function swapERC20(SwapERC20Params calldata params) external nonReentrant {
-        (uint256 amountOut, uint256 fee) = _swapERC20(
-           params
+        (uint256 amountOut, uint256 fee) = _swapERC20(params);
+        emit TokenSwapped(
+            address(params.sender),
+            address(params.tokenIn),
+            params.amountIn,
+            address(params.receiver),
+            address(params.tokenOut), 
+            amountOut,
+            params.minAmountOut,
+            fee,
+            params.feeRecipient,
+            params.aggregator,
+            params.isDelegate
         );
-        emit TokenSwapped(address(params.tokenIn), address(params.tokenOut), params.amountIn, address(params.tokenOut), amountOut, fee);
     }
 
     /**
@@ -152,7 +179,12 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         }
 
         uint256 balanceBefore = tokenOut.balanceOf(address(this));
-        _executeAggregatorCall(params.swapData, params.isDelegate, params.aggregator, amountIn);
+        _executeAggregatorCall(
+            params.swapData,
+            params.isDelegate,
+            params.aggregator,
+            amountIn
+        );
         uint256 amountOut = tokenOut.balanceOf(address(this)) - balanceBefore;
 
         if (amountOut < minAmountOut) revert InsufficientOutputBalance();
