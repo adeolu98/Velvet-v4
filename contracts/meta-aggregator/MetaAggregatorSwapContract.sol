@@ -39,14 +39,14 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
     event TokenSwapped(
         address indexed sender,
         address indexed tokenIn,
+        address indexed receiver,
+        address indexed tokenOut,
+        address feeReceiver,
+        address aggregator,
         uint256 indexed amountIn,
-        address  receiver,
-        address tokenOut,
         uint256 amountOut,
         uint256 minAmountOut,
         uint256 fee,
-        address feeReceiver,
-        address aggregator,
         bool isDelegate
     );
 
@@ -115,14 +115,14 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         emit TokenSwapped(
             address(params.sender),
             address(params.tokenIn),
-            params.amountIn,
             address(params.receiver),
-            address(params.tokenOut), 
+            address(params.tokenOut),
+            params.feeRecipient,
+            params.aggregator,
+            params.amountIn,
             amountOut,
             params.minAmountOut,
             fee,
-            params.feeRecipient,
-            params.aggregator,
             params.isDelegate
         );
     }
@@ -136,14 +136,14 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
         emit TokenSwapped(
             address(params.sender),
             address(params.tokenIn),
-            params.amountIn,
             address(params.receiver),
-            address(params.tokenOut), 
+            address(params.tokenOut),
+            params.feeRecipient,
+            params.aggregator,
+            params.amountIn,
             amountOut,
             params.minAmountOut,
             fee,
-            params.feeRecipient,
-            params.aggregator,
             params.isDelegate
         );
     }
