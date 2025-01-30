@@ -39,8 +39,8 @@ contract MetaAggregatorSwapContract is IMetaAggregatorSwapContract {
     event TokenSwapped(
         address indexed sender,
         address indexed tokenIn,
-        address indexed receiver,
-        address indexed tokenOut,
+        address receiver,
+        address tokenOut,
         address feeReceiver,
         address aggregator,
         uint256 indexed amountIn,
