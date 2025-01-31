@@ -3,22 +3,22 @@ Business Source License 1.1
 License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 "Business Source License" is a trademark of MariaDB Corporation Ab.
 
------------------------------------------------------------------------------
+---
 
-Licensor:             Velvet Solutions
+Licensor: Velvet Solutions
 
-Licensed Work:        Velvet Core
-                      The Licensed Work is (c) 2024 Velvet Solutions
+Licensed Work: Velvet Core
+The Licensed Work is (c) 2025 Velvet Solutions
 
 Additional Use Grant: Any uses listed and defined at
-                      velvet.capital/license
+velvet.capital/license
 
-Change Date:          The earlier of 2026-10-01 or a date specified at
-                      velvet.capital/license
+Change Date: The earlier of 2027-10-01 or a date specified at
+velvet.capital/license
 
-Change License:       GNU General Public License v2.0 or later
+Change License: GNU General Public License v2.0 or later
 
------------------------------------------------------------------------------
+---
 
 Terms
 
@@ -66,7 +66,7 @@ MariaDB hereby grants you permission to use this License’s text to license
 your works, and to refer to it using the trademark "Business Source License",
 as long as you comply with the Covenants of Licensor below.
 
------------------------------------------------------------------------------
+---
 
 Covenants of Licensor
 
@@ -89,7 +89,7 @@ other recipients of the licensed work to be provided by Licensor:
 
 4. Not to modify this License in any other way.
 
------------------------------------------------------------------------------
+---
 
 Notice
 
