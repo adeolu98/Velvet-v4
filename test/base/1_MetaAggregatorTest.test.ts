@@ -122,13 +122,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
       ensoHandler = await EnsoHandler.deploy(
-        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
+        "0x7d6Dbe08F610cA1Ade4Fea11e5d40d0Fb9fAeCC7"
       );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
       depositBatch = await DepositBatch.deploy(
-        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
+        "0x7d6Dbe08F610cA1Ade4Fea11e5d40d0Fb9fAeCC7"
       );
       await depositBatch.deployed();
 
@@ -138,7 +138,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
       withdrawBatch = await WithdrawBatch.deploy(
-        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
+        "0x7d6Dbe08F610cA1Ade4Fea11e5d40d0Fb9fAeCC7"
       );
       await withdrawBatch.deployed();
 
@@ -435,7 +435,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "1000000000000000000"
           );
 
-          postResponse.push(response.data.quotes[0].data);
+          postResponse.push(response.data[0].data);
         }
 
         const data = await depositBatch.multiTokenSwapETHAndTransfer(
@@ -488,7 +488,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-            postResponse.push(response.data.quotes[0].data);
+            postResponse.push(response.data[0].data);
           }
         }
 
@@ -544,7 +544,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               Number(amountIn)
             );
 
-            postResponse.push(response.data.quotes[0].data);
+            postResponse.push(response.data[0].data);
           }
         }
 
@@ -600,7 +600,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             "uint256[]", // minExpectedOutputAmounts
           ],
           [
-            [[postResponse.data.quotes[0].data]],
+            [[postResponse.data[0].data]],
             [],
             [[]],
             [[]],
@@ -675,7 +675,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
               withdrawalAmount
             );
 
-            responses.push(response.data.quotes[0].data);
+            responses.push(response.data[0].data);
           }
           userBalanceBefore.push(
             await ERC20.attach(tokens[i]).balanceOf(user.address)
