@@ -14,17 +14,16 @@ export async function createMetaAggregatorCalldata(
       tokenIn: _tokenIn,
       tokenOut: _tokenOut,
       sender: handler,
-      receiver: receiver,
-      chainId: 8453,
+      receiver: receiver, 
+      chainID: 8453,
       isDelegate: true,
     };
 
     console.log(priceParams);
 
-    const postUrl = "https://metaaggregator.velvetdao.xyz/best-quotes";
-
-    const response = await axios.post(postUrl, priceParams);
-    return response.data;
+    const postUrl = "https://metaaggregator.velvetdao.xyz/api/v1/route/evm/swap";
+    const response = await axios.get(postUrl, { params: priceParams });
+    return response.data.data;
   } catch (error) {
     // Check if the error is an AxiosError
     if (axios.isAxiosError(error)) {
