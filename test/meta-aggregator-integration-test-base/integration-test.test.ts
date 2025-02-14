@@ -59,9 +59,9 @@ describe("Integration Swap test", function () {
         const aBasWETHContract = new ethers.Contract(aBasWETH, ERC20_ABI, ethers.provider);
 
         const aBaseWETHBalanceBefore = await aBasWETHContract.balanceOf(user.address);
-
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ", { value: ETHAmount })
+     
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ", { value: ETHAmount })
 
         const aBaseWETHBalanceAfter = await aBasWETHContract.balanceOf(user.address);
 
@@ -87,8 +87,8 @@ describe("Integration Swap test", function () {
 
         const aBaseWETHBalanceBefore = await aBaseUSDCContract.balanceOf(user.address);
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ", { value: ETHAmount })
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ", { value: ETHAmount })
 
         const aBaseWETHBalanceAfter = await aBaseUSDCContract.balanceOf(user.address);
 
@@ -114,8 +114,8 @@ describe("Integration Swap test", function () {
 
         const aBaswstETHBalanceBefore = await aBaswstETHContract.balanceOf(user.address);
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ", { value: ETHAmount })
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ", { value: ETHAmount })
 
         const aBaswstETHBalanceAfter = await aBaswstETHContract.balanceOf(user.address);
 
@@ -139,8 +139,8 @@ describe("Integration Swap test", function () {
 
         const usdcBalanceBefore = await usdcContract.balanceOf(user.address);
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ", { value: ETHAmount })
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ", { value: ETHAmount })
 
         const usdcBalanceAfter = await usdcContract.balanceOf(user.address);
 
@@ -165,8 +165,8 @@ describe("Integration Swap test", function () {
 
         const daiBalanceBefore = await daiContract.balanceOf(user.address);
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ", { value: ETHAmount })
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ", { value: ETHAmount })
 
         const daiBalanceAfter = await daiContract.balanceOf(user.address);
 
@@ -195,8 +195,8 @@ describe("Integration Swap test", function () {
 
         const daiBalanceBefore = await daiContract.balanceOf(receiverContract.address);
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ", { value: ETHAmount })
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ", { value: ETHAmount })
 
         console.log("**********************************************************************************************************************************")
         console.log("*********************************************first swap complete********************************************************************")
@@ -223,8 +223,8 @@ describe("Integration Swap test", function () {
         response = await createMetaAggregatorCalldata(receiverContract.address, user.address, dai, usdc, "32358521172381315000")
 
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ")
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ")
 
 
 
@@ -256,8 +256,8 @@ describe("Integration Swap test", function () {
 
         const cbBTCBalanceBefore = await cbBTCContract.balanceOf(receiverContract.address);
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ", { value: ETHAmount })
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ", { value: ETHAmount })
 
         console.log("**********************************************************************************************************************************")
         console.log("*********************************************first swap complete********************************************************************")
@@ -282,8 +282,8 @@ describe("Integration Swap test", function () {
         response = await createMetaAggregatorCalldata(receiverContract.address, user.address, cbBTC, dai, 178747)
 
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ")
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ")
 
 
 
@@ -313,8 +313,8 @@ describe("Integration Swap test", function () {
 
         const wethBalanceBefore = await wethContract.balanceOf(receiverContract.address);
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ", { value: ETHAmount })
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ", { value: ETHAmount })
 
         console.log("**********************************************************************************************************************************")
         console.log("*********************************************first swap complete********************************************************************")
@@ -338,8 +338,8 @@ describe("Integration Swap test", function () {
         response = await createMetaAggregatorCalldata(receiverContract.address, user.address, weth, dai, "100304170629935680")
 
 
-        await receiverContract.connect(user).executeDelegate(response.quotes[0].to
-            , response.quotes[0].data || " ")
+        await receiverContract.connect(user).executeDelegate(response[0].to
+            , response[0].data || " ")
 
 
 

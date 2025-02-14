@@ -122,13 +122,13 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       const EnsoHandler = await ethers.getContractFactory("EnsoHandler");
       ensoHandler = await EnsoHandler.deploy(
-        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
+        "0x7d6Dbe08F610cA1Ade4Fea11e5d40d0Fb9fAeCC7"
       );
       await ensoHandler.deployed();
 
       const DepositBatch = await ethers.getContractFactory("DepositBatch");
       depositBatch = await DepositBatch.deploy(
-        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
+        "0x7d6Dbe08F610cA1Ade4Fea11e5d40d0Fb9fAeCC7"
       );
       await depositBatch.deployed();
 
@@ -138,7 +138,7 @@ describe.only("Tests for Deposit + Withdrawal", () => {
 
       const WithdrawBatch = await ethers.getContractFactory("WithdrawBatch");
       withdrawBatch = await WithdrawBatch.deploy(
-        "0xc9674264C3a86150Af1eE1Aa9E25568D0733Fb90"
+        "0x7d6Dbe08F610cA1Ade4Fea11e5d40d0Fb9fAeCC7"
       );
       await withdrawBatch.deployed();
 
@@ -435,12 +435,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
           );
 
           interface Quote {
-            protocol: string;
+            aggregator: string;
             data: string;
           }
 
-          const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
-            (quote: Quote) => quote.protocol === "enso"
+          const zeroXQuote: Quote | undefined = response?.data?.find(
+            (quote: Quote) => quote.aggregator === "enso"
           );
 
           if (!zeroXQuote?.data) {
@@ -501,12 +501,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             );
 
             interface Quote {
-              protocol: string;
+              aggregator: string;
               data: string;
             }
 
-            const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
-              (quote: Quote) => quote.protocol === "enso"
+            const zeroXQuote: Quote | undefined = response?.data?.find(
+              (quote: Quote) => quote.aggregator === "enso"
             );
 
             if (!zeroXQuote?.data) {
@@ -570,12 +570,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             );
 
             interface Quote {
-              protocol: string;
+              aggregator: string;
               data: string;
             }
 
-            const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
-              (quote: Quote) => quote.protocol === "enso"
+            const zeroXQuote: Quote | undefined = response?.data?.find(
+              (quote: Quote) => quote.aggregator === "enso"
             );
 
             if (!zeroXQuote?.data) {
@@ -627,12 +627,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
         );
 
         interface Quote {
-          protocol: string;
+          aggregator: string;
           data: string;
         }
 
-        const zeroXQuote: Quote | undefined = postResponse?.data?.quotes?.find(
-          (quote: Quote) => quote.protocol === "enso"
+        const zeroXQuote: Quote | undefined = postResponse?.data?.find(
+          (quote: Quote) => quote.aggregator === "enso"
         );
 
         if (!zeroXQuote?.data) {
@@ -727,12 +727,12 @@ describe.only("Tests for Deposit + Withdrawal", () => {
             );
 
             interface Quote {
-              protocol: string;
+              aggregator: string;
               data: string;
             }
 
-            const zeroXQuote: Quote | undefined = response?.data?.quotes?.find(
-              (quote: Quote) => quote.protocol === "enso"
+            const zeroXQuote: Quote | undefined = response?.data?.find(
+              (quote: Quote) => quote.aggregator === "enso"
             );
 
             if (!zeroXQuote?.data) {

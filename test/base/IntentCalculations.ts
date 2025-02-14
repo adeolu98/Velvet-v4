@@ -77,16 +77,16 @@ export async function createMetaAggregatorCalldata(
     tokenIn: _tokenIn,
     tokenOut: _tokenOut,
     sender: handler,
-    receiver: receiver,
-    chainId: 8453,
-    isDelegate: true,
+    receiver: receiver, 
+    chainID: 8453,
+    isDelegate: true
   };
 
-  const postUrl = "https://metaaggregator.velvetdao.xyz/best-quotes";
+  console.log(priceParams);
 
-  //console.log("price params", priceParams);
-
-  return await axios.post(postUrl, priceParams);
+  const postUrl = "https://metaaggregator.velvetdao.xyz/api/v1/route/evm/swap";
+  const response = await axios.get(postUrl, { params: priceParams });
+  return response.data;
 }
 
 export async function calculateSwapAmounts(
