@@ -6,6 +6,7 @@ import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol"
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IFeeDistribution} from "./interfaces/IFeeDistribution.sol";
+import {TransferHelper} from "./libraries/TransferHelper.sol";
 
 /**
  * @title FeeDistribution
@@ -116,6 +117,20 @@ contract FeeDistribution is AccessControl, ERC2771Context, IFeeDistribution {
             "FeeDistribution: Transaction hashes are required"
         );
 
+        for (uint256 i; i < len; ) {
+            require(
+                amounts[i] > 0,
+                "FeeDistribution: Amount must be greater than 0"
+            );
+            require(
+                receivers[i] != address(0),
+                "FeeDistribution: Receiver address cannot be 0"
+            );
+            unchecked {
+                ++i;
+            }
+        }
+
         if (feeToken == NATIVE_TOKEN) {
             // Distribute native token
             for (uint256 i; i < len; ) {
@@ -128,7 +143,7 @@ contract FeeDistribution is AccessControl, ERC2771Context, IFeeDistribution {
         } else {
             // Distribute ERC20 token
             for (uint256 i; i < len; ) {
-                IERC20(feeToken).transfer(receivers[i], amounts[i]);
+                TransferHelper.safeTransfer(feeToken, receivers[i], amounts[i]);
                 unchecked {
                     ++i;
                 }
