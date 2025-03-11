@@ -9,10 +9,6 @@ interface IFeeDistribution {
         address[] receivers
     );
 
-    function grantFeeDistributorRole(address account) external;
-
-    function revokeFeeDistributorRole(address account) external;
-
     function distributeBatch(
         address[] calldata feeTokens,
         bytes[][] calldata transactionHashes,
