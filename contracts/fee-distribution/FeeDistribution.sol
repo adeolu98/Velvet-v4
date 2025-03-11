@@ -6,14 +6,12 @@ import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol"
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IFeeDistribution} from "./interfaces/IFeeDistribution.sol";
-import {TransferHelper} from "./libraries/TransferHelper.sol";
-
+import { TransferHelper } from "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 /**
  * @title FeeDistribution
  * @notice Distributes fee tokens (ERC20 or native) to multiple recipients.
  */
 contract FeeDistribution is AccessControl, ERC2771Context, IFeeDistribution {
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant FEE_DISTRIBUTOR_ROLE =
         keccak256("FEE_DISTRIBUTOR_ROLE");
 
@@ -25,26 +23,8 @@ contract FeeDistribution is AccessControl, ERC2771Context, IFeeDistribution {
         address feeDistributor,
         address trustedForwarder
     ) ERC2771Context(trustedForwarder) {
-        _setupRole(ADMIN_ROLE, _msgSender());
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(FEE_DISTRIBUTOR_ROLE, feeDistributor);
-    }
-
-    /**
-     * @notice Grants the fee distributor role to `account`.
-     */
-    function grantFeeDistributorRole(
-        address account
-    ) external onlyRole(ADMIN_ROLE) {
-        _grantRole(FEE_DISTRIBUTOR_ROLE, account);
-    }
-
-    /**
-     * @notice Revokes the fee distributor role from `account`.
-     */
-    function revokeFeeDistributorRole(
-        address account
-    ) external onlyRole(ADMIN_ROLE) {
-        _revokeRole(FEE_DISTRIBUTOR_ROLE, account);
     }
 
     /**
