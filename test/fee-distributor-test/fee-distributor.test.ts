@@ -160,9 +160,15 @@ describe("Fee Distribution", function () {
 
         const tx = await feeDistribution.connect(deployer).grantRole(await feeDistribution.DEFAULT_ADMIN_ROLE(),receiver1.address);
 
-        const hasRole = await feeDistribution.hasRole(await feeDistribution.DEFAULT_ADMIN_ROLE(), receiver1.address);
+        let hasRole = await feeDistribution.hasRole(await feeDistribution.DEFAULT_ADMIN_ROLE(), receiver1.address);
 
         expect(hasRole).to.equal(true);
+
+        await feeDistribution.connect(deployer).revokeRole(await feeDistribution.DEFAULT_ADMIN_ROLE(),deployer.address);
+
+        hasRole = await feeDistribution.hasRole(await feeDistribution.DEFAULT_ADMIN_ROLE(), deployer.address);
+
+        expect(hasRole).to.equal(false);
     })
     it("default admin can grant the fee distributor role to a user", async () => {
         const { feeDistributor, feeDistribution, maliciousTrustedForwarder, receiver1, receiver2, deployer, nativeToken, token1 } = await loadFixture(setupTest);
