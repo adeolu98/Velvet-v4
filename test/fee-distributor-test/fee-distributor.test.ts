@@ -155,32 +155,41 @@ describe("Fee Distribution", function () {
         expect(balanceOfToken1Receiver1).to.equal(erc20Fee1);
         expect(balanceOfToken1Receiver2).to.equal(erc20Fee2);
     })
-    it("admin can grant the fee distributor role to a user", async () => {
+    it("default admin can grant the default admin to a user", async () => {
         const { feeDistributor, feeDistribution, maliciousTrustedForwarder, receiver1, receiver2, deployer, nativeToken, token1 } = await loadFixture(setupTest);
 
-        const tx = await feeDistribution.connect(deployer).grantFeeDistributorRole(receiver1.address);
+        const tx = await feeDistribution.connect(deployer).grantRole(await feeDistribution.DEFAULT_ADMIN_ROLE(),receiver1.address);
+
+        const hasRole = await feeDistribution.hasRole(await feeDistribution.DEFAULT_ADMIN_ROLE(), receiver1.address);
+
+        expect(hasRole).to.equal(true);
+    })
+    it("default admin can grant the fee distributor role to a user", async () => {
+        const { feeDistributor, feeDistribution, maliciousTrustedForwarder, receiver1, receiver2, deployer, nativeToken, token1 } = await loadFixture(setupTest);
+
+        const tx = await feeDistribution.connect(deployer).grantRole(await feeDistribution.FEE_DISTRIBUTOR_ROLE(),receiver1.address);
 
         const hasRole = await feeDistribution.hasRole(await feeDistribution.FEE_DISTRIBUTOR_ROLE(), receiver1.address);
 
         expect(hasRole).to.equal(true);
     })
-    it("admin can revoke the fee distributor role from a user", async () => {
+    it("default admin can revoke the fee distributor role from a user", async () => {
         const { feeDistributor, feeDistribution, maliciousTrustedForwarder, receiver1, receiver2, deployer, nativeToken, token1 } = await loadFixture(setupTest);
 
-        const tx = await feeDistribution.connect(deployer).revokeFeeDistributorRole(receiver1.address);
+        const tx = await feeDistribution.connect(deployer).revokeRole(await feeDistribution.FEE_DISTRIBUTOR_ROLE(),receiver1.address);
 
         const hasRole = await feeDistribution.hasRole(await feeDistribution.FEE_DISTRIBUTOR_ROLE(), receiver1.address);
         expect(hasRole).to.equal(false);
     })
-    it("only admin can grant the fee distributor role", async () => {
+    it("only default admin can grant the fee distributor role", async () => {
         const { feeDistributor, feeDistribution, maliciousTrustedForwarder, receiver1, receiver2, deployer, nativeToken, token1 } = await loadFixture(setupTest);
 
-        expect(feeDistribution.connect(receiver1).grantFeeDistributorRole(receiver1.address)).to.be.revertedWith(`AccessControl: account ${receiver1.address} is missing role ${await feeDistribution.ADMIN_ROLE()}`);
+        expect(feeDistribution.connect(receiver1).grantRole(await feeDistribution.FEE_DISTRIBUTOR_ROLE(),receiver1.address)).to.be.revertedWith(`AccessControl: account ${receiver1.address} is missing role ${await feeDistribution.DEFAULT_ADMIN_ROLE()}`);
     })
-    it("only admin can revoke the fee distributor role", async () => {
+    it("only default admin can revoke the fee distributor role", async () => {
         const { feeDistributor, feeDistribution, maliciousTrustedForwarder, receiver1, receiver2, deployer, nativeToken, token1 } = await loadFixture(setupTest);
 
-        expect(feeDistribution.connect(receiver1).revokeFeeDistributorRole(feeDistributor.address)).to.be.revertedWith(`AccessControl: account ${receiver1.address} is missing role ${await feeDistribution.ADMIN_ROLE()}`);
+        expect(feeDistribution.connect(receiver1).grantRole(await feeDistribution.FEE_DISTRIBUTOR_ROLE(),feeDistributor.address)).to.be.revertedWith(`AccessControl: account ${receiver1.address} is missing role ${await feeDistribution.DEFAULT_ADMIN_ROLE()}`);
     })
     it("only fee distributor can distribute fees", async () => {
         const { feeDistributor, feeDistribution, maliciousTrustedForwarder, receiver1, receiver2, deployer, nativeToken, trustedForwarder } = await loadFixture(setupTest);
