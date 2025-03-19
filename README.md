@@ -1,49 +1,66 @@
-## Running test cases
+## Foundry
 
-Install Dependencies:
+**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
-```
-$ npm i --legacy-peer-deps
-```
+Foundry consists of:
 
-To run the testcases, make sure that the `.env` file is updated (with the RPC URLs, ENSO_KEY ,CHAIN_ID and the wallet mnemonic value).
+-   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
+-   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
+-   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
+-   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
 
-To run the testcases of Arbitrum(set CHAIN_ID="42161" in env), run the following command:
+## Documentation
 
-```
-$ npx hardhat test test/Arbitrum/*test.*
-```
+https://book.getfoundry.sh/
 
-To run the testcases of Bsc(set CHAIN_ID="56" in env), run the following command:
+## Usage
 
-```
-$ npx hardhat test test/Bsc/*test.*
-```
+### Build
 
-To run the coverage of Arbitrum(set CHAIN_ID="42161" in env), run the following command:
-
-```
-$ npm run coverageArbitrum
+```shell
+$ forge build
 ```
 
-To run the coverage of Bsc(set CHAIN_ID="56" in env), run the following command:
+### Test
 
-```
-$ npm run coverageBsc
-
-```
-$npm run coverage:meta-aggregator 
+```shell
+$ forge test
 ```
 
-To run the coverage for meta-aggregator
+### Format
 
-```
-$npm run test:meta-aggregator
+```shell
+$ forge fmt
 ```
 
-To run test case for meta-aggregator
+### Gas Snapshots
 
+```shell
+$ forge snapshot
 ```
-$npm run deploy:meta-aggregator
+
+### Anvil
+
+```shell
+$ anvil
 ```
-To deploy meta aggregator on base
+
+### Deploy
+
+```shell
+$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+```
+
+### Cast
+
+```shell
+$ cast <subcommand>
+```
+
+### Help
+
+```shell
+$ forge --help
+$ anvil --help
+$ cast --help
+```

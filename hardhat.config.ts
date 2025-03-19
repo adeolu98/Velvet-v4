@@ -7,7 +7,8 @@ import "hardhat-contract-sizer";
 import "solidity-coverage";
 import "hardhat-tracer";
 import "@nomicfoundation/hardhat-chai-matchers";
-
+import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-foundry";
 
 import "hardhat-gas-reporter";
 import "hardhat-abi-exporter";
