@@ -235,7 +235,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
 
     emit NewPositionCreated(address(positionWrapper), _token0, _token1);
 
-    return positionWrapper;
+   return positionWrapper;
   }
 
   /**
@@ -346,6 +346,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
     if (_params._amountIn > 0) {
       (balance0, balance1) = _swapTokenToToken(_params);
     } else {
+      //@audit in this else code block, balance0 and balance1 is not returned even though verifyZeroSwapAmountForReinvestFees() call path gets to calculateRatios() which returns the balance0 and balance1. will this mean if param.amountIn = 0, i.e in the case where a swap of tokens already present in the contract is done. this function will report updated balances as 0? this is a problem
       (uint128 tokensOwed0, uint128 tokensOwed1) = _getTokensOwed(
         _params._tokenId
       );
@@ -452,7 +453,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
         address(uniswapV3PositionManager)
       )
     );
-    IPool pool = IPool(factory.poolByPair(_token0, _token1));
+    IPool pool = IPool(factory.poolByPair(_token0, _token1)); //@audit this functon poolByPaid does not exist on uniswap v3 factory contract. 
 
     token0 = pool.token0();
     token1 = pool.token1();

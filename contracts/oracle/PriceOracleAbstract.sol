@@ -54,7 +54,7 @@ abstract contract PriceOracleAbstract is Ownable {
   constructor(address _WETH) {
     if (_WETH == address(0)) revert InvalidAddressError();
     WETH = _WETH;
-    oracleExpirationThreshold = 25 hours; // Default threshold.
+    oracleExpirationThreshold = 25 hours; // Default threshold. @audit why is this hardcoded? some chainlink feeds have heart beats or update frquencies of 1 hr, not all have 24 hrs. for those ones 25 hrs is too much and allows room for much staleness 
   }
 
   /**

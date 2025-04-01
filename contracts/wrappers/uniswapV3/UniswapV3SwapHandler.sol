@@ -36,7 +36,7 @@ contract UniswapV3SwapHandler {
         recipient: msg.sender,
         deadline: block.timestamp,
         amountIn: amountIn,
-        amountOutMinimum: 0,
+        amountOutMinimum: 0, //@audit this should not be 0, this means no slippage protection  
         sqrtPriceLimitX96: 0
       });
 

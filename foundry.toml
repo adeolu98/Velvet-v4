@@ -5,7 +5,7 @@ libs = ["node_modules","lib"]
 test = "test/foundry"
 cache_path = 'forge-cache'
 solc = "0.8.17"
-optimizer = true
+optimizer=true
 viaIR = true
 
 # NOTE: Specifying shanghai as the evm_version seems required for the Goerli tests to pass

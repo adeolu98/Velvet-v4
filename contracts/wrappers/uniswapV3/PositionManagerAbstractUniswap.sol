@@ -69,7 +69,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
       params._fee,
       params._tickLower,
       params._tickUpper
-    );
+    ); 
 
     // Initialize the Uniswap V3 position with specified liquidity and mint wrapper tokens
     _initializePositionAndDeposit(_dustReceiver, positionWrapper, params);
@@ -301,7 +301,7 @@ abstract contract PositionManagerAbstractUniswap is PositionManagerAbstract {
     balance1After = IERC20Upgradeable(token1).balanceOf(address(this));
 
     // Return any excess tokens (dust) that weren't used in liquidity addition back to the sender.
-    _returnDust(_dustReceiver, token0, token1, balance0After, balance1After);
+    _returnDust(_dustReceiver, token0, token1, balance0After, balance1After); //so cannot create eth pools
 
     emit PositionInitializedAndDeposited(address(_positionWrapper));
   }

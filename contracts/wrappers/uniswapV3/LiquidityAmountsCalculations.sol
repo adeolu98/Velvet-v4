@@ -19,7 +19,7 @@ library LiquidityAmountsCalculations {
     uint160 sqrtRatioAX96,
     uint160 sqrtRatioBX96,
     uint128 _existingLiquidity
-  ) internal returns (uint256 amount0, uint256 amount1) {
+  ) public returns (uint256 amount0, uint256 amount1) {
     IFactory factory = IFactory(_factory);
     IPool pool = IPool(
       factory.getPool(
@@ -56,7 +56,7 @@ library LiquidityAmountsCalculations {
       _factory,
       sqrtRatioAX96,
       sqrtRatioBX96,
-      1 ether
+      1 ether //@audit why is existing liquidity always 1e18?
     );
 
     if (amount0 == 0) {

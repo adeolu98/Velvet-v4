@@ -20,7 +20,7 @@ import { IAssetManagementConfig } from "../config/assetManagement/IAssetManageme
  */
 contract DepositBatchExternalPositions is ReentrancyGuard {
   // The address of Enso's swap execution logic; swaps are delegated to this target.
-  address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52;
+  address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52; 
 
   /**
    * @notice Performs a multi-token swap and deposit operation for the user.
@@ -121,7 +121,7 @@ contract DepositBatchExternalPositions is ReentrancyGuard {
     for (uint256 i; i < tokenLength; i++) {
       address _token = tokens[i];
 
-      TransferHelper.safeApprove(_token, target, 0);
+      TransferHelper.safeApprove(_token, target, 0); //@audit 0 value approval will revert for bnb on eth network 
       TransferHelper.safeApprove(_token, target, depositAmounts[i]);
     }
 

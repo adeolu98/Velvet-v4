@@ -88,7 +88,7 @@ contract DepositBatch is ReentrancyGuard {
       }
       if (balance == 0) revert ErrorLibrary.InvalidBalanceDiff();
 
-      TransferHelper.safeApprove(_token, target, 0);
+      TransferHelper.safeApprove(_token, target, 0); //@audit check this bnb token will revert on 0 value approval. it may be in bot report already but check. project will be deployed on bsc
       TransferHelper.safeApprove(_token, target, balance);
 
       depositAmounts[i] = balance;

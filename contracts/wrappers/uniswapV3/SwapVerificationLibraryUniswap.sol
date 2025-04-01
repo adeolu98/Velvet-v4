@@ -184,7 +184,7 @@ library SwapVerificationLibraryUniswap {
     balance0 = IERC20Upgradeable(_token0).balanceOf(address(this));
     balance1 = IERC20Upgradeable(_token1).balanceOf(address(this));
 
-    ratioAfterSwap = balance0 < 1_000_000 || balance1 < 1_000_000
+    ratioAfterSwap = balance0 < 1_000_000 || balance1 < 1_000_000 //@audit are there not smaller token decimals? restricting ratio after swap to 1e6 may not work well with some tokens
       ? 0
       : (balance0 * 1e18) / balance1;
 
@@ -220,8 +220,7 @@ library SwapVerificationLibraryUniswap {
     uint256 _ratioAfterSwap
   ) internal view {
     // allow 0.5% derivation
-    uint256 allowedRatioDeviationBps = protocolConfig
-      .allowedRatioDeviationBps();
+    uint256 allowedRatioDeviationBps = protocolConfig.allowedRatioDeviationBps();
     uint256 upperBound = (_poolRatio *
       (TOTAL_WEIGHT + allowedRatioDeviationBps)) / TOTAL_WEIGHT;
     uint256 lowerBound = (_poolRatio *
