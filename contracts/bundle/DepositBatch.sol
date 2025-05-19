@@ -16,8 +16,14 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
  */
 contract DepositBatch is ReentrancyGuard {
   // The address of Enso's swap execution logic; swaps are delegated to this target.
-  address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52;
+//  address constant SWAP_TARGET = 0x38147794FF247e5Fc179eDbAE6C37fff88f68C52;
 
+  // The address of Enso's swap execution logic; swaps are delegated to this target.
+  address immutable SWAP_TARGET;
+
+  constructor(address _swapTarget) {
+    SWAP_TARGET = _swapTarget;
+  }
   /**
    * @notice Performs a multi-token swap and deposit operation for the user.
    * @param data Struct containing parameters for the batch handler.
@@ -47,7 +53,7 @@ contract DepositBatch is ReentrancyGuard {
   ) external payable nonReentrant {
     address _depositToken = data._depositToken;
 
-    _multiTokenSwapAndDeposit(data, user);
+    _multiTokenSwapAndDeposit(data, user);  //this function does not transfer tokens from user to the contract before proceeding to swap it. also if it is claimed that user will manually transfer to contract before that is suceptible to frontrunning/stealing by an attacker
 
     // Return any leftover invested token dust to the user
     uint256 depositTokenBalance = _getTokenBalance(
@@ -81,7 +87,7 @@ contract DepositBatch is ReentrancyGuard {
         balance = abi.decode(data._callData[i], (uint256));
       } else {
         uint256 balanceBefore = _getTokenBalance(_token, address(this));
-        (bool success, ) = SWAP_TARGET.delegatecall(data._callData[i]);
+        (bool success, ) = SWAP_TARGET.delegatecall(data._callData[i]); //@audit no tokens transferred from user to the contract, a swap via a dex router wont work
         if (!success) revert ErrorLibrary.CallFailed();
         uint256 balanceAfter = _getTokenBalance(_token, address(this));
         balance = balanceAfter - balanceBefore;

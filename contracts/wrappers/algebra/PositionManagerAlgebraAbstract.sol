@@ -159,7 +159,7 @@ abstract contract PositionManagerAbstractAlgebra is PositionManagerAbstract {
       WrapperFunctionParameters.PositionMintParamsThena({
         _amount0Desired: IERC20Upgradeable(token0).balanceOf(address(this)),
         _amount1Desired: IERC20Upgradeable(token1).balanceOf(address(this)),
-        _amount0Min: 0,
+        _amount0Min: 0, //@audit no slippage protection
         _amount1Min: 0,
         _tickLower: _tickLower,
         _tickUpper: _tickUpper

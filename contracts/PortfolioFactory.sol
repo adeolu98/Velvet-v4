@@ -341,8 +341,8 @@ contract PortfolioFactory is
         address(portfolio),
         address(_tokenExclusionManager),
         address(rebalancing),
-        address(borrowManager),
-        msg.sender,
+        address(borrowManager), //@audit wrong value, function caller/owner is set as borrow manager
+        msg.sender, //@audit wrong value, msg.sender is set as borrow manager
         address(_assetManagementConfig),
         address(_feeModule),
         address(vaultAddress),

@@ -432,6 +432,75 @@ describe.only("Tests for Deposit", () => {
 
         console.log("SupplyAfter", await portfolio.totalSupply());
       });
+      
+      it("should swap tokens for tokens using multiTokenSwapAndDeposit", async () => {
+        let tokens = await portfolio.getTokens();
+        
+        console.log("SupplyBefore", await portfolio.totalSupply());
+        
+        const ERC20 = await ethers.getContractFactory("ERC20Upgradeable");
+        
+        // Using USDC as the source token
+        const tokenToSwap = iaddress.usdcAddress;
+        
+        // Get some USDC by swapping ETH
+        await swapHandler.swapETHToTokens("500", tokenToSwap, owner.address, {
+          value: "1000000000000000000",
+        });
+        
+        // Get the balance of USDC
+        let amountToSwap = await ERC20.attach(tokenToSwap).balanceOf(
+          owner.address
+        );
+        
+        console.log("Amount to swap:", amountToSwap.toString());
+        
+        let postResponse = [];
+        
+        // Prepare the callData for each token in the portfolio
+        for (let i = 0; i < tokens.length; i++) {
+          // Divide the amount equally among all tokens
+          let amountIn = BigNumber.from(amountToSwap).div(tokens.length);
+          
+          if (tokenToSwap == tokens[i]) {
+            // For the deposit token, encode the amount directly
+            const abiCoder = ethers.utils.defaultAbiCoder;
+            const encodedata = abiCoder.encode(["uint"], [amountIn]);
+            postResponse.push(encodedata);
+          } else {
+            // For other tokens, create swap route data
+            let response = await createEnsoCallDataRoute(
+              depositBatch.address,
+              depositBatch.address,
+              tokenToSwap,
+              tokens[i],
+              Number(amountIn)
+            );
+            postResponse.push(response.data.tx.data);
+          }
+        }
+        
+        // Approve the deposit batch contract to spend tokens
+        await ERC20.attach(tokenToSwap).approve(
+          depositBatch.address,
+          amountToSwap.toString()
+        );
+        
+        // Call multiTokenSwapAndDeposit instead of multiTokenSwapETHAndTransfer
+      
+        const data = await depositBatch.multiTokenSwapAndDeposit(
+          {
+            _minMintAmount: 0,
+            _depositAmount: amountToSwap.toString(),
+            _target: portfolio.address,
+            _depositToken: tokenToSwap,
+            _callData: postResponse,
+          },
+          owner.address // Specify the user address as the second parameter
+        );
+        
+        console.log("SupplyAfter", await portfolio.totalSupply());
+      });
 
       it("should swap tokens for user using one of the portfolio token", async () => {
         let tokens = await portfolio.getTokens();

@@ -97,7 +97,7 @@ contract BorrowManager is
       );
 
       (, address[] memory borrowedTokens) = assetHandler.getAllProtocolAssets(
-        _vault,
+        _vault, //@audit if youre able to add many tokens, of little amounts to the vault, this will cause the loop in this getAllProtocolAssets to fail with OOG. 
         _controller
       ); // Get all borrowed tokens for the vault under the controller
 

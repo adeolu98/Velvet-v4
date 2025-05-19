@@ -81,7 +81,7 @@ contract RebalancingConfig is AccessRoles, Initializable {
         if (_getTokenBalanceOf(token, _vault) == 0)
           revert ErrorLibrary.BalanceOfVaultCannotNotBeZero(token);
 
-        // Calculate a unique bit position for this token
+        // Calculate a unique bit position for this token //@audit using encodepacked with dynamic type address, can cause collision
         uint256 bitPos = uint256(keccak256(abi.encodePacked(token))) % 65536; // Hash to get a unique bit position in the range 0-65,535
         uint256 index = bitPos / 256; // Determine the specific uint256 slot in the array (0 to 255)
         uint256 offset = bitPos % 256; // Determine the bit position within that uint256 slot (0 to 255)
